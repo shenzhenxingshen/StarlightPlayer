@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
 interface ProgressBarProps {
   position: number;
@@ -16,25 +16,34 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, isLargeTe
   };
 
   const progress = duration > 0 ? Math.min(position / duration, 1) : 0;
-  const textSize = isLargeTextMode ? 18 : 12;
+  const textSize = isLargeTextMode ? 16 : 12;
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.time, { fontSize: textSize }]}>{fmt(position)}</Text>
-      <View style={styles.track}>
-        <View style={[styles.fill, { flex: progress }]} />
-        <View style={{ flex: 1 - progress }} />
+      <View style={styles.barWrap}>
+        <View style={styles.track}>
+          <View style={[styles.fill, { flex: progress }]} />
+          <View style={[styles.thumb, progress > 0 && styles.thumbActive]} />
+          <View style={{ flex: Math.max(1 - progress, 0.001) }} />
+        </View>
       </View>
-      <Text style={[styles.time, { fontSize: textSize }]}>{fmt(duration)}</Text>
+      <View style={styles.timeRow}>
+        <Text style={[styles.time, { fontSize: textSize }]}>{fmt(position)}</Text>
+        <Text style={[styles.time, { fontSize: textSize }]}>{fmt(duration)}</Text>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
-  time: { color: '#fff', minWidth: 50, textAlign: 'center' },
-  track: { flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2, flexDirection: 'row', marginHorizontal: 10 },
-  fill: { backgroundColor: '#fff', borderRadius: 2 },
+  container: { paddingHorizontal: 30, paddingVertical: 8 },
+  barWrap: { paddingVertical: 8 },
+  track: { height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2, flexDirection: 'row', alignItems: 'center' },
+  fill: { height: 4, backgroundColor: '#ffd700', borderRadius: 2 },
+  thumb: { width: 0, height: 0 },
+  thumbActive: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ffd700', marginLeft: -5 },
+  timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  time: { color: 'rgba(255,255,255,0.5)' },
 });
 
 export default ProgressBar;

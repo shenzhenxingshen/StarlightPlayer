@@ -1,3 +1,4 @@
+import './src/utils/logger';
 import { AppRegistry } from 'react-native';
 import TrackPlayer from 'react-native-track-player';
 import App from './src/App';

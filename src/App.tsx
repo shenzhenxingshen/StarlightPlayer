@@ -25,7 +25,16 @@ const App: React.FC = () => {
 
     (async () => {
       try {
-        await TrackPlayer.setupPlayer({ minBuffer: 5, maxBuffer: 50 });
+        // Android 需要 APP 在前台才能 setupPlayer，加重试
+        for (let i = 0; i < 5; i++) {
+          try {
+            await TrackPlayer.setupPlayer({ minBuffer: 5, maxBuffer: 50 });
+            break;
+          } catch (e) {
+            if (i === 4) throw e;
+            await new Promise(r => setTimeout(r, 500));
+          }
+        }
         await TrackPlayer.updateOptions({
           capabilities: [
             Capability.Play, Capability.Pause,
@@ -73,10 +82,9 @@ const App: React.FC = () => {
         <Tab.Navigator
           initialRouteName="Playlist"
           screenOptions={{
-            headerStyle: { backgroundColor: '#121212' },
-            headerTintColor: '#fff',
+            headerShown: false,
             tabBarStyle: { backgroundColor: '#121212', borderTopColor: '#333' },
-            tabBarActiveTintColor: '#1DB954',
+            tabBarActiveTintColor: '#ffd700',
             tabBarInactiveTintColor: '#888',
           }}>
           <Tab.Screen

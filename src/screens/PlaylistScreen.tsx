@@ -1,21 +1,26 @@
 import React from 'react';
 import { View, StyleSheet, SectionList, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import TrackPlayer, { useActiveTrack } from 'react-native-track-player';
+import TrackPlayer, { useActiveTrack, usePlaybackState, State } from 'react-native-track-player';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Track } from '../types';
 import { TRACKS, SECTIONS } from '../constants/tracks';
 import { useSettingsStore } from '../store/settingsStore';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { incrementPlaybackCount } from '../utils/storage';
 
-interface SectionData { title: string; data: Track[]; }
+const SECTION_COLORS: Record<string, string> = { A: '#e74c3c', B: '#f39c12', C: '#2ecc71', D: '#3498db' };
+
+interface SectionData { title: string; code: string; data: Track[]; }
 
 const PlaylistScreen: React.FC = () => {
   const activeTrack = useActiveTrack();
+  const playbackState = usePlaybackState();
+  const isPlaying = playbackState.state === State.Playing;
   const { isLargeTextMode } = useSettingsStore();
 
-  const handleTrackPress = async (track: Track, index: number) => {
-    await TrackPlayer.skip(index);
+  const handleTrackPress = async (track: Track, globalIndex: number) => {
+    await TrackPlayer.skip(globalIndex);
     if (track.durationMs) {
       await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(track.durationMs)));
       incrementPlaybackCount(track.id);
@@ -25,35 +30,45 @@ const PlaylistScreen: React.FC = () => {
 
   const sectionData: SectionData[] = SECTIONS.map(s => ({
     title: s.name,
+    code: s.code,
     data: TRACKS.filter(t => t.section === s.code),
   }));
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <Text style={[styles.header, isLargeTextMode && { fontSize: 32 }]}>播放列表</Text>
       <SectionList
         sections={sectionData}
         keyExtractor={item => item.id}
         stickySectionHeadersEnabled={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, isLargeTextMode && { fontSize: 24 }]}>{section.title}</Text>
+            <View style={[styles.sectionBadge, { backgroundColor: SECTION_COLORS[section.code] || '#888' }]}>
+              <Text style={[styles.sectionBadgeText, isLargeTextMode && { fontSize: 16 }]}>{section.code}</Text>
+            </View>
+            <Text style={[styles.sectionTitle, isLargeTextMode && { fontSize: 22 }]}>{section.title}</Text>
           </View>
         )}
-        renderItem={({ item, index }) => {
+        renderItem={({ item }) => {
           const isActive = item.id === activeTrack?.id;
+          const globalIndex = TRACKS.findIndex(t => t.id === item.id);
           return (
             <TouchableOpacity
               style={[styles.trackItem, isActive && styles.activeTrack]}
-              onPress={() => handleTrackPress(item, index)}>
+              activeOpacity={0.6}
+              onPress={() => handleTrackPress(item, globalIndex)}>
+              {isActive && <View style={[styles.activeBar, { backgroundColor: SECTION_COLORS[item.section] || '#ffd700' }]} />}
+              <View style={[styles.codeBox, { borderColor: SECTION_COLORS[item.section] || '#888' }]}>
+                <Text style={[styles.codeText, isLargeTextMode && { fontSize: 14 }]}>{item.code}</Text>
+              </View>
               <View style={styles.trackInfo}>
-                <Text style={[styles.trackTitle, isActive && styles.activeText, isLargeTextMode && { fontSize: 22 }]} numberOfLines={1}>
+                <Text style={[styles.trackTitle, isActive && styles.activeText, isLargeTextMode && { fontSize: 20 }]} numberOfLines={1}>
                   {item.title}
                 </Text>
-                <Text style={[styles.trackCode, isLargeTextMode && { fontSize: 18 }]}>{item.code}</Text>
               </View>
-              {isActive && <Text style={[styles.playingBadge, isLargeTextMode && { fontSize: 18 }]}>播放中</Text>}
+              {isActive && (
+                <Icon name={isPlaying ? 'equalizer' : 'pause'} size={isLargeTextMode ? 28 : 22} color="#ffd700" />
+              )}
             </TouchableOpacity>
           );
         }}
@@ -64,16 +79,18 @@ const PlaylistScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
-  header: { color: '#fff', fontSize: 24, fontWeight: 'bold', paddingHorizontal: 20, paddingVertical: 20 },
-  sectionHeader: { backgroundColor: '#1e1e1e', paddingVertical: 10, paddingHorizontal: 15, marginTop: 10, borderRadius: 8 },
-  sectionTitle: { color: '#ffd700', fontSize: 18, fontWeight: 'bold' },
-  trackItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
-  activeTrack: { backgroundColor: 'rgba(255,255,255,0.05)' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, marginTop: 8 },
+  sectionBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginRight: 10 },
+  sectionBadgeText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  sectionTitle: { color: '#ffd700', fontSize: 17, fontWeight: 'bold' },
+  trackItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' },
+  activeTrack: { backgroundColor: 'rgba(255,215,0,0.06)' },
+  activeBar: { position: 'absolute', left: 0, top: 4, bottom: 4, width: 3, borderRadius: 2 },
+  codeBox: { width: 42, height: 28, borderRadius: 4, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  codeText: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '600' },
   trackInfo: { flex: 1 },
-  trackTitle: { color: '#fff', fontSize: 16, fontWeight: '500', marginBottom: 4 },
-  trackCode: { color: 'rgba(255,255,255,0.6)', fontSize: 14 },
-  activeText: { color: '#1DB954' },
-  playingBadge: { color: '#1DB954', fontSize: 12, marginLeft: 8 },
+  trackTitle: { color: '#fff', fontSize: 16 },
+  activeText: { color: '#ffd700', fontWeight: '600' },
 });
 
 export default PlaylistScreen;

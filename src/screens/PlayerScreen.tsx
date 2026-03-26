@@ -46,7 +46,7 @@ const PlayerScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.content}>
-        <TrackInfo track={displayTrack} isLargeTextMode={isLargeTextMode} />
+        <TrackInfo track={displayTrack} isPlaying={isPlaying} isLargeTextMode={isLargeTextMode} />
         <ProgressBar position={progress.position} duration={progress.duration} onSeek={() => {}} isLargeTextMode={isLargeTextMode} />
         <Controls
           isPlaying={isPlaying}
