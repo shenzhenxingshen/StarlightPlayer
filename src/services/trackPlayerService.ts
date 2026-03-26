@@ -52,8 +52,10 @@ class TrackPlayerService {
   }
 
   async getCurrentTrack(): Promise<any> {
-    const track = await TrackPlayer.getCurrentTrack();
-    return track;
+    const index = await TrackPlayer.getActiveTrackIndex();
+    if (index === undefined || index === null) return null;
+    const queue = await TrackPlayer.getQueue();
+    return queue[index] || null;
   }
 
   async getPosition(): Promise<number> {

@@ -2,33 +2,31 @@ import { MMKV } from 'react-native-mmkv';
 
 const storage = new MMKV();
 
-export const storageKeys = {
-  PLAYBACK_STATS: 'playback_stats',
-  SETTINGS: 'settings',
-};
+const SETTINGS_KEY = 'settings';
+
+function todayKey(): string {
+  const d = new Date();
+  return `stats_${d.getFullYear()}_${d.getMonth() + 1}_${d.getDate()}`;
+}
 
 export function getPlaybackStats(): Record<string, number> {
   try {
-    const data = storage.getString(storageKeys.PLAYBACK_STATS);
+    const data = storage.getString(todayKey());
     return data ? JSON.parse(data) : {};
   } catch {
     return {};
   }
 }
 
-export function setPlaybackStats(stats: Record<string, number>): void {
-  storage.set(storageKeys.PLAYBACK_STATS, JSON.stringify(stats));
-}
-
 export function incrementPlaybackCount(trackId: string): void {
   const stats = getPlaybackStats();
   stats[trackId] = (stats[trackId] || 0) + 1;
-  setPlaybackStats(stats);
+  storage.set(todayKey(), JSON.stringify(stats));
 }
 
 export function getSettings(): { isLargeTextMode: boolean } {
   try {
-    const data = storage.getString(storageKeys.SETTINGS);
+    const data = storage.getString(SETTINGS_KEY);
     return data ? JSON.parse(data) : { isLargeTextMode: false };
   } catch {
     return { isLargeTextMode: false };
@@ -36,7 +34,7 @@ export function getSettings(): { isLargeTextMode: boolean } {
 }
 
 export function setSettings(settings: { isLargeTextMode: boolean }): void {
-  storage.set(storageKeys.SETTINGS, JSON.stringify(settings));
+  storage.set(SETTINGS_KEY, JSON.stringify(settings));
 }
 
 export function isLargeTextMode(): boolean {

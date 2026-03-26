@@ -1,4 +1,5 @@
 apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 react {
@@ -6,6 +7,7 @@ react {
     root = file("../../")
     reactNativeDir = file("../../node_modules/react-native")
     codegenDir = file("../../node_modules/react-native-codegen")
+    autolinkLibrariesWithApp()
 }
 
 def enableSeparateBuildPerCPUArchitecture = false
@@ -18,6 +20,13 @@ android {
     compileSdkVersion rootProject.ext.compileSdkVersion
 
     namespace "com.starlightplayer"
+
+    configurations.all {
+        resolutionStrategy {
+            force 'androidx.core:core-ktx:1.13.1'
+            force 'androidx.core:core:1.13.1'
+        }
+    }
     defaultConfig {
         applicationId "com.starlightplayer"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -40,6 +49,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
+            signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
@@ -49,10 +59,10 @@ android {
 dependencies {
     implementation "com.facebook.react:react-android"
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
-    
-    // react-native-track-player
-    implementation project(':react-native-track-player')
-    implementation "com.google.android.material:material:1.9.0"
+
+    // Pin androidx.core to avoid AGP 8.6 requirement
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.core:core:1.13.1")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
@@ -61,4 +71,3 @@ dependencies {
     }
 }
 
-apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)

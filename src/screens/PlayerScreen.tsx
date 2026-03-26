@@ -1,74 +1,59 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, StatusBar } from 'react-native';
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { usePlayerStore } from '../store/playerStore';
-import { usePlaylistStore } from '../store/playlistStore';
+import TrackPlayer, { usePlaybackState, useProgress, useActiveTrack, State } from 'react-native-track-player';
 import TrackInfo from '../components/TrackInfo';
 import Controls from '../components/Controls';
 import ProgressBar from '../components/ProgressBar';
-import { isLargeTextMode } from '../utils/storage';
+import { useSettingsStore } from '../store/settingsStore';
+import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
+import { TRACKS } from '../constants/tracks';
+import { incrementPlaybackCount } from '../utils/storage';
 
 const PlayerScreen: React.FC = () => {
-  const { 
-    state, 
-    currentTrack, 
-    position, 
-    duration,
-    play, 
-    pause, 
-    seekTo,
-    skipToNext, 
-    skipToPrevious,
-    initialize
-  } = usePlayerStore();
-  
-  const { getCurrentTrack } = usePlaylistStore();
-  const [largeTextMode, setLargeTextMode] = React.useState(false);
+  const playbackState = usePlaybackState();
+  const progress = useProgress(500);
+  const activeTrack = useActiveTrack();
+  const isPlaying = playbackState.state === State.Playing;
+  const { isLargeTextMode } = useSettingsStore();
 
-  useEffect(() => {
-    initialize();
-    setLargeTextMode(isLargeTextMode());
-  }, []);
-
-  useEffect(() => {
-    setLargeTextMode(isLargeTextMode());
-  }, [state]);
-
-  const handlePlayPause = () => {
-    if (state === 'playing') {
-      pause();
-    } else {
-      play();
+  const alignAndPlay = async (trackId?: string) => {
+    const id = trackId ?? activeTrack?.id;
+    const track = TRACKS.find(t => t.id === id);
+    if (track?.durationMs) {
+      await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(track.durationMs)));
+      incrementPlaybackCount(track.id);
     }
+    await TrackPlayer.play();
   };
 
-  const handleSeek = (value: number) => {
-    seekTo(value);
+  const handleSkipNext = async () => {
+    await TrackPlayer.skipToNext();
+    const idx = await TrackPlayer.getActiveTrackIndex();
+    const queue = await TrackPlayer.getQueue();
+    if (idx !== null && idx !== undefined) await alignAndPlay(queue[idx]?.id);
   };
 
-  const isPlaying = state === 'playing';
-  const displayTrack = currentTrack || getCurrentTrack();
+  const handleSkipPrev = async () => {
+    await TrackPlayer.skipToPrevious();
+    const idx = await TrackPlayer.getActiveTrackIndex();
+    const queue = await TrackPlayer.getQueue();
+    if (idx !== null && idx !== undefined) await alignAndPlay(queue[idx]?.id);
+  };
+
+  const displayTrack = TRACKS.find(t => t.id === activeTrack?.id) || null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" />
       <View style={styles.content}>
-        <TrackInfo 
-          track={displayTrack} 
-          isLargeTextMode={largeTextMode}
-        />
-        <ProgressBar 
-          position={position} 
-          duration={duration} 
-          onSeek={handleSeek}
-          isLargeTextMode={largeTextMode}
-        />
+        <TrackInfo track={displayTrack} isLargeTextMode={isLargeTextMode} />
+        <ProgressBar position={progress.position} duration={progress.duration} onSeek={() => {}} isLargeTextMode={isLargeTextMode} />
         <Controls
           isPlaying={isPlaying}
-          onPlayPause={handlePlayPause}
-          onSkipToNext={skipToNext}
-          onSkipToPrevious={skipToPrevious}
-          isLargeTextMode={largeTextMode}
+          onPlayPause={isPlaying ? () => TrackPlayer.pause() : () => alignAndPlay()}
+          onSkipToNext={handleSkipNext}
+          onSkipToPrevious={handleSkipPrev}
+          isLargeTextMode={isLargeTextMode}
         />
       </View>
     </SafeAreaView>
@@ -76,14 +61,8 @@ const PlayerScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#121212',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#121212' },
+  content: { flex: 1, justifyContent: 'center' },
 });
 
 export default PlayerScreen;
