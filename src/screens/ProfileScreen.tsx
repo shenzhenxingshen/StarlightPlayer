@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Text, Switch, TouchableOpacity, Platform, Alert, NativeModules } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { TRACKS } from '../constants/tracks';
 import { getPlaybackStats } from '../utils/storage';
@@ -29,7 +30,8 @@ const ProfileScreen: React.FC = () => {
   const [showLogs, setShowLogs] = useState(false);
   const { isLargeTextMode, toggleLargeTextMode } = useSettingsStore();
 
-  useEffect(() => { setStats(getPlaybackStats()); }, []);
+  // 每次进入页面刷新统计
+  useFocusEffect(useCallback(() => { setStats(getPlaybackStats()); }, []));
 
   const t = (base: number) => isLargeTextMode ? base + 6 : base;
   const deviceInfo = getDeviceInfo();
@@ -72,10 +74,14 @@ const ProfileScreen: React.FC = () => {
         {/* 今日统计 */}
         <View style={styles.card}>
           <Text style={[styles.cardTitle, { fontSize: t(17) }]}>
-            <Icon name="bar-chart" size={t(17)} color="#ffd700" />  今日播放统计 ({totalToday} 遍)
+            <Icon name="bar-chart" size={t(17)} color="#ffd700" />  今日播放统计
           </Text>
           {tracksWithStats.length === 0 ? (
-            <Text style={[styles.emptyText, { fontSize: t(14) }]}>今日暂无播放记录</Text>
+            <View style={styles.emptyWrap}>
+              {['当勤精进', '慎勿放逸', '都摄六根', '净念相继'].map(line => (
+                <Text key={line} style={[styles.emptyLine, { fontSize: t(18) }]}>{line}</Text>
+              ))}
+            </View>
           ) : (
             tracksWithStats.map(track => (
               <View key={track.id} style={styles.statRow}>
@@ -128,7 +134,8 @@ const styles = StyleSheet.create({
   cardLabel: { color: '#fff', fontWeight: '600' },
   cardDesc: { color: 'rgba(255,255,255,0.4)', marginTop: 2 },
   cardTitle: { color: '#ffd700', fontWeight: 'bold', marginBottom: 12 },
-  emptyText: { color: 'rgba(255,255,255,0.3)', textAlign: 'center', paddingVertical: 16 },
+  emptyWrap: { alignItems: 'center', paddingVertical: 16 },
+  emptyLine: { color: 'rgba(255,215,0,0.5)', letterSpacing: 6, lineHeight: 36 },
   statRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' },
   statTitle: { color: '#fff', flex: 1, marginRight: 8 },
   badge: { backgroundColor: 'rgba(255,215,0,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },

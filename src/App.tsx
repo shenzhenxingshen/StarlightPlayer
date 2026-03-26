@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, View, Text, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -41,7 +41,7 @@ const App: React.FC = () => {
             Capability.SkipToNext, Capability.SkipToPrevious,
             Capability.SeekTo, Capability.Stop,
           ],
-          compactCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToNext],
+          compactCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToPrevious, Capability.SkipToNext],
         });
         await TrackPlayer.add(
           TRACKS.map(t => ({
@@ -77,30 +77,33 @@ const App: React.FC = () => {
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor="#121212" />
-      <NavigationContainer>
+      <StatusBar barStyle="light-content" backgroundColor="#121212" translucent={true} />
+      <NavigationContainer
+        theme={{ dark: true, colors: { primary: '#ffd700', background: '#121212', card: '#121212', text: '#fff', border: '#333', notification: '#ffd700' } }}>
         <Tab.Navigator
-          initialRouteName="Playlist"
+          initialRouteName="Player"
           screenOptions={{
             headerShown: false,
-            tabBarStyle: { backgroundColor: '#121212', borderTopColor: '#333' },
+            tabBarStyle: { backgroundColor: '#121212', borderTopColor: '#333', height: 72, paddingBottom: 10, paddingTop: 6 },
             tabBarActiveTintColor: '#ffd700',
             tabBarInactiveTintColor: '#888',
+            tabBarLabelStyle: { fontSize: 14 },
+            tabBarIconStyle: { marginBottom: -2 },
           }}>
-          <Tab.Screen
-            name="Playlist"
-            component={PlaylistScreen}
-            options={{
-              title: '列表',
-              tabBarIcon: ({ color, size }) => <Icon name="queue-music" size={size} color={color} />,
-            }}
-          />
           <Tab.Screen
             name="Player"
             component={PlayerScreen}
             options={{
               title: '播放',
-              tabBarIcon: ({ color, size }) => <Icon name="play-circle-outline" size={size} color={color} />,
+              tabBarIcon: ({ color }) => <Icon name="play-circle-outline" size={38} color={color} />,
+            }}
+          />
+          <Tab.Screen
+            name="Playlist"
+            component={PlaylistScreen}
+            options={{
+              title: '列表',
+              tabBarIcon: ({ color }) => <Icon name="queue-music" size={38} color={color} />,
             }}
           />
           <Tab.Screen
@@ -108,7 +111,7 @@ const App: React.FC = () => {
             component={ProfileScreen}
             options={{
               title: '我的',
-              tabBarIcon: ({ color, size }) => <Icon name="person" size={size} color={color} />,
+              tabBarIcon: ({ color }) => <Icon name="person" size={38} color={color} />,
             }}
           />
         </Tab.Navigator>

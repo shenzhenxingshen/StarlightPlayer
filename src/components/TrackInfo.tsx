@@ -20,9 +20,6 @@ const TrackInfo: React.FC<TrackInfoProps> = ({ track, isPlaying, isLargeTextMode
       <Text style={[styles.title, { fontSize: titleSize }]} numberOfLines={2}>
         {track?.title ?? '未选择曲目'}
       </Text>
-      <Text style={[styles.subtitle, { fontSize: subSize }]}>
-        {track ? `${track.code} · 共修音乐` : '请从列表选择'}
-      </Text>
     </View>
   );
 };

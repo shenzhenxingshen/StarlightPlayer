@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, marginTop: 8 },
   sectionBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginRight: 10 },
   sectionBadgeText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  sectionTitle: { color: '#ffd700', fontSize: 17, fontWeight: 'bold' },
+  sectionTitle: { color: 'rgba(255,255,255,0.85)', fontSize: 17, fontWeight: 'bold' },
   trackItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' },
   activeTrack: { backgroundColor: 'rgba(255,215,0,0.06)' },
   activeBar: { position: 'absolute', left: 0, top: 4, bottom: 4, width: 3, borderRadius: 2 },
