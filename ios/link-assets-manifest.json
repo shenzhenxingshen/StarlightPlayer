@@ -1,0 +1,93 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "ios/StarlightPlayer/audio/A01 大悲咒（跟我学）.mp3",
+      "sha1": "32c87107bc65b1435219345e8b5ace7e97b85d92"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/A02 大悲咒（唱版）.mp3",
+      "sha1": "e99b8c043d5ee90677e8348697fd4a2b4712eedf"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/A03 大悲咒（慢版）.mp3",
+      "sha1": "db3cc42099b2a03b413631d54cf0607b3512fa16"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/A04 大悲咒（快版）.mp3",
+      "sha1": "d48ed8ca6d841f3f251d863e4b76f862b5e30b21"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/A05 大悲咒（共修版）.mp3",
+      "sha1": "ce24036d3e550f7244aec32eabc0a453ed65670b"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/B06 发愿回向文.mp3",
+      "sha1": "74c2f71dd0f18a3fc19f29ce9f2a40e7645e68f2"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/C07 南无阿弥陀佛（唱版）.mp3",
+      "sha1": "c32a3e354a4cad621f200c51f7517bf538cced95"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/C08 南无阿弥陀佛（慢版）.mp3",
+      "sha1": "b9d767ee7e9b90df2c4cbe4f5bceab53d2a74cf3"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/C09 南无阿弥陀佛（快版）.mp3",
+      "sha1": "91f6247f645faaee42e65bf64bbc6b1291582028"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/C10 阿弥陀佛（唱版）.mp3",
+      "sha1": "6570fc221c61115105bfdf5b6679d3637c59009b"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/C11 阿弥陀佛（慢版）.mp3",
+      "sha1": "f321e3cb9efb40a9ecab58a5be40c803d5e688a0"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/C12 阿弥陀佛（快版）.mp3",
+      "sha1": "7d4d00d478707a17aa221854054e901befe24eb2"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/C13 南无观世音菩萨（唱版）.mp3",
+      "sha1": "472422d6e76e3ddf978164b3da863be0f94489d1"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/C14 南无观世音菩萨（慢版）.mp3",
+      "sha1": "19ade2b390f4a64a72db3c3be28682db092fc050"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/D15 期盼（歌曲）.mp3",
+      "sha1": "3b6d4b601b16bf11b0ab8fdbaadab3851b1ce9f8"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/D16 回向偈.mp3",
+      "sha1": "4b12ec32a8eaac47cabe2f9d0df71173d75674c1"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/D17 观音灵感歌.mp3",
+      "sha1": "c96ebcd7b81e7abdfc2f3a89213401eff8771dfb"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/D18 观音菩萨如秋月.mp3",
+      "sha1": "5d63b94bdb092e84b14c170264eeb378650c5ea9"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/D19 一声佛号一声心.mp3",
+      "sha1": "1521baddb0ab64fe6596caf84e88463d8f0d2910"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/D20 观音菩萨偈.mp3",
+      "sha1": "1b3e429e67e7cfb1f9843bd54677b9e2c5e3b61c"
+    },
+    {
+      "path": "ios/StarlightPlayer/audio/D21 愿做菩萨那朵莲.mp3",
+      "sha1": "c86545c26ffeed5adaebdecd9a6c63fc9bca3dcb"
+    },
+    {
+      "path": "ios/StarlightPlayer/fonts/MaterialIcons.ttf",
+      "sha1": "7e02c3f005532ff4d24148567c84089756a7848a"
+    }
+  ]
+}

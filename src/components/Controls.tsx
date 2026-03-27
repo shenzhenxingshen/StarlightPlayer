@@ -1,3 +1,4 @@
+import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from '../constants/colors';
 import React from 'react';
 import { View, StyleSheet, Pressable, Text } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -47,7 +48,7 @@ const Controls: React.FC<ControlsProps> = ({
         {/* 中：播放 */}
         <Pressable onPress={onPlayPause} hitSlop={8} style={styles.playBtn}>
           <View style={[styles.playCircle, { width: playCircleSize, height: playCircleSize, borderRadius: playCircleSize / 2 }]}>
-            <Icon name={isPlaying ? 'pause' : 'play-arrow'} size={playSize} color="#ffd700" />
+            <Icon name={isPlaying ? 'pause' : 'play-arrow'} size={playSize} color={GOLD} />
           </View>
         </Pressable>
         {/* 右列：占位(上) + 下一首(下) */}
@@ -74,9 +75,9 @@ const styles = StyleSheet.create({
   leftCol: { alignItems: 'center' },
   rightCol: { alignItems: 'center' },
   playBtn: { marginHorizontal: 16, marginBottom: 8 },
-  playCircle: { borderWidth: 2, borderColor: 'rgba(255,215,0,0.4)', alignItems: 'center', justifyContent: 'center' },
-  toast: { position: 'absolute', top: 4, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,215,0,0.3)' },
-  toastText: { color: '#ffd700', fontSize: 14 },
+  playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, alignItems: 'center', justifyContent: 'center' },
+  toast: { position: 'absolute', top: 4, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW },
+  toastText: { color: GOLD, fontSize: 14 },
 });
 
 export default Controls;

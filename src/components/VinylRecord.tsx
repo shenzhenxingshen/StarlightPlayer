@@ -1,3 +1,4 @@
+import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from '../constants/colors';
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
 
@@ -43,7 +44,7 @@ const VinylRecord: React.FC<VinylRecordProps> = ({ isPlaying, size = 230 }) => {
         {[0.9, 0.78, 0.66, 0.54].map((s, i) => (
           <View key={i} style={{
             position: 'absolute', width: size * s, height: size * s, borderRadius: (size * s) / 2,
-            borderWidth: 0.5, borderColor: i % 2 === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,215,0,0.04)',
+            borderWidth: 0.5, borderColor: i % 2 === 0 ? 'rgba(255,255,255,0.06)' : GOLD_SUBTLE,
           }} />
         ))}
         <View style={[styles.label, { width: size * 0.28, height: size * 0.28, borderRadius: (size * 0.28) / 2 }]}>
@@ -54,7 +55,7 @@ const VinylRecord: React.FC<VinylRecordProps> = ({ isPlaying, size = 230 }) => {
       <Animated.View style={{
         position: 'absolute',
         width: size + 16, height: size + 16, borderRadius: (size + 16) / 2,
-        borderWidth: 2.5, borderColor: 'rgba(255,215,0,0.25)',
+        borderWidth: 2.5, borderColor: GOLD_GLOW,
         opacity: glow,
       }} />
     </View>
@@ -62,7 +63,7 @@ const VinylRecord: React.FC<VinylRecordProps> = ({ isPlaying, size = 230 }) => {
 };
 
 const styles = StyleSheet.create({
-  glowRing: { position: 'absolute', borderWidth: 2.5, borderColor: 'rgba(255,215,0,0.25)' },
+  glowRing: { position: 'absolute', borderWidth: 2.5, borderColor: GOLD_GLOW },
   disc: { backgroundColor: '#111', alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: '#2a2a2a', elevation: 6 },
   label: { backgroundColor: '#8B6914', alignItems: 'center', justifyContent: 'center' },
   labelHole: { backgroundColor: '#222' },

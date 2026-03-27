@@ -1,3 +1,4 @@
+import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from '../constants/colors';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Track } from '../types';
@@ -26,7 +27,7 @@ const TrackInfo: React.FC<TrackInfoProps> = ({ track, isPlaying, isLargeTextMode
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', paddingVertical: 20 },
-  title: { color: '#ffd700', fontWeight: 'bold', textAlign: 'center', marginTop: 24, paddingHorizontal: 30 },
+  title: { color: GOLD, fontWeight: 'bold', textAlign: 'center', marginTop: 24, paddingHorizontal: 30 },
   subtitle: { color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 6 },
 });
 

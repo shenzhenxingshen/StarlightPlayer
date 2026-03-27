@@ -93,9 +93,9 @@ export const TRACKS: Track[] = [
 
   // D: 期盼歌曲
   { 
-    id: 'd15', code: 'D15', title: '期盼（歌曲）', subtitle: '', section: 'D', 
+    id: 'd15', code: 'D15', title: '期盼', subtitle: '', section: 'D', 
     imageUrl: '/assets/images/cover.png', 
-    audioUrl: 'D15 期盼（歌曲）.mp3',
+    audioUrl: 'D15 期盼.mp3',
     durationMs: 196089
   },
   { 
