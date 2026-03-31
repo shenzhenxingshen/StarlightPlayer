@@ -2,7 +2,7 @@ import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SU
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StatusBar, View, Text, StyleSheet, Image } from 'react-native';
+import { StatusBar, View, Text, StyleSheet, Image, Platform, PermissionsAndroid } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import TrackPlayer, { Capability } from 'react-native-track-player';
@@ -59,6 +59,10 @@ const App: React.FC = () => {
             duration: msToSeconds(t.durationMs || 0),
           }))
         );
+        // Android 13+ 通知权限
+        if (Platform.OS === 'android' && Platform.Version >= 33) {
+          PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(() => {});
+        }
         const elapsed = Date.now() - startTime;
         const minSplash = 300;
         if (elapsed < minSplash) {
