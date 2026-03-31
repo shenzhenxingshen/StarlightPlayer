@@ -16,6 +16,7 @@ import { getLocalAudioUrl } from './utils/getLocalAudioUrl';
 const Tab = createBottomTabNavigator();
 
 let _initialized = false;
+let _initializing = false;
 
 const App: React.FC = () => {
   const [ready, setReady] = useState(false);
@@ -23,7 +24,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (_initialized) { setReady(true); return; }
-    _initialized = true;
+    if (_initializing) return;
+    _initializing = true;
     const startTime = Date.now();
 
     (async () => {
@@ -63,7 +65,9 @@ const App: React.FC = () => {
           await new Promise(r => setTimeout(r, minSplash - elapsed));
         }
         setReady(true);
+        _initialized = true;
       } catch (e) {
+        _initializing = false;
         setError(String(e));
       }
     })();

@@ -6,7 +6,12 @@ function timestamp(): string {
 }
 
 export function addLog(level: string, ...args: any[]) {
-  const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+  const msg = args.map(a => {
+    if (typeof a === 'object') {
+      try { return JSON.stringify(a); } catch { return String(a); }
+    }
+    return String(a);
+  }).join(' ');
   logs.push(`[${timestamp()}] ${level}: ${msg}`);
   if (logs.length > MAX_LOGS) logs.shift();
 }

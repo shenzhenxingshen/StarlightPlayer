@@ -22,6 +22,11 @@ const PlayerScreen: React.FC = () => {
   const [modeLabel, setModeLabel] = useState<string | null>(null);
   const labelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 清理 labelTimer
+  useEffect(() => {
+    return () => { if (labelTimer.current) clearTimeout(labelTimer.current); };
+  }, []);
+
   // 应用播放模式到 RNTP
   useEffect(() => {
     (async () => {
@@ -84,19 +89,23 @@ const PlayerScreen: React.FC = () => {
   };
 
   const handleSkipNext = async () => {
-    manualSkip = true;
-    await TrackPlayer.skipToNext();
-    const idx = await TrackPlayer.getActiveTrackIndex();
-    const queue = await TrackPlayer.getQueue();
-    if (idx !== null && idx !== undefined) await alignAndPlay(queue[idx]?.id);
+    try {
+      manualSkip = true;
+      await TrackPlayer.skipToNext();
+      const idx = await TrackPlayer.getActiveTrackIndex();
+      const queue = await TrackPlayer.getQueue();
+      if (idx !== null && idx !== undefined) await alignAndPlay(queue[idx]?.id);
+    } catch { manualSkip = false; }
   };
 
   const handleSkipPrev = async () => {
-    manualSkip = true;
-    await TrackPlayer.skipToPrevious();
-    const idx = await TrackPlayer.getActiveTrackIndex();
-    const queue = await TrackPlayer.getQueue();
-    if (idx !== null && idx !== undefined) await alignAndPlay(queue[idx]?.id);
+    try {
+      manualSkip = true;
+      await TrackPlayer.skipToPrevious();
+      const idx = await TrackPlayer.getActiveTrackIndex();
+      const queue = await TrackPlayer.getQueue();
+      if (idx !== null && idx !== undefined) await alignAndPlay(queue[idx]?.id);
+    } catch { manualSkip = false; }
   };
 
   const displayTrack = TRACKS.find(t => t.id === activeTrack?.id) || null;

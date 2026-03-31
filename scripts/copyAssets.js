@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SOURCE_DIR = '/Users/litao.2025/Downloads/nianfoji-v20260309-v1/public/assets/audio';
+const SOURCE_DIR = process.argv[2] || path.join(__dirname, '../assets/audio');
 const TARGET_DIR = path.join(__dirname, '../android/app/src/main/assets/audio');
 
 console.log('开始复制音频文件...');

@@ -8,7 +8,6 @@ import { Track } from '../types';
 import { TRACKS, SECTIONS } from '../constants/tracks';
 import { useSettingsStore } from '../store/settingsStore';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
-import { incrementPlaybackCount } from '../utils/storage';
 
 const SECTION_COLORS: Record<string, string> = { A: '#e74c3c', B: '#f39c12', C: '#2ecc71', D: '#3498db' };
 
@@ -24,7 +23,6 @@ const PlaylistScreen: React.FC = () => {
     await TrackPlayer.skip(globalIndex);
     if (track.durationMs) {
       await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(track.durationMs)));
-      incrementPlaybackCount(track.id);
     }
     await TrackPlayer.play();
   };
