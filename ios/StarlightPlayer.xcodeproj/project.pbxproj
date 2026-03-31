@@ -7,35 +7,35 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00366E43B5644356AAAB7FBB /* C08 南无阿弥陀佛（慢版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = E5F146CA712240DC974DE0BC /* C08 南无阿弥陀佛（慢版）.mp3 */; };
 		00E356F31AD99517003FC87E /* StarlightPlayerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* StarlightPlayerTests.m */; };
+		0ADCEF7CED764368837A8900 /* D19 一声佛号一声心.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 4106378346A641718D4CA06D /* D19 一声佛号一声心.mp3 */; };
 		0C80B921A6F3F58F76C31292 /* libPods-StarlightPlayer.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-StarlightPlayer.a */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		7699B88040F8A987B510C191 /* libPods-StarlightPlayer-StarlightPlayerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-StarlightPlayer-StarlightPlayerTests.a */; };
-		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		C180865BBEA52F505063ECE7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C303652E61B36FAE42B63E12 /* PrivacyInfo.xcprivacy */; };
-		CA6A7C371A6F48978DA5B553 /* D15 期盼.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 9EB4454D0B8743A1AE26C0E9 /* D15 期盼.mp3 */; };
-		DC036834A4844102ACBC10AB /* A01 大悲咒（跟我学）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 4A7B1F14E1B14053BCFB1349 /* A01 大悲咒（跟我学）.mp3 */; };
 		22A60B84A75D4BCFBDF7C1AE /* B06 发愿回向文.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A0F3EB22B7674AE2BDB4409E /* B06 发愿回向文.mp3 */; };
-		D05711B77BE54BA89AA83426 /* C14 南无观世音菩萨（慢版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 8E9379D8B822476C8CDB5CB1 /* C14 南无观世音菩萨（慢版）.mp3 */; };
-		B42326E1E3904BC9B0E5B492 /* A03 大悲咒（慢版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 392FEFFA801740219FE44F3E /* A03 大悲咒（慢版）.mp3 */; };
-		2DF1E0C97E624CDCBF98A032 /* D21 愿做菩萨那朵莲.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FDD0BCD2AAC6477DA19178A2 /* D21 愿做菩萨那朵莲.mp3 */; };
-		A49F27D55E604660BE61FDC8 /* C12 阿弥陀佛（快版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 18B3F15517044F12A8876B25 /* C12 阿弥陀佛（快版）.mp3 */; };
-		6FB692D6FB134245976A48C8 /* D17 观音灵感歌.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 7E9C3696F74D45E2B0FF3632 /* D17 观音灵感歌.mp3 */; };
-		0ADCEF7CED764368837A8900 /* D19 一声佛号一声心.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 4106378346A641718D4CA06D /* D19 一声佛号一声心.mp3 */; };
-		88AAC811D74B402597B97683 /* D16 回向偈.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 3731ABA390F742F3B406E307 /* D16 回向偈.mp3 */; };
 		263DC35C253A43FE86C61C7E /* C13 南无观世音菩萨（唱版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 7472BE1CECD747C8AE2E0B50 /* C13 南无观世音菩萨（唱版）.mp3 */; };
-		77A007C6ACA143A3881A2A5A /* C10 阿弥陀佛（唱版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 46D4B4248ED141FA8DA6173D /* C10 阿弥陀佛（唱版）.mp3 */; };
-		5E945E6B2D2840359ACEDE83 /* A05 大悲咒（共修版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.mp3 */; };
-		00366E43B5644356AAAB7FBB /* C08 南无阿弥陀佛（慢版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = E5F146CA712240DC974DE0BC /* C08 南无阿弥陀佛（慢版）.mp3 */; };
-		6C2FE10FAB914DA3812F7B25 /* C09 南无阿弥陀佛（快版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 2533B064B5BB4313B4CFFF54 /* C09 南无阿弥陀佛（快版）.mp3 */; };
+		2DF1E0C97E624CDCBF98A032 /* D21 愿做菩萨那朵莲.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FDD0BCD2AAC6477DA19178A2 /* D21 愿做菩萨那朵莲.mp3 */; };
 		33A7146846BA47A5839CA2EF /* C11 阿弥陀佛（慢版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 7F483794705D493A8D99E6ED /* C11 阿弥陀佛（慢版）.mp3 */; };
 		474959EA53BB4A5B973890CC /* C07 南无阿弥陀佛（唱版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 5CF41D6CF2DA4C78AB3D392A /* C07 南无阿弥陀佛（唱版）.mp3 */; };
-		C11B9EDD45654B33B9C8CAE0 /* D18 观音菩萨如秋月.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 845AAF9FFDA14C91B0636A4F /* D18 观音菩萨如秋月.mp3 */; };
-		A1650761C1174997B1A44433 /* D20 观音菩萨偈.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 72AEE2D6B02442A99C26F2E0 /* D20 观音菩萨偈.mp3 */; };
+		5E945E6B2D2840359ACEDE83 /* A05 大悲咒（共修版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.mp3 */; };
 		6A6F608EFB664E2CB591B299 /* A04 大悲咒（快版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6C91764F45524588BE2C6B37 /* A04 大悲咒（快版）.mp3 */; };
+		6C2FE10FAB914DA3812F7B25 /* C09 南无阿弥陀佛（快版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 2533B064B5BB4313B4CFFF54 /* C09 南无阿弥陀佛（快版）.mp3 */; };
+		6FB692D6FB134245976A48C8 /* D17 观音灵感歌.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 7E9C3696F74D45E2B0FF3632 /* D17 观音灵感歌.mp3 */; };
+		7699B88040F8A987B510C191 /* libPods-StarlightPlayer-StarlightPlayerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-StarlightPlayer-StarlightPlayerTests.a */; };
+		77A007C6ACA143A3881A2A5A /* C10 阿弥陀佛（唱版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 46D4B4248ED141FA8DA6173D /* C10 阿弥陀佛（唱版）.mp3 */; };
+		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		88AAC811D74B402597B97683 /* D16 回向偈.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 3731ABA390F742F3B406E307 /* D16 回向偈.mp3 */; };
+		A1650761C1174997B1A44433 /* D20 观音菩萨偈.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 72AEE2D6B02442A99C26F2E0 /* D20 观音菩萨偈.mp3 */; };
+		A49F27D55E604660BE61FDC8 /* C12 阿弥陀佛（快版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 18B3F15517044F12A8876B25 /* C12 阿弥陀佛（快版）.mp3 */; };
+		B42326E1E3904BC9B0E5B492 /* A03 大悲咒（慢版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 392FEFFA801740219FE44F3E /* A03 大悲咒（慢版）.mp3 */; };
+		C11B9EDD45654B33B9C8CAE0 /* D18 观音菩萨如秋月.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 845AAF9FFDA14C91B0636A4F /* D18 观音菩萨如秋月.mp3 */; };
+		C180865BBEA52F505063ECE7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C303652E61B36FAE42B63E12 /* PrivacyInfo.xcprivacy */; };
+		CA6A7C371A6F48978DA5B553 /* D15 期盼.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 9EB4454D0B8743A1AE26C0E9 /* D15 期盼.mp3 */; };
 		CC067BB1C3784F7B8BBBB10A /* A02 大悲咒（唱版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 0FF00018751E4871ACB8A1A8 /* A02 大悲咒（唱版）.mp3 */; };
+		D05711B77BE54BA89AA83426 /* C14 南无观世音菩萨（慢版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 8E9379D8B822476C8CDB5CB1 /* C14 南无观世音菩萨（慢版）.mp3 */; };
+		DC036834A4844102ACBC10AB /* A01 大悲咒（跟我学）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 4A7B1F14E1B14053BCFB1349 /* A01 大悲咒（跟我学）.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +52,7 @@
 		00E356EE1AD99517003FC87E /* StarlightPlayerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StarlightPlayerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		00E356F21AD99517003FC87E /* StarlightPlayerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = StarlightPlayerTests.m; sourceTree = "<group>"; };
+		0FF00018751E4871ACB8A1A8 /* A02 大悲咒（唱版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "A02 大悲咒（唱版）.mp3"; path = "StarlightPlayer/audio/A02 大悲咒（唱版）.mp3"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* StarlightPlayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarlightPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = StarlightPlayer/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = StarlightPlayer/AppDelegate.mm; sourceTree = "<group>"; };
@@ -59,36 +60,35 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = StarlightPlayer/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = StarlightPlayer/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = StarlightPlayer/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		18B3F15517044F12A8876B25 /* C12 阿弥陀佛（快版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "C12 阿弥陀佛（快版）.mp3"; path = "StarlightPlayer/audio/C12 阿弥陀佛（快版）.mp3"; sourceTree = "<group>"; };
 		19F6CBCC0A4E27FBF8BF4A61 /* libPods-StarlightPlayer-StarlightPlayerTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-StarlightPlayer-StarlightPlayerTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2533B064B5BB4313B4CFFF54 /* C09 南无阿弥陀佛（快版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "C09 南无阿弥陀佛（快版）.mp3"; path = "StarlightPlayer/audio/C09 南无阿弥陀佛（快版）.mp3"; sourceTree = "<group>"; };
+		3731ABA390F742F3B406E307 /* D16 回向偈.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "D16 回向偈.mp3"; path = "StarlightPlayer/audio/D16 回向偈.mp3"; sourceTree = "<group>"; };
+		392FEFFA801740219FE44F3E /* A03 大悲咒（慢版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "A03 大悲咒（慢版）.mp3"; path = "StarlightPlayer/audio/A03 大悲咒（慢版）.mp3"; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-StarlightPlayer.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-StarlightPlayer.debug.xcconfig"; path = "Target Support Files/Pods-StarlightPlayer/Pods-StarlightPlayer.debug.xcconfig"; sourceTree = "<group>"; };
+		4106378346A641718D4CA06D /* D19 一声佛号一声心.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "D19 一声佛号一声心.mp3"; path = "StarlightPlayer/audio/D19 一声佛号一声心.mp3"; sourceTree = "<group>"; };
+		46D4B4248ED141FA8DA6173D /* C10 阿弥陀佛（唱版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "C10 阿弥陀佛（唱版）.mp3"; path = "StarlightPlayer/audio/C10 阿弥陀佛（唱版）.mp3"; sourceTree = "<group>"; };
+		4A7B1F14E1B14053BCFB1349 /* A01 大悲咒（跟我学）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "A01 大悲咒（跟我学）.mp3"; path = "StarlightPlayer/audio/A01 大悲咒（跟我学）.mp3"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-StarlightPlayer.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-StarlightPlayer.release.xcconfig"; path = "Target Support Files/Pods-StarlightPlayer/Pods-StarlightPlayer.release.xcconfig"; sourceTree = "<group>"; };
 		5B7EB9410499542E8C5724F5 /* Pods-StarlightPlayer-StarlightPlayerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-StarlightPlayer-StarlightPlayerTests.debug.xcconfig"; path = "Target Support Files/Pods-StarlightPlayer-StarlightPlayerTests/Pods-StarlightPlayer-StarlightPlayerTests.debug.xcconfig"; sourceTree = "<group>"; };
+		5CF41D6CF2DA4C78AB3D392A /* C07 南无阿弥陀佛（唱版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "C07 南无阿弥陀佛（唱版）.mp3"; path = "StarlightPlayer/audio/C07 南无阿弥陀佛（唱版）.mp3"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-StarlightPlayer.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-StarlightPlayer.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		6C91764F45524588BE2C6B37 /* A04 大悲咒（快版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "A04 大悲咒（快版）.mp3"; path = "StarlightPlayer/audio/A04 大悲咒（快版）.mp3"; sourceTree = "<group>"; };
+		72AEE2D6B02442A99C26F2E0 /* D20 观音菩萨偈.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "D20 观音菩萨偈.mp3"; path = "StarlightPlayer/audio/D20 观音菩萨偈.mp3"; sourceTree = "<group>"; };
+		7472BE1CECD747C8AE2E0B50 /* C13 南无观世音菩萨（唱版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "C13 南无观世音菩萨（唱版）.mp3"; path = "StarlightPlayer/audio/C13 南无观世音菩萨（唱版）.mp3"; sourceTree = "<group>"; };
+		7E9C3696F74D45E2B0FF3632 /* D17 观音灵感歌.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "D17 观音灵感歌.mp3"; path = "StarlightPlayer/audio/D17 观音灵感歌.mp3"; sourceTree = "<group>"; };
+		7F483794705D493A8D99E6ED /* C11 阿弥陀佛（慢版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "C11 阿弥陀佛（慢版）.mp3"; path = "StarlightPlayer/audio/C11 阿弥陀佛（慢版）.mp3"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = StarlightPlayer/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		845AAF9FFDA14C91B0636A4F /* D18 观音菩萨如秋月.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "D18 观音菩萨如秋月.mp3"; path = "StarlightPlayer/audio/D18 观音菩萨如秋月.mp3"; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-StarlightPlayer-StarlightPlayerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-StarlightPlayer-StarlightPlayerTests.release.xcconfig"; path = "Target Support Files/Pods-StarlightPlayer-StarlightPlayerTests/Pods-StarlightPlayer-StarlightPlayerTests.release.xcconfig"; sourceTree = "<group>"; };
+		8E9379D8B822476C8CDB5CB1 /* C14 南无观世音菩萨（慢版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "C14 南无观世音菩萨（慢版）.mp3"; path = "StarlightPlayer/audio/C14 南无观世音菩萨（慢版）.mp3"; sourceTree = "<group>"; };
+		9EB4454D0B8743A1AE26C0E9 /* D15 期盼.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "D15 期盼.mp3"; path = "StarlightPlayer/audio/D15 期盼.mp3"; sourceTree = "<group>"; };
+		A0F3EB22B7674AE2BDB4409E /* B06 发愿回向文.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "B06 发愿回向文.mp3"; path = "StarlightPlayer/audio/B06 发愿回向文.mp3"; sourceTree = "<group>"; };
+		B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "A05 大悲咒（共修版）.mp3"; path = "StarlightPlayer/audio/A05 大悲咒（共修版）.mp3"; sourceTree = "<group>"; };
 		C303652E61B36FAE42B63E12 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = StarlightPlayer/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		E5F146CA712240DC974DE0BC /* C08 南无阿弥陀佛（慢版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "C08 南无阿弥陀佛（慢版）.mp3"; path = "StarlightPlayer/audio/C08 南无阿弥陀佛（慢版）.mp3"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		9EB4454D0B8743A1AE26C0E9 /* D15 期盼.mp3 */ = {isa = PBXFileReference; name = "D15 期盼.mp3"; path = "StarlightPlayer/audio/D15 期盼.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		4A7B1F14E1B14053BCFB1349 /* A01 大悲咒（跟我学）.mp3 */ = {isa = PBXFileReference; name = "A01 大悲咒（跟我学）.mp3"; path = "StarlightPlayer/audio/A01 大悲咒（跟我学）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		A0F3EB22B7674AE2BDB4409E /* B06 发愿回向文.mp3 */ = {isa = PBXFileReference; name = "B06 发愿回向文.mp3"; path = "StarlightPlayer/audio/B06 发愿回向文.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		8E9379D8B822476C8CDB5CB1 /* C14 南无观世音菩萨（慢版）.mp3 */ = {isa = PBXFileReference; name = "C14 南无观世音菩萨（慢版）.mp3"; path = "StarlightPlayer/audio/C14 南无观世音菩萨（慢版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		392FEFFA801740219FE44F3E /* A03 大悲咒（慢版）.mp3 */ = {isa = PBXFileReference; name = "A03 大悲咒（慢版）.mp3"; path = "StarlightPlayer/audio/A03 大悲咒（慢版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		FDD0BCD2AAC6477DA19178A2 /* D21 愿做菩萨那朵莲.mp3 */ = {isa = PBXFileReference; name = "D21 愿做菩萨那朵莲.mp3"; path = "StarlightPlayer/audio/D21 愿做菩萨那朵莲.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		18B3F15517044F12A8876B25 /* C12 阿弥陀佛（快版）.mp3 */ = {isa = PBXFileReference; name = "C12 阿弥陀佛（快版）.mp3"; path = "StarlightPlayer/audio/C12 阿弥陀佛（快版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		7E9C3696F74D45E2B0FF3632 /* D17 观音灵感歌.mp3 */ = {isa = PBXFileReference; name = "D17 观音灵感歌.mp3"; path = "StarlightPlayer/audio/D17 观音灵感歌.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		4106378346A641718D4CA06D /* D19 一声佛号一声心.mp3 */ = {isa = PBXFileReference; name = "D19 一声佛号一声心.mp3"; path = "StarlightPlayer/audio/D19 一声佛号一声心.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		3731ABA390F742F3B406E307 /* D16 回向偈.mp3 */ = {isa = PBXFileReference; name = "D16 回向偈.mp3"; path = "StarlightPlayer/audio/D16 回向偈.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		7472BE1CECD747C8AE2E0B50 /* C13 南无观世音菩萨（唱版）.mp3 */ = {isa = PBXFileReference; name = "C13 南无观世音菩萨（唱版）.mp3"; path = "StarlightPlayer/audio/C13 南无观世音菩萨（唱版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		46D4B4248ED141FA8DA6173D /* C10 阿弥陀佛（唱版）.mp3 */ = {isa = PBXFileReference; name = "C10 阿弥陀佛（唱版）.mp3"; path = "StarlightPlayer/audio/C10 阿弥陀佛（唱版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.mp3 */ = {isa = PBXFileReference; name = "A05 大悲咒（共修版）.mp3"; path = "StarlightPlayer/audio/A05 大悲咒（共修版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		E5F146CA712240DC974DE0BC /* C08 南无阿弥陀佛（慢版）.mp3 */ = {isa = PBXFileReference; name = "C08 南无阿弥陀佛（慢版）.mp3"; path = "StarlightPlayer/audio/C08 南无阿弥陀佛（慢版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		2533B064B5BB4313B4CFFF54 /* C09 南无阿弥陀佛（快版）.mp3 */ = {isa = PBXFileReference; name = "C09 南无阿弥陀佛（快版）.mp3"; path = "StarlightPlayer/audio/C09 南无阿弥陀佛（快版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		7F483794705D493A8D99E6ED /* C11 阿弥陀佛（慢版）.mp3 */ = {isa = PBXFileReference; name = "C11 阿弥陀佛（慢版）.mp3"; path = "StarlightPlayer/audio/C11 阿弥陀佛（慢版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		5CF41D6CF2DA4C78AB3D392A /* C07 南无阿弥陀佛（唱版）.mp3 */ = {isa = PBXFileReference; name = "C07 南无阿弥陀佛（唱版）.mp3"; path = "StarlightPlayer/audio/C07 南无阿弥陀佛（唱版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		845AAF9FFDA14C91B0636A4F /* D18 观音菩萨如秋月.mp3 */ = {isa = PBXFileReference; name = "D18 观音菩萨如秋月.mp3"; path = "StarlightPlayer/audio/D18 观音菩萨如秋月.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		72AEE2D6B02442A99C26F2E0 /* D20 观音菩萨偈.mp3 */ = {isa = PBXFileReference; name = "D20 观音菩萨偈.mp3"; path = "StarlightPlayer/audio/D20 观音菩萨偈.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		6C91764F45524588BE2C6B37 /* A04 大悲咒（快版）.mp3 */ = {isa = PBXFileReference; name = "A04 大悲咒（快版）.mp3"; path = "StarlightPlayer/audio/A04 大悲咒（快版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		0FF00018751E4871ACB8A1A8 /* A02 大悲咒（唱版）.mp3 */ = {isa = PBXFileReference; name = "A02 大悲咒（唱版）.mp3"; path = "StarlightPlayer/audio/A02 大悲咒（唱版）.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		FDD0BCD2AAC6477DA19178A2 /* D21 愿做菩萨那朵莲.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "D21 愿做菩萨那朵莲.mp3"; path = "StarlightPlayer/audio/D21 愿做菩萨那朵莲.mp3"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -153,6 +153,34 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		6EAB4284CD6847D0A2E551CA /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				9EB4454D0B8743A1AE26C0E9 /* D15 期盼.mp3 */,
+				4A7B1F14E1B14053BCFB1349 /* A01 大悲咒（跟我学）.mp3 */,
+				A0F3EB22B7674AE2BDB4409E /* B06 发愿回向文.mp3 */,
+				8E9379D8B822476C8CDB5CB1 /* C14 南无观世音菩萨（慢版）.mp3 */,
+				392FEFFA801740219FE44F3E /* A03 大悲咒（慢版）.mp3 */,
+				FDD0BCD2AAC6477DA19178A2 /* D21 愿做菩萨那朵莲.mp3 */,
+				18B3F15517044F12A8876B25 /* C12 阿弥陀佛（快版）.mp3 */,
+				7E9C3696F74D45E2B0FF3632 /* D17 观音灵感歌.mp3 */,
+				4106378346A641718D4CA06D /* D19 一声佛号一声心.mp3 */,
+				3731ABA390F742F3B406E307 /* D16 回向偈.mp3 */,
+				7472BE1CECD747C8AE2E0B50 /* C13 南无观世音菩萨（唱版）.mp3 */,
+				46D4B4248ED141FA8DA6173D /* C10 阿弥陀佛（唱版）.mp3 */,
+				B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.mp3 */,
+				E5F146CA712240DC974DE0BC /* C08 南无阿弥陀佛（慢版）.mp3 */,
+				2533B064B5BB4313B4CFFF54 /* C09 南无阿弥陀佛（快版）.mp3 */,
+				7F483794705D493A8D99E6ED /* C11 阿弥陀佛（慢版）.mp3 */,
+				5CF41D6CF2DA4C78AB3D392A /* C07 南无阿弥陀佛（唱版）.mp3 */,
+				845AAF9FFDA14C91B0636A4F /* D18 观音菩萨如秋月.mp3 */,
+				72AEE2D6B02442A99C26F2E0 /* D20 观音菩萨偈.mp3 */,
+				6C91764F45524588BE2C6B37 /* A04 大悲咒（快版）.mp3 */,
+				0FF00018751E4871ACB8A1A8 /* A02 大悲咒（唱版）.mp3 */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
@@ -195,53 +223,6 @@
 			);
 			path = Pods;
 			sourceTree = "<group>";
-		};
-		6EAB4284CD6847D0A2E551CA /* Resources */ = {
-			isa = "PBXGroup";
-			children = (
-				9EB4454D0B8743A1AE26C0E9 /* D15 期盼.mp3 */,
-				4A7B1F14E1B14053BCFB1349 /* A01 大悲咒（跟我学）.mp3 */,
-				A0F3EB22B7674AE2BDB4409E /* B06 发愿回向文.mp3 */,
-				8E9379D8B822476C8CDB5CB1 /* C14 南无观世音菩萨（慢版）.mp3 */,
-				392FEFFA801740219FE44F3E /* A03 大悲咒（慢版）.mp3 */,
-				FDD0BCD2AAC6477DA19178A2 /* D21 愿做菩萨那朵莲.mp3 */,
-				18B3F15517044F12A8876B25 /* C12 阿弥陀佛（快版）.mp3 */,
-				7E9C3696F74D45E2B0FF3632 /* D17 观音灵感歌.mp3 */,
-				4106378346A641718D4CA06D /* D19 一声佛号一声心.mp3 */,
-				3731ABA390F742F3B406E307 /* D16 回向偈.mp3 */,
-				7472BE1CECD747C8AE2E0B50 /* C13 南无观世音菩萨（唱版）.mp3 */,
-				46D4B4248ED141FA8DA6173D /* C10 阿弥陀佛（唱版）.mp3 */,
-				B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.mp3 */,
-				E5F146CA712240DC974DE0BC /* C08 南无阿弥陀佛（慢版）.mp3 */,
-				2533B064B5BB4313B4CFFF54 /* C09 南无阿弥陀佛（快版）.mp3 */,
-				7F483794705D493A8D99E6ED /* C11 阿弥陀佛（慢版）.mp3 */,
-				5CF41D6CF2DA4C78AB3D392A /* C07 南无阿弥陀佛（唱版）.mp3 */,
-				845AAF9FFDA14C91B0636A4F /* D18 观音菩萨如秋月.mp3 */,
-				72AEE2D6B02442A99C26F2E0 /* D20 观音菩萨偈.mp3 */,
-				6C91764F45524588BE2C6B37 /* A04 大悲咒（快版）.mp3 */,
-				0FF00018751E4871ACB8A1A8 /* A02 大悲咒（唱版）.mp3 */,
-				051CEAD12E4F472AA941D868 /* Fontisto.ttf */,
-				DC0FA32B031E431C98F417EA /* Octicons.ttf */,
-				276601A3DC4A4E16985B898B /* Feather.ttf */,
-				0EF3C2D7E46D4896BDF5AE89 /* FontAwesome6_Regular.ttf */,
-				A223846691FE436A833D7E02 /* Entypo.ttf */,
-				917C6BF1BEB64BE0B0C21133 /* FontAwesome5_Brands.ttf */,
-				6F1F4E92F72C465EB7FECAD8 /* MaterialCommunityIcons.ttf */,
-				A148505950EE4AF087EEAA40 /* AntDesign.ttf */,
-				FB907B4DB2034258B80B9BB5 /* Foundation.ttf */,
-				BF3769E19AC347709DAC4E98 /* Ionicons.ttf */,
-				9BF144426EE346C698926FFF /* FontAwesome5_Solid.ttf */,
-				61961DDD058841C0B7E008E7 /* FontAwesome5_Regular.ttf */,
-				44A4E1E2AC2E4E6192D98371 /* FontAwesome.ttf */,
-				C40C2A05C97D4AE89296564C /* Zocial.ttf */,
-				BECC0CE6D9954B60A0A07D66 /* EvilIcons.ttf */,
-				E479169872DD4A3C843CE2F0 /* FontAwesome6_Solid.ttf */,
-				357B2289B9D7431585FF9584 /* SimpleLineIcons.ttf */,
-				A96F6E2DC3474F6CB9661A11 /* FontAwesome6_Brands.ttf */,
-			);
-			name = Resources;
-			sourceTree = "<group>";
-			path = "";
 		};
 /* End PBXGroup section */
 
