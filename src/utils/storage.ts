@@ -3,6 +3,23 @@ import { MMKV } from 'react-native-mmkv';
 const storage = new MMKV();
 
 const SETTINGS_KEY = 'settings';
+const ALIGN_TOKEN_KEY = 'align_seek_token';
+
+// --- Align Seek Token (跨运行时共享) ---
+export function setAlignSeekExpectedUntil(ts: number): void {
+  storage.set(ALIGN_TOKEN_KEY, ts.toString());
+}
+
+export function consumeAlignSeekExpected(now: number): boolean {
+  try {
+    const val = storage.getString(ALIGN_TOKEN_KEY);
+    if (val && now <= Number(val)) {
+      storage.delete(ALIGN_TOKEN_KEY);
+      return true;
+    }
+  } catch {}
+  return false;
+}
 
 function todayKey(): string {
   const d = new Date();

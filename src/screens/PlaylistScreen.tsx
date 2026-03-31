@@ -8,6 +8,7 @@ import { Track } from '../types';
 import { TRACKS, SECTIONS } from '../constants/tracks';
 import { useSettingsStore } from '../store/settingsStore';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
+import { setAlignSeekExpectedUntil } from '../utils/storage';
 
 const SECTION_COLORS: Record<string, string> = { A: '#e74c3c', B: '#f39c12', C: '#2ecc71', D: '#3498db' };
 
@@ -22,6 +23,7 @@ const PlaylistScreen: React.FC = () => {
   const handleTrackPress = async (track: Track, globalIndex: number) => {
     await TrackPlayer.skip(globalIndex);
     if (track.durationMs) {
+      setAlignSeekExpectedUntil(Date.now() + 3000);
       await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(track.durationMs)));
     }
     await TrackPlayer.play();

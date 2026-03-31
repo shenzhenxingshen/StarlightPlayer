@@ -47,7 +47,7 @@ const App: React.FC = () => {
             Capability.SeekTo, Capability.Stop,
           ],
           compactCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToPrevious, Capability.SkipToNext],
-          progressUpdateEventInterval: 5,
+          progressUpdateEventInterval: 1,
         });
         await TrackPlayer.add(
           TRACKS.map(t => ({
