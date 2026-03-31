@@ -44,9 +44,9 @@ android {
         }
         release {
             storeFile file('release.keystore')
-            storePassword 'Starlight'
-            keyAlias 'starlightplayer'
-            keyPassword 'Starlight'
+            storePassword System.getenv("STARLIGHT_STORE_PASSWORD") ?: project.findProperty("STARLIGHT_STORE_PASSWORD") ?: ""
+            keyAlias System.getenv("STARLIGHT_KEY_ALIAS") ?: project.findProperty("STARLIGHT_KEY_ALIAS") ?: ""
+            keyPassword System.getenv("STARLIGHT_KEY_PASSWORD") ?: project.findProperty("STARLIGHT_KEY_PASSWORD") ?: ""
         }
     }
 
