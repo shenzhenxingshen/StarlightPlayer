@@ -2,7 +2,7 @@ import TrackPlayer, { Event, State } from 'react-native-track-player';
 import { TRACKS } from '../constants/tracks';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { useStatsStore } from '../store/statsStore';
-import { consumeAlignSeekExpected } from '../utils/storage';
+import { consumeAlignSeekExpected, setAlignSeekExpectedUntil } from '../utils/storage';
 
 // ─── 参数 ───
 const ZERO_EPS = 1.5;
@@ -64,7 +64,21 @@ function abortCycle() {
 
 export default async function PlaybackService() {
   // ─── 远程控制 ───
-  TrackPlayer.addEventListener(Event.RemotePlay, () => TrackPlayer.play());
+  // 远程播放时需要对齐进度
+  TrackPlayer.addEventListener(Event.RemotePlay, async () => {
+    try {
+      const idx = await TrackPlayer.getActiveTrackIndex();
+      const queue = await TrackPlayer.getQueue();
+      if (idx != null && queue[idx]) {
+        const t = TRACKS.find(tr => tr.id === queue[idx].id);
+        if (t?.durationMs) {
+          setAlignSeekExpectedUntil(Date.now() + 3000);
+          await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
+        }
+      }
+    } catch {}
+    await TrackPlayer.play();
+  });
   TrackPlayer.addEventListener(Event.RemotePause, () => TrackPlayer.pause());
   TrackPlayer.addEventListener(Event.RemoteNext, () => TrackPlayer.skipToNext().catch(() => {}));
   TrackPlayer.addEventListener(Event.RemotePrevious, () => TrackPlayer.skipToPrevious().catch(() => {}));
