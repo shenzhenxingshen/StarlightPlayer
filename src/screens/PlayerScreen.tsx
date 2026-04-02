@@ -31,7 +31,7 @@ const PlayerScreen: React.FC = () => {
 
   // 需求1: 恢复上次播放的歌曲
   useEffect(() => {
-    if (saved.current?.trackIndex != null && saved.current.trackIndex > 0) {
+    if (saved.current?.trackIndex != null && saved.current.trackIndex >= 0) {
       TrackPlayer.skip(saved.current.trackIndex).catch(() => {});
       saved.current = null; // 只恢复一次
     }
@@ -146,6 +146,7 @@ const PlayerScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.topArea}>
         <TrackInfo track={displayTrack} isPlaying={isPlaying} isCareMode={isCareMode} />
+        {/* onSeek 故意禁用：多人同步播放场景下，进度由 alignAndPlay 按时钟对齐，不允许手动 seek */}
         <ProgressBar position={progress.position} duration={progress.duration} onSeek={() => {}} isCareMode={isCareMode} />
       </View>
       <View style={styles.bottomArea}>

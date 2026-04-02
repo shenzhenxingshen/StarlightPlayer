@@ -4,6 +4,7 @@
  * @returns 对齐后的播放位置（毫秒）
  */
 export function calculateAlignedPosition(durationMs: number): number {
+  if (durationMs <= 0) return 0;
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const elapsedMs = now.getTime() - startOfDay.getTime();

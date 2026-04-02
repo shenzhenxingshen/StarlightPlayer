@@ -53,6 +53,7 @@ const PlaylistScreen: React.FC = () => {
         renderItem={({ item }) => {
           const isActive = item.id === activeTrack?.id;
           const globalIndex = TRACKS.findIndex(t => t.id === item.id);
+          if (globalIndex < 0) return null;
           return (
             <TouchableOpacity
               style={[styles.trackItem, isActive && styles.activeTrack]}
