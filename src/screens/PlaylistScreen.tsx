@@ -18,7 +18,7 @@ const PlaylistScreen: React.FC = () => {
   const activeTrack = useActiveTrack();
   const playbackState = usePlaybackState();
   const isPlaying = playbackState.state === State.Playing;
-  const { isLargeTextMode } = useSettingsStore();
+  const { isCareMode } = useSettingsStore();
 
   const handleTrackPress = async (track: Track, globalIndex: number) => {
     await TrackPlayer.skip(globalIndex);
@@ -45,9 +45,9 @@ const PlaylistScreen: React.FC = () => {
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeader}>
             <View style={[styles.sectionBadge, { backgroundColor: SECTION_COLORS[section.code] || '#888' }]}>
-              <Text style={[styles.sectionBadgeText, isLargeTextMode && { fontSize: 16 }]}>{section.code}</Text>
+              <Text style={[styles.sectionBadgeText, isCareMode && { fontSize: 16 }]}>{section.code}</Text>
             </View>
-            <Text style={[styles.sectionTitle, isLargeTextMode && { fontSize: 22 }]}>{section.title}</Text>
+            <Text style={[styles.sectionTitle, isCareMode && { fontSize: 22 }]}>{section.title}</Text>
           </View>
         )}
         renderItem={({ item }) => {
@@ -60,15 +60,15 @@ const PlaylistScreen: React.FC = () => {
               onPress={() => handleTrackPress(item, globalIndex)}>
               {isActive && <View style={[styles.activeBar, { backgroundColor: SECTION_COLORS[item.section] || GOLD }]} />}
               <View style={[styles.codeBox, { borderColor: SECTION_COLORS[item.section] || '#888' }]}>
-                <Text style={[styles.codeText, isLargeTextMode && { fontSize: 14 }]}>{item.code}</Text>
+                <Text style={[styles.codeText, isCareMode && { fontSize: 14 }]}>{item.code}</Text>
               </View>
               <View style={styles.trackInfo}>
-                <Text style={[styles.trackTitle, isActive && styles.activeText, isLargeTextMode && { fontSize: 20 }]} numberOfLines={1}>
+                <Text style={[styles.trackTitle, isActive && styles.activeText, isCareMode && { fontSize: 20 }]} numberOfLines={1}>
                   {item.title}
                 </Text>
               </View>
               {isActive && (
-                <Icon name={isPlaying ? 'equalizer' : 'pause'} size={isLargeTextMode ? 28 : 22} color={GOLD} />
+                <Icon name={isPlaying ? 'equalizer' : 'pause'} size={isCareMode ? 28 : 22} color={GOLD} />
               )}
             </TouchableOpacity>
           );

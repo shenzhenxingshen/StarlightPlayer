@@ -12,6 +12,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import { TRACKS } from './constants/tracks';
 import { msToSeconds } from './utils/syncUtils';
 import { getLocalAudioUrl } from './utils/getLocalAudioUrl';
+import { useSettingsStore } from './store/settingsStore';
 
 const Tab = createBottomTabNavigator();
 
@@ -98,6 +99,15 @@ const App: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor="#121212" translucent={true} />
       <NavigationContainer
         theme={{ dark: true, colors: { primary: GOLD, background: '#121212', card: '#121212', text: '#fff', border: '#333', notification: GOLD } }}>
+        <AppTabs />
+      </NavigationContainer>
+    </SafeAreaProvider>
+  );
+};
+
+const AppTabs: React.FC = () => {
+  const { isCareMode } = useSettingsStore();
+  return (
         <Tab.Navigator
           initialRouteName="Player"
           screenOptions={{
@@ -116,14 +126,16 @@ const App: React.FC = () => {
               tabBarIcon: ({ color }) => <Icon name="play-circle-outline" size={38} color={color} />,
             }}
           />
-          <Tab.Screen
-            name="Playlist"
-            component={PlaylistScreen}
-            options={{
-              title: '列表',
-              tabBarIcon: ({ color }) => <Icon name="queue-music" size={38} color={color} />,
-            }}
-          />
+          {!isCareMode && (
+            <Tab.Screen
+              name="Playlist"
+              component={PlaylistScreen}
+              options={{
+                title: '列表',
+                tabBarIcon: ({ color }) => <Icon name="queue-music" size={38} color={color} />,
+              }}
+            />
+          )}
           <Tab.Screen
             name="Profile"
             component={ProfileScreen}
@@ -133,8 +145,6 @@ const App: React.FC = () => {
             }}
           />
         </Tab.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
   );
 };
 

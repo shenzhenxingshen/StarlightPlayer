@@ -1,5 +1,5 @@
 import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from '../constants/colors';
-import { View, StyleSheet, ScrollView, Text, Switch, TouchableOpacity, Platform, Alert, NativeModules } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, Switch, TouchableOpacity, Platform, Alert, NativeModules, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';import React, { useState, useCallback } from 'react';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { TRACKS } from '../constants/tracks';
@@ -31,10 +31,10 @@ const getDeviceInfo = (): string => {
 
 const ProfileScreen: React.FC = () => {
   const [showLogs, setShowLogs] = useState(false);
-  const { isLargeTextMode, toggleLargeTextMode } = useSettingsStore();
+  const { isCareMode, toggleCareMode } = useSettingsStore();
   const stats = useStatsStore(s => s.stats);
 
-  const t = (base: number) => isLargeTextMode ? base + 6 : base;
+  const t = (base: number) => isCareMode ? base + 6 : base;
   const deviceInfo = getDeviceInfo();
 
   const copyLogs = useCallback(() => {
@@ -55,20 +55,30 @@ const ProfileScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView style={styles.content}>
-        {/* 大字模式 */}
+        {/* 关怀模式 */}
         <View style={styles.card}>
           <View style={styles.cardRow}>
-            <Icon name="text-fields" size={t(22)} color={GOLD} />
+            <Icon name="accessibility" size={t(22)} color={GOLD} />
             <View style={styles.cardInfo}>
-              <Text style={[styles.cardLabel, { fontSize: t(16) }]}>大字模式</Text>
-              <Text style={[styles.cardDesc, { fontSize: t(12) }]}>放大文字、按钮和图标</Text>
+              <Text style={[styles.cardLabel, { fontSize: t(16) }]}>模式切换</Text>
+              <Text style={[styles.cardDesc, { fontSize: t(12) }]}>
+                {isCareMode ? '关怀模式：简化界面，避免误操作' : '普通模式：显示全部功能'}
+              </Text>
             </View>
-            <Switch
-              value={isLargeTextMode}
-              onValueChange={toggleLargeTextMode}
-              trackColor={{ false: '#555', true: '#b8860b' }}
-              thumbColor="#fff"
-            />
+          </View>
+          <View style={{ marginTop: 12 }}>
+            <Pressable
+              onPress={toggleCareMode}
+              style={{
+                backgroundColor: isCareMode ? '#b8860b' : '#333',
+                paddingVertical: 12,
+                borderRadius: 10,
+                alignItems: 'center',
+              }}>
+              <Text style={{ color: '#fff', fontSize: t(15), fontWeight: '600' }}>
+                {isCareMode ? '切换到普通模式' : '切换到关怀模式'}
+              </Text>
+            </Pressable>
           </View>
         </View>
 

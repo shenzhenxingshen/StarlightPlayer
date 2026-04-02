@@ -6,10 +6,10 @@ interface ProgressBarProps {
   position: number;
   duration: number;
   onSeek: (value: number) => void;
-  isLargeTextMode?: boolean;
+  isCareMode?: boolean;
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, isLargeTextMode = false }) => {
+const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, isCareMode = false }) => {
   const fmt = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
@@ -17,7 +17,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, isLargeTe
   };
 
   const progress = duration > 0 ? Math.min(position / duration, 1) : 0;
-  const textSize = isLargeTextMode ? 16 : 12;
+  const textSize = isCareMode ? 16 : 12;
 
   return (
     <View style={styles.container}>

@@ -1,4 +1,4 @@
-import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from '../constants/colors';
+import { GOLD, GOLD_BORDER, GOLD_GLOW } from '../constants/colors';
 import React from 'react';
 import { View, StyleSheet, Pressable, Text } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -20,23 +20,38 @@ interface ControlsProps {
   onSkipToNext: () => void;
   onSkipToPrevious: () => void;
   onToggleMode: () => void;
-  isLargeTextMode?: boolean;
+  isCareMode?: boolean;
 }
 
 const Controls: React.FC<ControlsProps> = ({
-  isPlaying, playMode, modeLabel, onPlayPause, onSkipToNext, onSkipToPrevious, onToggleMode, isLargeTextMode = false,
+  isPlaying, playMode, modeLabel, onPlayPause, onSkipToNext, onSkipToPrevious, onToggleMode, isCareMode = false,
 }) => {
-  const skipSize = isLargeTextMode ? 56 : 50;
-  const playSize = isLargeTextMode ? 92 : 82;
-  const playCircleSize = isLargeTextMode ? 110 : 100;
-  const modeSize = isLargeTextMode ? 40 : 35;
+  // 需求3: 普通模式 +20%, 关怀模式 +50%
+  const playSize = isCareMode ? 123 : 98;
+  const playCircleSize = isCareMode ? 150 : 120;
+  const skipSize = 50;
+  const modeSize = 35;
   const sidePad = 18;
   const modeIcon = MODE_CONFIG[playMode]?.icon || 'repeat';
+
+  // 需求2: 关怀模式只显示播放/暂停
+  if (isCareMode) {
+    return (
+      <View style={styles.container}>
+        <View style={{ alignItems: 'center' }}>
+          <Pressable onPress={onPlayPause} hitSlop={8}>
+            <View style={[styles.playCircle, { width: playCircleSize, height: playCircleSize, borderRadius: playCircleSize / 2 }]}>
+              <Icon name={isPlaying ? 'pause' : 'play-arrow'} size={playSize} color={GOLD} />
+            </View>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.mainRow}>
-        {/* 左列：模式(上) + 上一首(下)，垂直居中对齐 */}
         <View style={styles.leftCol}>
           <Pressable onPress={onToggleMode} hitSlop={12} style={{ padding: sidePad }}>
             <Icon name={modeIcon} size={modeSize} color="rgba(255,255,255,0.55)" />
@@ -45,13 +60,11 @@ const Controls: React.FC<ControlsProps> = ({
             <Icon name="skip-previous" size={skipSize} color="rgba(255,255,255,0.8)" />
           </Pressable>
         </View>
-        {/* 中：播放 */}
         <Pressable onPress={onPlayPause} hitSlop={8} style={styles.playBtn}>
           <View style={[styles.playCircle, { width: playCircleSize, height: playCircleSize, borderRadius: playCircleSize / 2 }]}>
             <Icon name={isPlaying ? 'pause' : 'play-arrow'} size={playSize} color={GOLD} />
           </View>
         </Pressable>
-        {/* 右列：占位(上) + 下一首(下) */}
         <View style={styles.rightCol}>
           <View style={{ height: modeSize + sidePad * 2 }} />
           <Pressable onPress={onSkipToNext} hitSlop={12} style={{ padding: sidePad }}>
@@ -59,7 +72,6 @@ const Controls: React.FC<ControlsProps> = ({
           </Pressable>
         </View>
       </View>
-      {/* 浮窗模式名称 */}
       {modeLabel && (
         <View style={styles.toast}>
           <Text style={styles.toastText}>{modeLabel}</Text>

@@ -7,13 +7,13 @@ import VinylRecord from './VinylRecord';
 interface TrackInfoProps {
   track: Track | null;
   isPlaying: boolean;
-  isLargeTextMode?: boolean;
+  isCareMode?: boolean;
 }
 
-const TrackInfo: React.FC<TrackInfoProps> = ({ track, isPlaying, isLargeTextMode = false }) => {
-  const titleSize = isLargeTextMode ? 28 : 22;
-  const subSize = isLargeTextMode ? 20 : 15;
-  const vinylSize = isLargeTextMode ? 300 : 260;
+const TrackInfo: React.FC<TrackInfoProps> = ({ track, isPlaying, isCareMode = false }) => {
+  const titleSize = isCareMode ? 28 : 22;
+  const subSize = isCareMode ? 20 : 15;
+  const vinylSize = isCareMode ? 300 : 260;
 
   return (
     <View style={styles.container}>
