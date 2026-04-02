@@ -10,7 +10,8 @@ import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { TRACKS } from '../constants/tracks';
 import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState } from '../utils/storage';
 
-let manualSkip = false;
+// 标志：是否为手动切歌或 play-one 回跳
+let skipGuard = false;
 
 const PlayerScreen: React.FC = () => {
   const playbackState = usePlaybackState();
@@ -82,9 +83,10 @@ const PlayerScreen: React.FC = () => {
   // 单曲播放：自动切歌时跳回并暂停
   useEffect(() => {
     const sub = TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (e) => {
-      if (manualSkip) { manualSkip = false; return; }
+      if (skipGuard) { skipGuard = false; return; }
       if (playMode === 'play-one' && e.lastTrack != null && e.track != null) {
         if (e.lastIndex !== undefined && e.lastIndex !== null) {
+          skipGuard = true; // 防止回跳触发再次进入
           await TrackPlayer.skip(e.lastIndex);
           await TrackPlayer.pause();
         }
@@ -122,22 +124,22 @@ const PlayerScreen: React.FC = () => {
 
   const handleSkipNext = async () => {
     try {
-      manualSkip = true;
+      skipGuard = true;
       await TrackPlayer.skipToNext();
       const idx = await TrackPlayer.getActiveTrackIndex();
       const queue = await TrackPlayer.getQueue();
       if (idx !== null && idx !== undefined) await alignAndPlay(queue[idx]?.id);
-    } catch { manualSkip = false; }
+    } catch { skipGuard = false; }
   };
 
   const handleSkipPrev = async () => {
     try {
-      manualSkip = true;
+      skipGuard = true;
       await TrackPlayer.skipToPrevious();
       const idx = await TrackPlayer.getActiveTrackIndex();
       const queue = await TrackPlayer.getQueue();
       if (idx !== null && idx !== undefined) await alignAndPlay(queue[idx]?.id);
-    } catch { manualSkip = false; }
+    } catch { skipGuard = false; }
   };
 
   const displayTrack = TRACKS.find(t => t.id === activeTrack?.id) || null;
