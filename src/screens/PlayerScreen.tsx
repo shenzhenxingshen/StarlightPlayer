@@ -12,6 +12,8 @@ import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState } from '../
 
 // 标志：是否为手动切歌或 play-one 回跳
 let skipGuard = false;
+// 标志：是否正在恢复上次状态，期间不保存
+let restoring = true;
 
 const PlayerScreen: React.FC = () => {
   const playbackState = usePlaybackState();
@@ -32,15 +34,21 @@ const PlayerScreen: React.FC = () => {
 
   // 需求1: 恢复上次播放的歌曲
   useEffect(() => {
-    if (saved.current?.trackIndex != null && saved.current.trackIndex >= 0) {
-      TrackPlayer.skip(saved.current.trackIndex).catch(() => {});
-      saved.current = null; // 只恢复一次
-    }
+    (async () => {
+      if (saved.current?.trackIndex != null && saved.current.trackIndex >= 0) {
+        skipGuard = true;
+        await TrackPlayer.skip(saved.current.trackIndex).catch(() => {});
+        saved.current = null;
+      }
+      // 恢复完成，允许后续保存
+      restoring = false;
+    })();
   }, []);
 
-  // 需求1: 切歌时保存状态
+  // 需求1: 切歌时保存状态（恢复期间不保存）
   useEffect(() => {
     const sub = TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async () => {
+      if (restoring) return;
       const idx = await TrackPlayer.getActiveTrackIndex();
       if (idx != null) savePlayerState({ trackIndex: idx, playMode });
     });
