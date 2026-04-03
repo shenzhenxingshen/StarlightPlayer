@@ -51,8 +51,6 @@ const ProfileScreen: React.FC = () => {
     }
   }, [deviceInfo]);
 
-  const tracksWithStats = TRACKS.filter(tr => (stats[tr.id] || 0) > 0);
-  const totalToday = Object.values(stats).reduce((a, b) => a + b, 0);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>

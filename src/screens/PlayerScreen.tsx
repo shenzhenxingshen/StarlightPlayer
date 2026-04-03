@@ -23,7 +23,7 @@ const PlayerScreen: React.FC = () => {
   const { isCareMode, repeatCount } = useSettingsStore();
 
   // 读取当前遍数（随 progress 刷新）
-  const currentRepeat = loadSessionCount() + 1; // sessionCount 是已完成遍数，显示当前正在播放的遍数
+  const currentRepeat = Math.min(loadSessionCount() + 1, repeatCount); // sessionCount 是已完成遍数，显示当前正在播放的遍数
 
   // 需求1: 从持久化恢复 playMode
   const saved = useRef(loadPlayerState());

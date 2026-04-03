@@ -15,17 +15,7 @@ export interface Track {
   lyrics?: LyricLine[];
 }
 
-export interface PlayerState {
-  state: 'idle' | 'playing' | 'paused' | 'stopped';
-  currentTrack: Track | null;
-  position: number;
-  duration: number;
-}
-
 export interface PlaybackStats {
   [trackId: string]: number;
 }
 
-export interface AppSettings {
-  isLargeTextMode: boolean;
-}

@@ -12,7 +12,6 @@ interface TrackInfoProps {
 
 const TrackInfo: React.FC<TrackInfoProps> = ({ track, isPlaying, isCareMode = false }) => {
   const titleSize = isCareMode ? 28 : 22;
-  const subSize = isCareMode ? 20 : 15;
   const vinylSize = isCareMode ? 300 : 260;
 
   return (

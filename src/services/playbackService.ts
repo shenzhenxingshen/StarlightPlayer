@@ -78,10 +78,7 @@ async function onCycleComplete() {
       sessionCount = 0;
       saveSessionCount(0);
       setAlignSeekExpectedUntil(Date.now() + 3000);
-      await TrackPlayer.skipToNext().catch(() => {
-        // 如果已是最后一首，skipToNext 会跳到第一首（Queue 行为）
-        TrackPlayer.skip(0);
-      });
+      await TrackPlayer.skipToNext().catch(() => {});
       break;
     }
     case 'play-all': {
