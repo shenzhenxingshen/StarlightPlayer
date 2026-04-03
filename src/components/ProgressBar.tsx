@@ -7,9 +7,11 @@ interface ProgressBarProps {
   duration: number;
   onSeek: (value: number) => void;
   isCareMode?: boolean;
+  currentRepeat?: number;
+  totalRepeat?: number;
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, isCareMode = false }) => {
+const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, isCareMode = false, currentRepeat, totalRepeat }) => {
   const fmt = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
@@ -32,6 +34,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, isCareMod
         <Text style={[styles.time, { fontSize: textSize }]}>{fmt(position)}</Text>
         <Text style={[styles.time, { fontSize: textSize }]}>{fmt(duration)}</Text>
       </View>
+      {!isCareMode && totalRepeat != null && totalRepeat > 1 && currentRepeat != null && (
+        <Text style={styles.repeatText}>{currentRepeat}/{totalRepeat}</Text>
+      )}
     </View>
   );
 };
@@ -45,6 +50,7 @@ const styles = StyleSheet.create({
   thumbActive: { width: 10, height: 10, borderRadius: 5, backgroundColor: GOLD, marginLeft: -5 },
   timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
   time: { color: 'rgba(255,255,255,0.5)' },
+  repeatText: { color: GOLD_DIM, fontSize: 14, textAlign: 'center', marginTop: 6 },
 });
 
 export default ProgressBar;

@@ -8,7 +8,7 @@ import ProgressBar from '../components/ProgressBar';
 import { useSettingsStore } from '../store/settingsStore';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { TRACKS } from '../constants/tracks';
-import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState, shouldSeekAlign } from '../utils/storage';
+import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState, shouldSeekAlign, loadSessionCount } from '../utils/storage';
 
 // 标志：是否为手动切歌或 play-one 回跳
 let skipGuard = false;
@@ -20,7 +20,10 @@ const PlayerScreen: React.FC = () => {
   const progress = useProgress(500);
   const activeTrack = useActiveTrack();
   const isPlaying = playbackState.state === State.Playing;
-  const { isCareMode } = useSettingsStore();
+  const { isCareMode, repeatCount } = useSettingsStore();
+
+  // 读取当前遍数（随 progress 刷新）
+  const currentRepeat = loadSessionCount() + 1; // sessionCount 是已完成遍数，显示当前正在播放的遍数
 
   // 需求1: 从持久化恢复 playMode
   const saved = useRef(loadPlayerState());
@@ -145,7 +148,7 @@ const PlayerScreen: React.FC = () => {
       <View style={styles.topArea}>
         <TrackInfo track={displayTrack} isPlaying={isPlaying} isCareMode={isCareMode} />
         {/* onSeek 故意禁用：多人同步播放场景下，进度由 alignAndPlay 按时钟对齐，不允许手动 seek */}
-        <ProgressBar position={progress.position} duration={progress.duration} onSeek={() => {}} isCareMode={isCareMode} />
+        <ProgressBar position={progress.position} duration={progress.duration} onSeek={() => {}} isCareMode={isCareMode} currentRepeat={currentRepeat} totalRepeat={repeatCount} />
       </View>
       <View style={styles.bottomArea}>
         <Controls
