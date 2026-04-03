@@ -24,5 +24,5 @@ export function formatTime(seconds: number): string {
  * 将毫秒转换为秒
  */
 export function msToSeconds(ms: number): number {
-  return Math.round(ms / 1000);
+  return ms / 1000;
 }
