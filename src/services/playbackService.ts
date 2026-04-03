@@ -89,6 +89,29 @@ export default async function PlaybackService() {
   TrackPlayer.addEventListener(Event.RemoteStop, () => TrackPlayer.stop());
   TrackPlayer.addEventListener(Event.RemoteSeek, ({ position }) => TrackPlayer.seekTo(position));
 
+  // ─── 来电恢复（RemoteDuck）───
+  TrackPlayer.addEventListener(Event.RemoteDuck, async ({ paused, permanent }) => {
+    if (permanent) { await TrackPlayer.stop(); return; }
+    if (paused) { await TrackPlayer.pause(); return; }
+    // 恢复播放：根据同步设置决定是否对齐
+    try {
+      const ps = loadPlayerState();
+      const pm = ps?.playMode || 'repeat-one';
+      if (shouldSeekAlign(pm)) {
+        const idx = await TrackPlayer.getActiveTrackIndex();
+        const queue = await TrackPlayer.getQueue();
+        if (idx != null && queue[idx]) {
+          const t = TRACKS.find(tr => tr.id === queue[idx].id);
+          if (t?.durationMs) {
+            setAlignSeekExpectedUntil(Date.now() + 3000);
+            await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
+          }
+        }
+      }
+    } catch {}
+    await TrackPlayer.play();
+  });
+
   // ─── 播放状态变化 ───
   TrackPlayer.addEventListener(Event.PlaybackState, ({ state: playState }) => {
     if (playState === State.Paused && wasPlaying) {
@@ -214,7 +237,18 @@ export default async function PlaybackService() {
       if (state === 'OFFICIAL_CYCLE' && reachedEnd) {
         completeCycle();
       }
-      // 回到头部，开启新周期
+
+      // 回绕后根据同步设置决定是否对齐
+      const ps = loadPlayerState();
+      const pm = ps?.playMode || 'repeat-one';
+      if (shouldSeekAlign(pm) && currentTrackId) {
+        const t = TRACKS.find(tr => tr.id === currentTrackId);
+        if (t?.durationMs) {
+          setAlignSeekExpectedUntil(Date.now() + 3000);
+          TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
+        }
+      }
+
       resetCycle(position);
       return;
     }
