@@ -6,7 +6,8 @@ import { consumeAlignSeekExpected, setAlignSeekExpectedUntil, shouldSeekAlign, l
 
 // ─── 状态 ───
 let currentTrackId: string | null = null;
-let sessionCount = 0; // 当前歌曲已完成遍数
+let sessionCount = 0;
+let startedFromZero = false; // 本遍是否从头开始播放
 
 // 手动切歌标志：PlayerScreen skip 时设为 true，ActiveTrackChanged 消费后重置
 export let manualSkip = false;
@@ -14,12 +15,32 @@ export function setManualSkip(v: boolean) { manualSkip = v; }
 
 const increment = (id: string) => useStatsStore.getState().increment(id);
 
+// 同步模式下 seek 到对齐位置，否则 seekTo(0)
+async function seekForReplay() {
+  const ps = loadPlayerState();
+  const pm = ps?.playMode || 'repeat-one';
+  if (shouldSeekAlign(pm) && currentTrackId) {
+    const t = TRACKS.find(tr => tr.id === currentTrackId);
+    if (t?.durationMs) {
+      setAlignSeekExpectedUntil(Date.now() + 3000);
+      const pos = msToSeconds(calculateAlignedPosition(t.durationMs));
+      await TrackPlayer.seekTo(pos);
+      startedFromZero = pos <= 1.5; // 对齐位置接近 0 才算从头
+      return;
+    }
+  }
+  await TrackPlayer.seekTo(0);
+  startedFromZero = true;
+}
+
 function completeCycle() {
-  if (currentTrackId) {
+  if (currentTrackId && startedFromZero) {
     increment(currentTrackId);
     sessionCount++;
     saveSessionCount(sessionCount);
   }
+  // 无论是否计数，下一遍默认从头开始（会被 seekForReplay 覆盖）
+  startedFromZero = true;
 }
 
 async function onCycleComplete() {
@@ -28,9 +49,8 @@ async function onCycleComplete() {
   const { repeatCount } = getSettings();
 
   if (sessionCount < repeatCount) {
-    // 未达遍数：单曲场景需手动循环（RepeatMode.Off 不会自动重播）
     if (pm === 'repeat-one' || pm === 'play-one') {
-      await TrackPlayer.seekTo(0);
+      await seekForReplay();
       await TrackPlayer.play();
     }
     return;
@@ -42,15 +62,13 @@ async function onCycleComplete() {
 
   switch (pm) {
     case 'repeat-one':
-      // 单曲循环：重置计数，继续
-      await TrackPlayer.seekTo(0);
+      await seekForReplay();
       await TrackPlayer.play();
       break;
     case 'play-one':
-      // 单曲播放：暂停
       break;
     case 'repeat-all': {
-      setManualSkip(true); // 标记为主动切歌，避免 ActiveTrackChanged 再次拦截
+      setManualSkip(true);
       setAlignSeekExpectedUntil(Date.now() + 3000);
       await TrackPlayer.skipToNext().catch(() => { TrackPlayer.skip(0); });
       break;
@@ -125,9 +143,8 @@ export default async function PlaybackService() {
 
     // 列表模式下，非手动切歌 = 播完自动切歌 → 需要计数 + 遍数拦截
     if (lastTrack?.id && (pm === 'repeat-all' || pm === 'play-all') && !manualSkip) {
-      // 对上一首计数
       const prevId = currentTrackId;
-      currentTrackId = lastTrack.id; // 临时指向上一首以便 completeCycle 计数
+      currentTrackId = lastTrack.id;
       completeCycle();
       currentTrackId = prevId;
 
@@ -136,22 +153,24 @@ export default async function PlaybackService() {
         // 未达遍数：跳回上一首继续播
         const idx = await TrackPlayer.getActiveTrackIndex();
         if (idx != null && idx > 0) {
-          setManualSkip(true); // 回跳不要再触发拦截
+          setManualSkip(true);
           await TrackPlayer.skipToPrevious();
           if (shouldSeekAlign(pm)) {
             const t = TRACKS.find(tr => tr.id === lastTrack.id);
             if (t?.durationMs) {
               setAlignSeekExpectedUntil(Date.now() + 3000);
-              await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
+              const pos = msToSeconds(calculateAlignedPosition(t.durationMs));
+              await TrackPlayer.seekTo(pos);
+              startedFromZero = pos <= 1.5;
             }
           } else {
             await TrackPlayer.seekTo(0);
+            startedFromZero = true;
           }
           await TrackPlayer.play();
-          return; // 不重置 sessionCount，继续累计
+          return;
         }
       }
-      // 达到遍数，正常切歌，走下面的重置逻辑
     }
 
     // 重置状态
@@ -164,13 +183,16 @@ export default async function PlaybackService() {
       const t = TRACKS.find(tr => tr.id === track.id);
       if (t?.durationMs && shouldSeekAlign(pm)) {
         setAlignSeekExpectedUntil(Date.now() + 3000);
-        await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
+        const pos = msToSeconds(calculateAlignedPosition(t.durationMs));
+        await TrackPlayer.seekTo(pos);
+        startedFromZero = pos <= 1.5;
+      } else {
+        startedFromZero = true; // 非同步模式，从 0 开始
       }
     }
   });
 
   // ─── 队列结束 ───
-  // RepeatMode.Off 下：单曲播完 或 列表最后一首播完
   TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async () => {
     completeCycle();
     await onCycleComplete();
