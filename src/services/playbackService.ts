@@ -23,14 +23,12 @@ async function seekForReplay() {
     const t = TRACKS.find(tr => tr.id === currentTrackId);
     if (t?.durationMs) {
       setAlignSeekExpectedUntil(Date.now() + 3000);
-      const pos = msToSeconds(calculateAlignedPosition(t.durationMs));
-      await TrackPlayer.seekTo(pos);
-      startedFromZero = pos <= 1.5; // 对齐位置接近 0 才算从头
-      return;
+      await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
     }
+  } else {
+    await TrackPlayer.seekTo(0);
   }
-  await TrackPlayer.seekTo(0);
-  startedFromZero = true;
+  startedFromZero = true; // 重播是系统主动发起的新一遍，无论对齐位置都算从头
 }
 
 function completeCycle() {
