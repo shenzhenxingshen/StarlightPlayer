@@ -34,7 +34,7 @@ const App: React.FC = () => {
         // Android 需要 APP 在前台才能 setupPlayer，加重试
         for (let i = 0; i < 5; i++) {
           try {
-            await TrackPlayer.setupPlayer({ minBuffer: 5, maxBuffer: 50 });
+            await TrackPlayer.setupPlayer({ minBuffer: 5, maxBuffer: 50, autoHandleInterruptions: false });
             break;
           } catch (e) {
             if (i === 4) throw e;
