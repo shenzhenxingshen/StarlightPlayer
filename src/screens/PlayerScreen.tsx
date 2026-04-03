@@ -80,9 +80,9 @@ const PlayerScreen: React.FC = () => {
     TrackPlayer.updateOptions({ capabilities: caps, compactCapabilities: compact }).catch(() => {});
   }, [isCareMode]);
 
-  // 统一使用 RepeatMode.Track，切歌逻辑由 playbackService JS 层控制
+  // 统一使用 RepeatMode.Off，播完由 PlaybackQueueEnded / ActiveTrackChanged 事件驱动
   useEffect(() => {
-    TrackPlayer.setRepeatMode(RepeatMode.Track);
+    TrackPlayer.setRepeatMode(RepeatMode.Off);
   }, [playMode]);
 
   const toggleMode = useCallback(() => {
