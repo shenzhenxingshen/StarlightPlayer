@@ -287,7 +287,12 @@ export default async function PlaybackService() {
     }
 
     // ── 回绕检测（尾→头） ──
-    if (delta < -duration * 0.5) {
+    // 方式1: delta 大幅负值
+    // 方式2: lastPosition 接近尾部且 position 接近头部（覆盖哨兵重置后的情况）
+    const isWrapAround = delta < -duration * 0.5 ||
+      (isNearEnd(lastPosition) && position <= ZERO_EPS + MAX_NORMAL_DELTA);
+
+    if (isWrapAround) {
       const reachedEnd = isNearEnd(lastPosition);
 
       if (state === 'OFFICIAL_CYCLE' && reachedEnd) {
