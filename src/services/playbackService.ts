@@ -7,15 +7,18 @@ import { consumeAlignSeekExpected, setAlignSeekExpectedUntil, shouldSeekAlign, l
 // ─── 状态 ───
 let currentTrackId: string | null = null;
 let sessionCount = 0;
-let startedFromZero = false; // 本遍是否从头开始播放
+let startedFromZero = false;
 
-// 手动切歌标志：PlayerScreen skip 时设为 true，ActiveTrackChanged 消费后重置
+// 手动切歌标志
 export let manualSkip = false;
 export function setManualSkip(v: boolean) { manualSkip = v; }
+export function isStartedFromZero() { return startedFromZero; }
+
+// 回跳重播标志：列表模式未达遍数时回跳，保留 sessionCount 不重置
+let replayingTrackId: string | null = null;
 
 const increment = (id: string) => useStatsStore.getState().increment(id);
 
-// 同步模式下 seek 到对齐位置，否则 seekTo(0)
 async function seekForReplay() {
   const ps = loadPlayerState();
   const pm = ps?.playMode || 'repeat-one';
@@ -28,7 +31,7 @@ async function seekForReplay() {
   } else {
     await TrackPlayer.seekTo(0);
   }
-  startedFromZero = true; // 重播是系统主动发起的新一遍，无论对齐位置都算从头
+  startedFromZero = true;
 }
 
 function completeCycle() {
@@ -37,7 +40,6 @@ function completeCycle() {
     sessionCount++;
     saveSessionCount(sessionCount);
   }
-  // 无论是否计数，下一遍默认从头开始（会被 seekForReplay 覆盖）
   startedFromZero = true;
 }
 
@@ -47,10 +49,12 @@ async function onCycleComplete() {
   const { repeatCount } = getSettings();
 
   if (sessionCount < repeatCount) {
+    // 未达遍数
     if (pm === 'repeat-one' || pm === 'play-one') {
       await seekForReplay();
       await TrackPlayer.play();
     }
+    // repeat-all / play-all：由 ActiveTrackChanged 拦截处理，这里不需要做
     return;
   }
 
@@ -139,8 +143,32 @@ export default async function PlaybackService() {
     const ps = loadPlayerState();
     const pm = ps?.playMode || 'repeat-one';
 
-    // 列表模式下，非手动切歌 = 播完自动切歌 → 需要计数 + 遍数拦截
+    // 回跳重播：skipToPrevious 回到同一首，保留 sessionCount
+    if (replayingTrackId && track?.id === replayingTrackId) {
+      const savedCount = sessionCount;
+      replayingTrackId = null;
+      manualSkip = false;
+      currentTrackId = track.id;
+      sessionCount = savedCount; // 恢复，不重置
+      saveSessionCount(sessionCount);
+
+      if (shouldSeekAlign(pm)) {
+        const t = TRACKS.find(tr => tr.id === track.id);
+        if (t?.durationMs) {
+          setAlignSeekExpectedUntil(Date.now() + 3000);
+          await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
+        }
+      } else {
+        await TrackPlayer.seekTo(0);
+      }
+      startedFromZero = true;
+      await TrackPlayer.play();
+      return;
+    }
+
+    // 列表模式下，非手动切歌 = 播完自动切歌 → 计数 + 遍数拦截
     if (lastTrack?.id && (pm === 'repeat-all' || pm === 'play-all') && !manualSkip) {
+      // 对上一首计数
       const prevId = currentTrackId;
       currentTrackId = lastTrack.id;
       completeCycle();
@@ -148,30 +176,19 @@ export default async function PlaybackService() {
 
       const { repeatCount } = getSettings();
       if (sessionCount < repeatCount) {
-        // 未达遍数：跳回上一首继续播
-        const idx = await TrackPlayer.getActiveTrackIndex();
-        if (idx != null && idx > 0) {
-          setManualSkip(true);
-          await TrackPlayer.skipToPrevious();
-          if (shouldSeekAlign(pm)) {
-            const t = TRACKS.find(tr => tr.id === lastTrack.id);
-            if (t?.durationMs) {
-              setAlignSeekExpectedUntil(Date.now() + 3000);
-              const pos = msToSeconds(calculateAlignedPosition(t.durationMs));
-              await TrackPlayer.seekTo(pos);
-              startedFromZero = pos <= 1.5;
-            }
-          } else {
-            await TrackPlayer.seekTo(0);
-            startedFromZero = true;
-          }
-          await TrackPlayer.play();
-          return;
-        }
+        // 未达遍数：回跳到上一首
+        replayingTrackId = lastTrack.id;
+        setManualSkip(true);
+        await TrackPlayer.skipToPrevious();
+        return; // 回跳后的 ActiveTrackChanged 会走上面的 replayingTrackId 分支
       }
+      // 达到遍数，正常切歌
+      sessionCount = 0;
+      saveSessionCount(0);
     }
 
     // 重置状态
+    replayingTrackId = null;
     manualSkip = false;
     currentTrackId = track?.id || null;
     sessionCount = 0;
@@ -185,14 +202,27 @@ export default async function PlaybackService() {
         await TrackPlayer.seekTo(pos);
         startedFromZero = pos <= 1.5;
       } else {
-        startedFromZero = true; // 非同步模式，从 0 开始
+        startedFromZero = true;
       }
     }
   });
 
   // ─── 队列结束 ───
+  // 单曲播完 或 列表最后一首播完
   TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async () => {
     completeCycle();
+
+    const ps = loadPlayerState();
+    const pm = ps?.playMode || 'repeat-one';
+    const { repeatCount } = getSettings();
+
+    // 列表最后一首未达遍数：seekTo(0) 重播当前歌
+    if ((pm === 'repeat-all' || pm === 'play-all') && sessionCount < repeatCount) {
+      await seekForReplay();
+      await TrackPlayer.play();
+      return;
+    }
+
     await onCycleComplete();
   });
 }

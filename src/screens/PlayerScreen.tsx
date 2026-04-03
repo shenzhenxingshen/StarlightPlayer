@@ -9,7 +9,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { TRACKS } from '../constants/tracks';
 import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState, shouldSeekAlign, loadSessionCount } from '../utils/storage';
-import { setManualSkip } from '../services/playbackService';
+import { setManualSkip, isStartedFromZero } from '../services/playbackService';
 
 // 标志：是否正在恢复上次状态，期间不保存
 let restoring = true;
@@ -22,7 +22,9 @@ const PlayerScreen: React.FC = () => {
   const { isCareMode, repeatCount } = useSettingsStore();
 
   // 读取当前遍数（随 progress 刷新）
-  const currentRepeat = loadSessionCount() + 1; // sessionCount 是已完成遍数，显示当前正在播放的遍数
+  // sessionCount 是已完成遍数；未从头播放的那遍显示为第 0 遍
+  const sessionCnt = loadSessionCount();
+  const currentRepeat = isStartedFromZero() ? sessionCnt + 1 : sessionCnt;
 
   // 需求1: 从持久化恢复 playMode
   const saved = useRef(loadPlayerState());
