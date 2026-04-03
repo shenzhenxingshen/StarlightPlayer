@@ -24,6 +24,7 @@ let totalPauseTime = 0;
 let awaitResumeValidation = false;
 let wasPlaying = false;
 let sessionCount = 0; // 当前歌曲已完成遍数
+let lastCycleCompleteTime = 0; // 防抖：避免同一次回绕被重复计数
 
 const increment = (id: string) => useStatsStore.getState().increment(id);
 
@@ -42,6 +43,9 @@ function isNearEnd(pos: number): boolean {
 
 function completeCycle() {
   if (state === 'OFFICIAL_CYCLE' && currentTrackId) {
+    const now = Date.now();
+    if (now - lastCycleCompleteTime < 2000) return;
+    lastCycleCompleteTime = now;
     increment(currentTrackId);
     sessionCount++;
     saveSessionCount(sessionCount);
