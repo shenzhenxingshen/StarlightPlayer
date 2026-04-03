@@ -1,5 +1,5 @@
 import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from '../constants/colors';
-import { View, StyleSheet, ScrollView, Text, Switch, TouchableOpacity, Platform, Alert, NativeModules, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, Switch, TouchableOpacity, Platform, Alert, NativeModules, Pressable, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';import React, { useState, useCallback } from 'react';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { TRACKS } from '../constants/tracks';
@@ -31,7 +31,9 @@ const getDeviceInfo = (): string => {
 
 const ProfileScreen: React.FC = () => {
   const [showLogs, setShowLogs] = useState(false);
-  const { isCareMode, toggleCareMode, isSyncMode, toggleSyncMode } = useSettingsStore();
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customRepeatText, setCustomRepeatText] = useState('');
+  const { isCareMode, toggleCareMode, isSyncMode, toggleSyncMode, repeatCount, setRepeatCount } = useSettingsStore();
   const stats = useStatsStore(s => s.stats);
 
   const t = (base: number) => isCareMode ? base + 6 : base;
@@ -100,6 +102,57 @@ const ProfileScreen: React.FC = () => {
               thumbColor="#fff"
             />
           </View>
+        </View>
+        )}
+
+        {/* 每首重复遍数 - 关怀模式下隐藏 */}
+        {!isCareMode && (
+        <View style={styles.card}>
+          <View style={styles.cardRow}>
+            <Icon name="repeat" size={t(22)} color={GOLD} />
+            <View style={styles.cardInfo}>
+              <Text style={[styles.cardLabel, { fontSize: t(16) }]}>每首重复遍数</Text>
+              <Text style={[styles.cardDesc, { fontSize: t(12) }]}>当前：{repeatCount} 遍</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, gap: 8 }}>
+            {[1, 7, 21, 49, 108].map(n => (
+              <Pressable
+                key={n}
+                onPress={() => setRepeatCount(n)}
+                style={{
+                  backgroundColor: repeatCount === n ? '#b8860b' : '#333',
+                  paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8,
+                }}>
+                <Text style={{ color: '#fff', fontSize: t(14), fontWeight: repeatCount === n ? '700' : '400' }}>{n}</Text>
+              </Pressable>
+            ))}
+            <Pressable
+              onPress={() => { setShowCustomInput(true); setCustomRepeatText(String(repeatCount)); }}
+              style={{ backgroundColor: ![1,7,21,49,108].includes(repeatCount) ? '#b8860b' : '#333', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}>
+              <Text style={{ color: '#fff', fontSize: t(14) }}>自定义</Text>
+            </Pressable>
+          </View>
+          {showCustomInput && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+              <TextInput
+                value={customRepeatText}
+                onChangeText={setCustomRepeatText}
+                keyboardType="number-pad"
+                style={{ flex: 1, backgroundColor: '#222', color: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 16 }}
+                placeholder="输入遍数"
+                placeholderTextColor="#666"
+              />
+              <Pressable
+                onPress={() => {
+                  const n = parseInt(customRepeatText, 10);
+                  if (n >= 1) { setRepeatCount(n); setShowCustomInput(false); }
+                }}
+                style={{ backgroundColor: '#b8860b', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, marginLeft: 8 }}>
+                <Text style={{ color: '#fff', fontWeight: '600' }}>确定</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
         )}
 
