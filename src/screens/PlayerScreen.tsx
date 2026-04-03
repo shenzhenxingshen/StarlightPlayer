@@ -8,7 +8,7 @@ import ProgressBar from '../components/ProgressBar';
 import { useSettingsStore } from '../store/settingsStore';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { TRACKS } from '../constants/tracks';
-import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState } from '../utils/storage';
+import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState, shouldSeekAlign } from '../utils/storage';
 
 // 标志：是否为手动切歌或 play-one 回跳
 let skipGuard = false;
@@ -123,7 +123,7 @@ const PlayerScreen: React.FC = () => {
   const alignAndPlay = async (trackId?: string) => {
     const id = trackId ?? activeTrack?.id;
     const track = TRACKS.find(t => t.id === id);
-    if (track?.durationMs) {
+    if (track?.durationMs && shouldSeekAlign(playMode)) {
       setAlignSeekExpectedUntil(Date.now() + 3000);
       await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(track.durationMs)));
     }
@@ -136,7 +136,13 @@ const PlayerScreen: React.FC = () => {
       await TrackPlayer.skipToNext();
       const idx = await TrackPlayer.getActiveTrackIndex();
       const queue = await TrackPlayer.getQueue();
-      if (idx !== null && idx !== undefined) await alignAndPlay(queue[idx]?.id);
+      if (idx !== null && idx !== undefined) {
+        if (shouldSeekAlign(playMode)) {
+          await alignAndPlay(queue[idx]?.id);
+        } else {
+          await TrackPlayer.play();
+        }
+      }
     } catch { skipGuard = false; }
   };
 
@@ -146,7 +152,13 @@ const PlayerScreen: React.FC = () => {
       await TrackPlayer.skipToPrevious();
       const idx = await TrackPlayer.getActiveTrackIndex();
       const queue = await TrackPlayer.getQueue();
-      if (idx !== null && idx !== undefined) await alignAndPlay(queue[idx]?.id);
+      if (idx !== null && idx !== undefined) {
+        if (shouldSeekAlign(playMode)) {
+          await alignAndPlay(queue[idx]?.id);
+        } else {
+          await TrackPlayer.play();
+        }
+      }
     } catch { skipGuard = false; }
   };
 

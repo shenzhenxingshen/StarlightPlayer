@@ -40,20 +40,40 @@ export function loadPlayerState(): PlayerState | null {
 }
 
 // --- Settings (isCareMode) ---
-export function getSettings(): { isCareMode: boolean } {
+export function getSettings(): { isCareMode: boolean; isSyncMode: boolean; repeatCount: number } {
   try {
     const data = storage.getString(SETTINGS_KEY);
-    if (!data) return { isCareMode: false };
+    if (!data) return { isCareMode: false, isSyncMode: false, repeatCount: 1 };
     const parsed = JSON.parse(data);
-    // 兼容旧版 isLargeTextMode
-    return { isCareMode: parsed.isCareMode ?? parsed.isLargeTextMode ?? false };
+    return {
+      isCareMode: parsed.isCareMode ?? parsed.isLargeTextMode ?? false,
+      isSyncMode: parsed.isSyncMode ?? false,
+      repeatCount: parsed.repeatCount ?? 1,
+    };
   } catch {
-    return { isCareMode: false };
+    return { isCareMode: false, isSyncMode: false, repeatCount: 1 };
   }
 }
 
-export function setSettings(settings: { isCareMode: boolean }): void {
+export function setSettings(settings: { isCareMode: boolean; isSyncMode: boolean; repeatCount: number }): void {
   storage.set(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+// --- 同步判断（跨运行时可读） ---
+export function shouldSeekAlign(playMode: string): boolean {
+  if (playMode === 'repeat-one') return true; // 单曲循环始终同步
+  return getSettings().isSyncMode;
+}
+
+// --- Session Count（跨运行时共享） ---
+const SESSION_COUNT_KEY = 'session_count';
+
+export function saveSessionCount(count: number): void {
+  storage.set(SESSION_COUNT_KEY, count);
+}
+
+export function loadSessionCount(): number {
+  try { return storage.getNumber(SESSION_COUNT_KEY) ?? 0; } catch { return 0; }
 }
 
 // --- Playback Stats ---

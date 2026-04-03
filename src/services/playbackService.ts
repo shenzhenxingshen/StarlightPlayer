@@ -2,7 +2,7 @@ import TrackPlayer, { Event, State } from 'react-native-track-player';
 import { TRACKS } from '../constants/tracks';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { useStatsStore } from '../store/statsStore';
-import { consumeAlignSeekExpected, setAlignSeekExpectedUntil } from '../utils/storage';
+import { consumeAlignSeekExpected, setAlignSeekExpectedUntil, shouldSeekAlign, loadPlayerState, saveSessionCount } from '../utils/storage';
 
 // ─── 参数 ───
 const ZERO_EPS = 1.5;
@@ -64,16 +64,20 @@ function abortCycle() {
 
 export default async function PlaybackService() {
   // ─── 远程控制 ───
-  // 远程播放时需要对齐进度
+  // 远程播放时根据同步设置决定是否对齐
   TrackPlayer.addEventListener(Event.RemotePlay, async () => {
     try {
-      const idx = await TrackPlayer.getActiveTrackIndex();
-      const queue = await TrackPlayer.getQueue();
-      if (idx != null && queue[idx]) {
-        const t = TRACKS.find(tr => tr.id === queue[idx].id);
-        if (t?.durationMs) {
-          setAlignSeekExpectedUntil(Date.now() + 3000);
-          await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
+      const ps = loadPlayerState();
+      const pm = ps?.playMode || 'repeat-one';
+      if (shouldSeekAlign(pm)) {
+        const idx = await TrackPlayer.getActiveTrackIndex();
+        const queue = await TrackPlayer.getQueue();
+        if (idx != null && queue[idx]) {
+          const t = TRACKS.find(tr => tr.id === queue[idx].id);
+          if (t?.durationMs) {
+            setAlignSeekExpectedUntil(Date.now() + 3000);
+            await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
+          }
         }
       }
     } catch {}
@@ -144,10 +148,17 @@ export default async function PlaybackService() {
       const t = TRACKS.find(tr => tr.id === track.id);
       if (t?.durationMs) {
         trackDuration = t.durationMs / 1000;
-        const alignedSec = msToSeconds(calculateAlignedPosition(t.durationMs));
-        state = alignedSec <= ZERO_EPS ? 'OFFICIAL_CYCLE' : 'PRE_ZERO';
-        lastPosition = alignedSec;
-        await TrackPlayer.seekTo(alignedSec);
+        const ps = loadPlayerState();
+        const pm = ps?.playMode || 'repeat-one';
+        if (shouldSeekAlign(pm)) {
+          const alignedSec = msToSeconds(calculateAlignedPosition(t.durationMs));
+          state = alignedSec <= ZERO_EPS ? 'OFFICIAL_CYCLE' : 'PRE_ZERO';
+          lastPosition = alignedSec;
+          await TrackPlayer.seekTo(alignedSec);
+        } else {
+          state = 'OFFICIAL_CYCLE'; // 从 0 开始，直接进入官方周期
+          lastPosition = 0;
+        }
       } else {
         state = 'PRE_ZERO';
       }

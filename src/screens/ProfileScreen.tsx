@@ -31,7 +31,7 @@ const getDeviceInfo = (): string => {
 
 const ProfileScreen: React.FC = () => {
   const [showLogs, setShowLogs] = useState(false);
-  const { isCareMode, toggleCareMode } = useSettingsStore();
+  const { isCareMode, toggleCareMode, isSyncMode, toggleSyncMode } = useSettingsStore();
   const stats = useStatsStore(s => s.stats);
 
   const t = (base: number) => isCareMode ? base + 6 : base;
@@ -81,6 +81,27 @@ const ProfileScreen: React.FC = () => {
             </Pressable>
           </View>
         </View>
+
+        {/* 同步播放开关 - 关怀模式下隐藏 */}
+        {!isCareMode && (
+        <View style={styles.card}>
+          <View style={styles.cardRow}>
+            <Icon name="sync" size={t(22)} color={GOLD} />
+            <View style={styles.cardInfo}>
+              <Text style={[styles.cardLabel, { fontSize: t(16) }]}>同步播放</Text>
+              <Text style={[styles.cardDesc, { fontSize: t(12) }]}>
+                {isSyncMode ? '开启：播放时自动对齐进度（共修模式）' : '关闭：每首歌从头开始播放'}
+              </Text>
+            </View>
+            <Switch
+              value={isSyncMode}
+              onValueChange={toggleSyncMode}
+              trackColor={{ false: '#555', true: '#b8860b' }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+        )}
 
         {/* 今日统计 - 暂时隐藏 */}
         {/*
