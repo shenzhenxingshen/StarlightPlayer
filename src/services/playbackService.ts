@@ -2,7 +2,7 @@ import TrackPlayer, { Event, State } from 'react-native-track-player';
 import { TRACKS } from '../constants/tracks';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { useStatsStore } from '../store/statsStore';
-import { consumeAlignSeekExpected, setAlignSeekExpectedUntil, shouldSeekAlign, loadPlayerState, saveSessionCount } from '../utils/storage';
+import { consumeAlignSeekExpected, setAlignSeekExpectedUntil, shouldSeekAlign, loadPlayerState, saveSessionCount, getSettings } from '../utils/storage';
 
 // ─── 参数 ───
 const ZERO_EPS = 1.5;
@@ -23,6 +23,7 @@ let pauseStartAt = 0;
 let totalPauseTime = 0;
 let awaitResumeValidation = false;
 let wasPlaying = false;
+let sessionCount = 0; // 当前歌曲已完成遍数
 
 const increment = (id: string) => useStatsStore.getState().increment(id);
 
@@ -42,6 +43,55 @@ function isNearEnd(pos: number): boolean {
 function completeCycle() {
   if (state === 'OFFICIAL_CYCLE' && currentTrackId) {
     increment(currentTrackId);
+    sessionCount++;
+    saveSessionCount(sessionCount);
+  }
+}
+
+async function onCycleComplete() {
+  const ps = loadPlayerState();
+  const pm = ps?.playMode || 'repeat-one';
+  const { repeatCount } = getSettings();
+
+  // 未达到设定遍数，继续循环（RNTP RepeatMode.Track 自动处理）
+  if (sessionCount < repeatCount) return;
+
+  // 达到设定遍数，根据模式决定下一步
+  switch (pm) {
+    case 'repeat-one':
+      // 单曲循环：重置计数，继续循环
+      sessionCount = 0;
+      saveSessionCount(0);
+      break;
+    case 'play-one':
+      // 单曲播放：暂停
+      await TrackPlayer.pause();
+      break;
+    case 'repeat-all': {
+      // 列表循环：切下一首
+      sessionCount = 0;
+      saveSessionCount(0);
+      setAlignSeekExpectedUntil(Date.now() + 3000);
+      await TrackPlayer.skipToNext().catch(() => {
+        // 如果已是最后一首，skipToNext 会跳到第一首（Queue 行为）
+        TrackPlayer.skip(0);
+      });
+      break;
+    }
+    case 'play-all': {
+      // 列表播放：切下一首，最后一首暂停
+      const idx = await TrackPlayer.getActiveTrackIndex();
+      const queue = await TrackPlayer.getQueue();
+      if (idx != null && idx >= queue.length - 1) {
+        await TrackPlayer.pause();
+      } else {
+        sessionCount = 0;
+        saveSessionCount(0);
+        setAlignSeekExpectedUntil(Date.now() + 3000);
+        await TrackPlayer.skipToNext().catch(() => {});
+      }
+      break;
+    }
   }
 }
 
@@ -166,6 +216,8 @@ export default async function PlaybackService() {
     totalPauseTime = 0;
     awaitResumeValidation = false;
     lastPosition = -1;
+    sessionCount = 0;
+    saveSessionCount(0);
 
     if (track) {
       const t = TRACKS.find(tr => tr.id === track.id);
@@ -199,7 +251,7 @@ export default async function PlaybackService() {
   });
 
   // ─── 进度更新（核心） ───
-  TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, ({ position, duration }) => {
+  TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, async ({ position, duration }) => {
     if (!currentTrackId || !duration) return;
     trackDuration = duration;
 
@@ -236,6 +288,7 @@ export default async function PlaybackService() {
 
       if (state === 'OFFICIAL_CYCLE' && reachedEnd) {
         completeCycle();
+        await onCycleComplete();
       }
 
       // 回绕后根据同步设置决定是否对齐

@@ -77,33 +77,9 @@ const PlayerScreen: React.FC = () => {
     TrackPlayer.updateOptions({ capabilities: caps, compactCapabilities: compact }).catch(() => {});
   }, [isCareMode]);
 
-  // 应用播放模式到 RNTP
+  // 统一使用 RepeatMode.Track，切歌逻辑由 playbackService JS 层控制
   useEffect(() => {
-    (async () => {
-      switch (playMode) {
-        case 'repeat-one': await TrackPlayer.setRepeatMode(RepeatMode.Track); break;
-        case 'repeat-all': await TrackPlayer.setRepeatMode(RepeatMode.Queue); break;
-        default: await TrackPlayer.setRepeatMode(RepeatMode.Off);
-      }
-    })();
-  }, [playMode]);
-
-  // 单曲播放：自动切歌时跳回并暂停
-  useEffect(() => {
-    const sub = TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async (e) => {
-      if (skipGuard) { skipGuard = false; return; }
-      if (playMode === 'play-one' && e.lastTrack != null && e.track != null) {
-        if (e.lastIndex !== undefined && e.lastIndex !== null) {
-          skipGuard = true; // 防止回跳触发再次进入
-          await TrackPlayer.skip(e.lastIndex);
-          await TrackPlayer.pause();
-        }
-      }
-    });
-    const subEnd = TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async () => {
-      if (playMode === 'play-all' || playMode === 'play-one') await TrackPlayer.pause();
-    });
-    return () => { sub.remove(); subEnd.remove(); };
+    TrackPlayer.setRepeatMode(RepeatMode.Track);
   }, [playMode]);
 
   const toggleMode = useCallback(() => {
