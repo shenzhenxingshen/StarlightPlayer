@@ -64,7 +64,9 @@ async function onCycleComplete() {
       saveSessionCount(0);
       break;
     case 'play-one':
-      // 单曲播放：暂停
+      // 单曲播放：暂停并重置遍数，下次手动播放从第 1 遍开始
+      sessionCount = 0;
+      saveSessionCount(0);
       await TrackPlayer.pause();
       break;
     case 'repeat-all': {
@@ -83,6 +85,8 @@ async function onCycleComplete() {
       const idx = await TrackPlayer.getActiveTrackIndex();
       const queue = await TrackPlayer.getQueue();
       if (idx != null && idx >= queue.length - 1) {
+        sessionCount = 0;
+        saveSessionCount(0);
         await TrackPlayer.pause();
       } else {
         sessionCount = 0;
