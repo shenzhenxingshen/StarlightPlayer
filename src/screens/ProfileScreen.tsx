@@ -107,7 +107,8 @@ const ProfileScreen: React.FC = () => {
         </View>
         */}
 
-        {/* 诊断信息 */}
+        {/* 诊断信息 - 关怀模式下隐藏 */}
+        {!isCareMode && (
         <View style={styles.card}>
           <TouchableOpacity style={styles.cardRow} onPress={() => setShowLogs(!showLogs)}>
             <Icon name="bug-report" size={t(22)} color="rgba(255,255,255,0.5)" />
@@ -131,6 +132,7 @@ const ProfileScreen: React.FC = () => {
             </View>
           )}
         </View>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
