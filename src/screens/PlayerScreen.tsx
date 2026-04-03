@@ -9,9 +9,8 @@ import { useSettingsStore } from '../store/settingsStore';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { TRACKS } from '../constants/tracks';
 import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState, shouldSeekAlign, loadSessionCount } from '../utils/storage';
+import { setManualSkip } from '../services/playbackService';
 
-// 标志：是否为手动切歌或 play-one 回跳
-let skipGuard = false;
 // 标志：是否正在恢复上次状态，期间不保存
 let restoring = true;
 
@@ -39,7 +38,7 @@ const PlayerScreen: React.FC = () => {
   useEffect(() => {
     (async () => {
       if (saved.current?.trackIndex != null && saved.current.trackIndex >= 0) {
-        skipGuard = true;
+        setManualSkip(true);
         await TrackPlayer.skip(saved.current.trackIndex).catch(() => {});
         saved.current = null;
       }
@@ -111,7 +110,7 @@ const PlayerScreen: React.FC = () => {
 
   const handleSkipNext = async () => {
     try {
-      skipGuard = true;
+      setManualSkip(true);
       await TrackPlayer.skipToNext();
       const idx = await TrackPlayer.getActiveTrackIndex();
       const queue = await TrackPlayer.getQueue();
@@ -122,12 +121,12 @@ const PlayerScreen: React.FC = () => {
           await TrackPlayer.play();
         }
       }
-    } catch { skipGuard = false; }
+    } catch { setManualSkip(false); }
   };
 
   const handleSkipPrev = async () => {
     try {
-      skipGuard = true;
+      setManualSkip(true);
       await TrackPlayer.skipToPrevious();
       const idx = await TrackPlayer.getActiveTrackIndex();
       const queue = await TrackPlayer.getQueue();
@@ -138,7 +137,7 @@ const PlayerScreen: React.FC = () => {
           await TrackPlayer.play();
         }
       }
-    } catch { skipGuard = false; }
+    } catch { setManualSkip(false); }
   };
 
   const displayTrack = TRACKS.find(t => t.id === activeTrack?.id) || null;

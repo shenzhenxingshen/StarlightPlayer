@@ -8,6 +8,10 @@ import { consumeAlignSeekExpected, setAlignSeekExpectedUntil, shouldSeekAlign, l
 let currentTrackId: string | null = null;
 let sessionCount = 0; // 当前歌曲已完成遍数
 
+// 手动切歌标志：PlayerScreen skip 时设为 true，ActiveTrackChanged 消费后重置
+export let manualSkip = false;
+export function setManualSkip(v: boolean) { manualSkip = v; }
+
 const increment = (id: string) => useStatsStore.getState().increment(id);
 
 function completeCycle() {
@@ -46,6 +50,7 @@ async function onCycleComplete() {
       // 单曲播放：暂停
       break;
     case 'repeat-all': {
+      setManualSkip(true); // 标记为主动切歌，避免 ActiveTrackChanged 再次拦截
       setAlignSeekExpectedUntil(Date.now() + 3000);
       await TrackPlayer.skipToNext().catch(() => { TrackPlayer.skip(0); });
       break;
@@ -56,6 +61,7 @@ async function onCycleComplete() {
       if (idx != null && idx >= queue.length - 1) {
         await TrackPlayer.pause();
       } else {
+        setManualSkip(true);
         setAlignSeekExpectedUntil(Date.now() + 3000);
         await TrackPlayer.skipToNext().catch(() => {});
       }
@@ -85,8 +91,8 @@ export default async function PlaybackService() {
     await TrackPlayer.play();
   });
   TrackPlayer.addEventListener(Event.RemotePause, () => TrackPlayer.pause());
-  TrackPlayer.addEventListener(Event.RemoteNext, () => TrackPlayer.skipToNext().catch(() => {}));
-  TrackPlayer.addEventListener(Event.RemotePrevious, () => TrackPlayer.skipToPrevious().catch(() => {}));
+  TrackPlayer.addEventListener(Event.RemoteNext, () => { setManualSkip(true); TrackPlayer.skipToNext().catch(() => {}); });
+  TrackPlayer.addEventListener(Event.RemotePrevious, () => { setManualSkip(true); TrackPlayer.skipToPrevious().catch(() => {}); });
   TrackPlayer.addEventListener(Event.RemoteStop, () => TrackPlayer.stop());
   TrackPlayer.addEventListener(Event.RemoteSeek, ({ position }) => TrackPlayer.seekTo(position));
 
@@ -112,17 +118,44 @@ export default async function PlaybackService() {
     await TrackPlayer.play();
   });
 
-  // ─── 换歌（列表场景的遍数计数触发点） ───
+  // ─── 换歌 ───
   TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async ({ track, lastTrack }) => {
-    // 列表模式下，上一首播完自动切歌会触发此事件 → 计数
     const ps = loadPlayerState();
     const pm = ps?.playMode || 'repeat-one';
-    if (lastTrack?.id && (pm === 'repeat-all' || pm === 'play-all')) {
-      // 只有从 onCycleComplete 主动 skip 才会到这里，已在那里重置了 sessionCount
-      // 这里不需要额外 completeCycle
+
+    // 列表模式下，非手动切歌 = 播完自动切歌 → 需要计数 + 遍数拦截
+    if (lastTrack?.id && (pm === 'repeat-all' || pm === 'play-all') && !manualSkip) {
+      // 对上一首计数
+      const prevId = currentTrackId;
+      currentTrackId = lastTrack.id; // 临时指向上一首以便 completeCycle 计数
+      completeCycle();
+      currentTrackId = prevId;
+
+      const { repeatCount } = getSettings();
+      if (sessionCount < repeatCount) {
+        // 未达遍数：跳回上一首继续播
+        const idx = await TrackPlayer.getActiveTrackIndex();
+        if (idx != null && idx > 0) {
+          setManualSkip(true); // 回跳不要再触发拦截
+          await TrackPlayer.skipToPrevious();
+          if (shouldSeekAlign(pm)) {
+            const t = TRACKS.find(tr => tr.id === lastTrack.id);
+            if (t?.durationMs) {
+              setAlignSeekExpectedUntil(Date.now() + 3000);
+              await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
+            }
+          } else {
+            await TrackPlayer.seekTo(0);
+          }
+          await TrackPlayer.play();
+          return; // 不重置 sessionCount，继续累计
+        }
+      }
+      // 达到遍数，正常切歌，走下面的重置逻辑
     }
 
     // 重置状态
+    manualSkip = false;
     currentTrackId = track?.id || null;
     sessionCount = 0;
     saveSessionCount(0);
@@ -136,19 +169,10 @@ export default async function PlaybackService() {
     }
   });
 
-  // ─── 队列结束（单曲场景的遍数计数触发点） ───
-  // RepeatMode.Off 下，单曲播完会触发 PlaybackQueueEnded
+  // ─── 队列结束 ───
+  // RepeatMode.Off 下：单曲播完 或 列表最后一首播完
   TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async () => {
-    const ps = loadPlayerState();
-    const pm = ps?.playMode || 'repeat-one';
-
-    if (pm === 'repeat-one' || pm === 'play-one') {
-      completeCycle();
-      await onCycleComplete();
-    } else {
-      // 列表模式：最后一首播完
-      completeCycle();
-      await onCycleComplete();
-    }
+    completeCycle();
+    await onCycleComplete();
   });
 }
