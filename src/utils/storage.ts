@@ -61,7 +61,6 @@ export function setSettings(settings: { isCareMode: boolean; isSyncMode: boolean
 
 // --- 同步判断（跨运行时可读） ---
 export function shouldSeekAlign(playMode: string): boolean {
-  if (playMode === 'repeat-one') return true; // 单曲循环始终同步
   return getSettings().isSyncMode;
 }
 

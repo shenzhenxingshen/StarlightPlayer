@@ -96,10 +96,19 @@ const PlayerScreen: React.FC = () => {
     });
   }, [showToast]);
 
-  const handleToggleSync = useCallback(() => {
+  const handleToggleSync = useCallback(async () => {
+    const willSync = !isSyncMode;
     toggleSyncMode();
-    showToast(isSyncMode ? '同步播放：关闭' : '同步播放：开启');
-  }, [isSyncMode, toggleSyncMode, showToast]);
+    showToast(willSync ? '同步播放：开启' : '同步播放：关闭');
+    // 开启同步时立即执行一次进度对齐
+    if (willSync && activeTrack?.id) {
+      const track = TRACKS.find(t => t.id === activeTrack.id);
+      if (track?.durationMs) {
+        setAlignSeekExpectedUntil(Date.now() + 3000);
+        await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(track.durationMs)));
+      }
+    }
+  }, [isSyncMode, toggleSyncMode, showToast, activeTrack]);
 
   const alignAndPlay = async () => {
     resetCycleIfCompleted();
