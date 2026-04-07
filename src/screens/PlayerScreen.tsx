@@ -125,11 +125,13 @@ const PlayerScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.topArea}>
+      <View style={styles.albumArea}>
         <TrackInfo track={displayTrack} isPlaying={isPlaying} isCareMode={isCareMode} />
+      </View>
+      <View style={styles.progressArea}>
         <ProgressBar position={progress.position} duration={progress.duration} onSeek={() => {}} isCareMode={isCareMode} currentRepeat={currentRepeat} totalRepeat={repeatCount} />
       </View>
-      <View style={styles.bottomArea}>
+      <View style={styles.controlArea}>
         <Controls
           isPlaying={isPlaying}
           playMode={playMode}
@@ -149,8 +151,9 @@ const PlayerScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
-  topArea: { flex: 1, justifyContent: 'center' },
-  bottomArea: { justifyContent: 'center', paddingBottom: 24, flex: 0.4 },
+  albumArea: { flex: 1, justifyContent: 'center' },
+  progressArea: { paddingBottom: 8 },
+  controlArea: { paddingBottom: 24 },
 });
 
 export default PlayerScreen;

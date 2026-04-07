@@ -19,7 +19,8 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, isCareMod
   };
 
   const progress = duration > 0 ? Math.min(position / duration, 1) : 0;
-  const textSize = isCareMode ? 16 : 12;
+  const textSize = isCareMode ? 18 : 15;
+  const repeatSize = isCareMode ? 20 : 16;
 
   return (
     <View style={styles.container}>
@@ -32,11 +33,11 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, isCareMod
       </View>
       <View style={styles.timeRow}>
         <Text style={[styles.time, { fontSize: textSize }]}>{fmt(position)}</Text>
+        {!isCareMode && totalRepeat != null && totalRepeat > 1 && currentRepeat != null && (
+          <Text style={[styles.repeatText, { fontSize: repeatSize }]}>{currentRepeat}/{totalRepeat}</Text>
+        )}
         <Text style={[styles.time, { fontSize: textSize }]}>{fmt(duration)}</Text>
       </View>
-      {!isCareMode && totalRepeat != null && totalRepeat > 1 && currentRepeat != null && (
-        <Text style={styles.repeatText}>{currentRepeat}/{totalRepeat}</Text>
-      )}
     </View>
   );
 };
@@ -48,9 +49,9 @@ const styles = StyleSheet.create({
   fill: { height: 4, backgroundColor: GOLD, borderRadius: 2 },
   thumb: { width: 0, height: 0 },
   thumbActive: { width: 10, height: 10, borderRadius: 5, backgroundColor: GOLD, marginLeft: -5 },
-  timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  timeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   time: { color: 'rgba(255,255,255,0.5)' },
-  repeatText: { color: GOLD_DIM, fontSize: 14, textAlign: 'center', marginTop: 6 },
+  repeatText: { color: GOLD_DIM },
 });
 
 export default ProgressBar;
