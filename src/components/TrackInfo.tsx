@@ -1,6 +1,6 @@
 import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from '../constants/colors';
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Track } from '../types';
 import VinylRecord from './VinylRecord';
 
@@ -11,9 +11,10 @@ interface TrackInfoProps {
 }
 
 const TrackInfo: React.FC<TrackInfoProps> = ({ track, isPlaying, isCareMode = false }) => {
+  const { width } = useWindowDimensions();
   const titleSize = isCareMode ? 28 : 22;
-  const subSize = isCareMode ? 20 : 15;
-  const vinylSize = isCareMode ? 300 : 260;
+  // 唱片取屏幕宽度的 65%，限制最大 300px
+  const vinylSize = Math.min(width * 0.65, 300);
 
   return (
     <View style={styles.container}>
