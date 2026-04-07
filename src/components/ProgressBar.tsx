@@ -21,7 +21,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, onSeek, i
 
   const progress = duration > 0 ? Math.min(position / duration, 1) : 0;
   const textSize = isCareMode ? 18 : 15;
-  const repeatSize = isCareMode ? 20 : 16;
+  const repeatSize = isCareMode ? 28 : 22;
   const trackWidth = useRef(0);
 
   const panResponder = useRef(

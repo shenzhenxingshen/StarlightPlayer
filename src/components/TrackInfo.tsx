@@ -27,8 +27,8 @@ const TrackInfo: React.FC<TrackInfoProps> = ({ track, isPlaying, isCareMode = fa
 };
 
 const styles = StyleSheet.create({
-  container: { alignItems: 'center', paddingVertical: 20 },
-  title: { color: GOLD, fontWeight: 'bold', textAlign: 'center', marginTop: 24, paddingHorizontal: 30 },
+  container: { alignItems: 'center', paddingVertical: 8 },
+  title: { color: GOLD, fontWeight: 'bold', textAlign: 'center', marginTop: 16, paddingHorizontal: 30 },
   subtitle: { color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 6 },
 });
 
