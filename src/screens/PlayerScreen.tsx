@@ -9,7 +9,8 @@ import { useSettingsStore } from '../store/settingsStore';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { TRACKS } from '../constants/tracks';
 import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState, shouldSeekAlign, loadSessionCount } from '../utils/storage';
-import { setManualSkip, isStartedFromZero } from '../services/playbackService';
+import { isStartedFromZero } from '../services/playbackService';
+import { loadTrack, getCurrentIndex, getNextIndex, getPrevIndex } from '../utils/trackManager';
 
 // 标志：是否正在恢复上次状态，期间不保存
 let restoring = true;
@@ -22,11 +23,10 @@ const PlayerScreen: React.FC = () => {
   const { isCareMode, repeatCount } = useSettingsStore();
 
   // 读取当前遍数（随 progress 刷新）
-  // sessionCount 是已完成遍数；未从头播放的那遍显示为第 0 遍
   const sessionCnt = loadSessionCount();
   const currentRepeat = isStartedFromZero() ? sessionCnt + 1 : sessionCnt;
 
-  // 需求1: 从持久化恢复 playMode
+  // 从持久化恢复 playMode
   const saved = useRef(loadPlayerState());
   const [playMode, setPlayMode] = useState<PlayMode>((saved.current?.playMode as PlayMode) || 'repeat-one');
   const [modeLabel, setModeLabel] = useState<string | null>(null);
@@ -36,41 +36,37 @@ const PlayerScreen: React.FC = () => {
     return () => { if (labelTimer.current) clearTimeout(labelTimer.current); };
   }, []);
 
-  // 需求1: 恢复上次播放的歌曲
+  // 恢复上次播放的歌曲
   useEffect(() => {
     (async () => {
       if (saved.current?.trackIndex != null && saved.current.trackIndex >= 0) {
-        setManualSkip(true);
-        await TrackPlayer.skip(saved.current.trackIndex).catch(() => {});
+        await loadTrack(saved.current.trackIndex);
         saved.current = null;
       }
-      // 恢复完成，允许后续保存
       restoring = false;
     })();
   }, []);
 
-  // 需求1: 切歌时保存状态（恢复期间不保存）
+  // 切歌时保存状态（恢复期间不保存）
   useEffect(() => {
     const sub = TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async () => {
       if (restoring) return;
-      const idx = await TrackPlayer.getActiveTrackIndex();
-      if (idx != null) savePlayerState({ trackIndex: idx, playMode });
+      savePlayerState({ trackIndex: getCurrentIndex(), playMode });
     });
     return () => sub.remove();
   }, [playMode]);
 
-  // 需求1: App 进入后台时保存
+  // App 进入后台时保存
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state) => {
       if (state === 'background') {
-        const idx = await TrackPlayer.getActiveTrackIndex();
-        if (idx != null) savePlayerState({ trackIndex: idx, playMode });
+        savePlayerState({ trackIndex: getCurrentIndex(), playMode });
       }
     });
     return () => sub.remove();
   }, [playMode]);
 
-  // 需求2: 关怀模式下精简通知栏按钮
+  // 关怀模式下精简通知栏按钮
   useEffect(() => {
     const caps = isCareMode
       ? [Capability.Play, Capability.Pause]
@@ -81,7 +77,6 @@ const PlayerScreen: React.FC = () => {
     TrackPlayer.updateOptions({ capabilities: caps, compactCapabilities: compact }).catch(() => {});
   }, [isCareMode]);
 
-  // 统一使用 RepeatMode.Off，播完由 PlaybackQueueEnded / ActiveTrackChanged 事件驱动
   useEffect(() => {
     TrackPlayer.setRepeatMode(RepeatMode.Off);
   }, [playMode]);
@@ -92,17 +87,13 @@ const PlayerScreen: React.FC = () => {
       setModeLabel(MODE_CONFIG[next].label);
       if (labelTimer.current) clearTimeout(labelTimer.current);
       labelTimer.current = setTimeout(() => setModeLabel(null), 1500);
-      // 需求1: 切模式时保存
-      TrackPlayer.getActiveTrackIndex().then(idx => {
-        if (idx != null) savePlayerState({ trackIndex: idx, playMode: next });
-      });
+      savePlayerState({ trackIndex: getCurrentIndex(), playMode: next });
       return next;
     });
   }, []);
 
-  const alignAndPlay = async (trackId?: string) => {
-    const id = trackId ?? activeTrack?.id;
-    const track = TRACKS.find(t => t.id === id);
+  const alignAndPlay = async () => {
+    const track = TRACKS.find(t => t.id === activeTrack?.id);
     if (track?.durationMs && shouldSeekAlign(playMode)) {
       setAlignSeekExpectedUntil(Date.now() + 3000);
       await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(track.durationMs)));
@@ -111,35 +102,13 @@ const PlayerScreen: React.FC = () => {
   };
 
   const handleSkipNext = async () => {
-    try {
-      setManualSkip(true);
-      await TrackPlayer.skipToNext();
-      const idx = await TrackPlayer.getActiveTrackIndex();
-      const queue = await TrackPlayer.getQueue();
-      if (idx !== null && idx !== undefined) {
-        if (shouldSeekAlign(playMode)) {
-          await alignAndPlay(queue[idx]?.id);
-        } else {
-          await TrackPlayer.play();
-        }
-      }
-    } catch { setManualSkip(false); }
+    await loadTrack(getNextIndex());
+    await TrackPlayer.play();
   };
 
   const handleSkipPrev = async () => {
-    try {
-      setManualSkip(true);
-      await TrackPlayer.skipToPrevious();
-      const idx = await TrackPlayer.getActiveTrackIndex();
-      const queue = await TrackPlayer.getQueue();
-      if (idx !== null && idx !== undefined) {
-        if (shouldSeekAlign(playMode)) {
-          await alignAndPlay(queue[idx]?.id);
-        } else {
-          await TrackPlayer.play();
-        }
-      }
-    } catch { setManualSkip(false); }
+    await loadTrack(getPrevIndex());
+    await TrackPlayer.play();
   };
 
   const displayTrack = TRACKS.find(t => t.id === activeTrack?.id) || null;
@@ -148,7 +117,6 @@ const PlayerScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.topArea}>
         <TrackInfo track={displayTrack} isPlaying={isPlaying} isCareMode={isCareMode} />
-        {/* onSeek 故意禁用：多人同步播放场景下，进度由 alignAndPlay 按时钟对齐，不允许手动 seek */}
         <ProgressBar position={progress.position} duration={progress.duration} onSeek={() => {}} isCareMode={isCareMode} currentRepeat={currentRepeat} totalRepeat={repeatCount} />
       </View>
       <View style={styles.bottomArea}>

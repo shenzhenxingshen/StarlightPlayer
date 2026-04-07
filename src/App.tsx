@@ -9,9 +9,7 @@ import TrackPlayer, { Capability } from 'react-native-track-player';
 import PlayerScreen from './screens/PlayerScreen';
 import PlaylistScreen from './screens/PlaylistScreen';
 import ProfileScreen from './screens/ProfileScreen';
-import { TRACKS } from './constants/tracks';
-import { msToSeconds } from './utils/syncUtils';
-import { getLocalAudioUrl } from './utils/getLocalAudioUrl';
+import { loadTrack } from './utils/trackManager';
 import { useSettingsStore } from './store/settingsStore';
 
 const Tab = createBottomTabNavigator();
@@ -50,16 +48,7 @@ const App: React.FC = () => {
           compactCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToPrevious, Capability.SkipToNext],
           progressUpdateEventInterval: 1,
         });
-        await TrackPlayer.add(
-          TRACKS.map(t => ({
-            id: t.id,
-            url: getLocalAudioUrl(t.audioUrl),
-            title: t.title,
-            artist: t.subtitle || '',
-            artwork: require('./assets/images/vinyl-cover.png'),
-            duration: msToSeconds(t.durationMs || 0),
-          }))
-        );
+        await loadTrack(0);
         // Android 13+ 通知权限
         if (Platform.OS === 'android' && Platform.Version >= 33) {
           PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(() => {});
