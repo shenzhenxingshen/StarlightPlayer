@@ -69,7 +69,7 @@ const Controls: React.FC<ControlsProps> = ({
         </Pressable>
         <View style={styles.rightCol}>
           <Pressable onPress={onToggleSync} hitSlop={12} style={{ padding: sidePad }}>
-            <Icon name={isSyncMode ? 'sync' : 'sync-disabled'} size={modeSize} color="rgba(255,255,255,0.55)" />
+            <Icon name={isSyncMode ? 'groups' : 'person'} size={modeSize} color="rgba(255,255,255,0.55)" />
           </Pressable>
           <Pressable onPress={onSkipToNext} hitSlop={12} style={{ padding: sidePad }}>
             <Icon name="skip-next" size={skipSize} color="rgba(255,255,255,0.8)" />
