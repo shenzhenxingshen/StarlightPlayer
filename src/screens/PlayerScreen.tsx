@@ -138,7 +138,7 @@ const PlayerScreen: React.FC = () => {
         <TrackInfo track={displayTrack} isPlaying={isPlaying} isCareMode={isCareMode} />
       </View>
       <View style={styles.progressArea}>
-        <ProgressBar position={progress.position} duration={progress.duration} onSeek={() => {}} isCareMode={isCareMode} currentRepeat={currentRepeat} totalRepeat={repeatCount} />
+        <ProgressBar position={progress.position} duration={progress.duration} onSeek={(s) => TrackPlayer.seekTo(s)} seekable={!isSyncMode} isCareMode={isCareMode} currentRepeat={currentRepeat} totalRepeat={repeatCount} />
       </View>
       <View style={styles.controlArea}>
         <Controls
