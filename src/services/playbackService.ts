@@ -12,6 +12,18 @@ let startedFromZero = false;
 
 export function isStartedFromZero() { return startedFromZero; }
 
+// 手动播放前调用：如果上一轮已结束，重置遍数开启新一轮
+export function resetCycleIfCompleted() {
+  const { repeatCount } = getSettings();
+  if (sessionCount >= repeatCount) {
+    sessionCount = 0;
+    saveSessionCount(0);
+    const ps = loadPlayerState();
+    const pm = ps?.playMode || 'repeat-one';
+    startedFromZero = !shouldSeekAlign(pm);
+  }
+}
+
 const increment = (id: string) => useStatsStore.getState().increment(id);
 
 async function seekAligned() {
@@ -49,6 +61,7 @@ async function switchToTrack(idx: number) {
 export default async function PlaybackService() {
   // ─── 远程控制 ───
   TrackPlayer.addEventListener(Event.RemotePlay, async () => {
+    resetCycleIfCompleted();
     try {
       const ps = loadPlayerState();
       const pm = ps?.playMode || 'repeat-one';
@@ -128,18 +141,18 @@ export default async function PlaybackService() {
     }
 
     // 达到遍数
-    sessionCount = 0;
-    saveSessionCount(0);
-
     switch (pm) {
       case 'repeat-one':
         // 单曲循环：重置计数继续
+        sessionCount = 0;
+        saveSessionCount(0);
         const pos = await seekAligned();
         startedFromZero = true;
         await TrackPlayer.play();
         break;
       case 'play-one':
-        // 单曲播放：停止
+        // 单曲播放：停止，保留 sessionCount 让 UI 显示 N/N
+        startedFromZero = false; // UI 显示已完成遍数而非"正在播第 N+1 遍"
         break;
       case 'repeat-all':
         // 列表循环：切下一首（最后一首后回到第一首）
@@ -148,7 +161,8 @@ export default async function PlaybackService() {
       case 'play-all':
         // 列表播放：切下一首，最后一首停止
         if (isLastTrack()) {
-          // 停止
+          // 停止，保留 sessionCount
+          startedFromZero = false;
         } else {
           await switchToTrack(getNextIndex());
         }

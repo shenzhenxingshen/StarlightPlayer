@@ -9,7 +9,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { TRACKS } from '../constants/tracks';
 import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState, shouldSeekAlign, loadSessionCount } from '../utils/storage';
-import { isStartedFromZero } from '../services/playbackService';
+import { isStartedFromZero, resetCycleIfCompleted } from '../services/playbackService';
 import { loadTrack, getCurrentIndex, getNextIndex, getPrevIndex } from '../utils/trackManager';
 
 // 标志：是否正在恢复上次状态，期间不保存
@@ -93,6 +93,7 @@ const PlayerScreen: React.FC = () => {
   }, []);
 
   const alignAndPlay = async () => {
+    resetCycleIfCompleted();
     const track = TRACKS.find(t => t.id === activeTrack?.id);
     if (track?.durationMs && shouldSeekAlign(playMode)) {
       setAlignSeekExpectedUntil(Date.now() + 3000);
