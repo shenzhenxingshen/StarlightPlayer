@@ -146,8 +146,8 @@ export default async function PlaybackService() {
         // 单曲循环：重置计数继续
         sessionCount = 0;
         saveSessionCount(0);
-        const pos = await seekAligned();
-        startedFromZero = true;
+        const pos2 = await seekAligned();
+        startedFromZero = pos2 <= 1.5;
         await TrackPlayer.play();
         break;
       case 'play-one':
