@@ -1,5 +1,5 @@
 import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from '../constants/colors';
-import { View, StyleSheet, ScrollView, Text, Switch, TouchableOpacity, Platform, Alert, NativeModules, Pressable, TextInput } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Platform, Alert, NativeModules, Pressable, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';import React, { useState, useCallback } from 'react';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { TRACKS } from '../constants/tracks';
@@ -33,7 +33,7 @@ const ProfileScreen: React.FC = () => {
   const [showLogs, setShowLogs] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customRepeatText, setCustomRepeatText] = useState('');
-  const { isCareMode, toggleCareMode, isSyncMode, toggleSyncMode, repeatCount, setRepeatCount } = useSettingsStore();
+  const { isCareMode, toggleCareMode, repeatCount, setRepeatCount } = useSettingsStore();
   const stats = useStatsStore(s => s.stats);
 
   const t = (base: number) => isCareMode ? base + 6 : base;
@@ -83,27 +83,6 @@ const ProfileScreen: React.FC = () => {
             </Pressable>
           </View>
         </View>
-
-        {/* 同步播放开关 - 关怀模式下隐藏 */}
-        {!isCareMode && (
-        <View style={styles.card}>
-          <View style={styles.cardRow}>
-            <Icon name="sync" size={t(22)} color={GOLD} />
-            <View style={styles.cardInfo}>
-              <Text style={[styles.cardLabel, { fontSize: t(16) }]}>同步播放</Text>
-              <Text style={[styles.cardDesc, { fontSize: t(12) }]}>
-                {isSyncMode ? '开启：播放时自动对齐进度（共修模式）' : '关闭：每首歌从头开始播放'}
-              </Text>
-            </View>
-            <Switch
-              value={isSyncMode}
-              onValueChange={toggleSyncMode}
-              trackColor={{ false: '#555', true: '#b8860b' }}
-              thumbColor="#fff"
-            />
-          </View>
-        </View>
-        )}
 
         {/* 每首重复遍数 - 关怀模式下隐藏 */}
         {!isCareMode && (

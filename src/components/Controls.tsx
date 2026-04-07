@@ -16,15 +16,17 @@ interface ControlsProps {
   isPlaying: boolean;
   playMode: PlayMode;
   modeLabel: string | null;
+  isSyncMode: boolean;
   onPlayPause: () => void;
   onSkipToNext: () => void;
   onSkipToPrevious: () => void;
   onToggleMode: () => void;
+  onToggleSync: () => void;
   isCareMode?: boolean;
 }
 
 const Controls: React.FC<ControlsProps> = ({
-  isPlaying, playMode, modeLabel, onPlayPause, onSkipToNext, onSkipToPrevious, onToggleMode, isCareMode = false,
+  isPlaying, playMode, modeLabel, isSyncMode, onPlayPause, onSkipToNext, onSkipToPrevious, onToggleMode, onToggleSync, isCareMode = false,
 }) => {
   // 需求3: 普通模式 +20%, 关怀模式 +50%
   const playSize = isCareMode ? 123 : 98;
@@ -66,7 +68,9 @@ const Controls: React.FC<ControlsProps> = ({
           </View>
         </Pressable>
         <View style={styles.rightCol}>
-          <View style={{ height: modeSize + sidePad * 2 }} />
+          <Pressable onPress={onToggleSync} hitSlop={12} style={{ padding: sidePad }}>
+            <Icon name={isSyncMode ? 'sync' : 'sync-disabled'} size={modeSize} color="rgba(255,255,255,0.55)" />
+          </Pressable>
           <Pressable onPress={onSkipToNext} hitSlop={12} style={{ padding: sidePad }}>
             <Icon name="skip-next" size={skipSize} color="rgba(255,255,255,0.8)" />
           </Pressable>

@@ -20,7 +20,7 @@ const PlayerScreen: React.FC = () => {
   const progress = useProgress(500);
   const activeTrack = useActiveTrack();
   const isPlaying = playbackState.state === State.Playing;
-  const { isCareMode, repeatCount } = useSettingsStore();
+  const { isCareMode, repeatCount, isSyncMode, toggleSyncMode } = useSettingsStore();
 
   // 读取当前遍数（随 progress 刷新）
   const sessionCnt = loadSessionCount();
@@ -81,16 +81,25 @@ const PlayerScreen: React.FC = () => {
     TrackPlayer.setRepeatMode(RepeatMode.Off);
   }, [playMode]);
 
+  const showToast = useCallback((text: string) => {
+    setModeLabel(text);
+    if (labelTimer.current) clearTimeout(labelTimer.current);
+    labelTimer.current = setTimeout(() => setModeLabel(null), 1500);
+  }, []);
+
   const toggleMode = useCallback(() => {
     setPlayMode(prev => {
       const next = MODE_CONFIG[prev].next;
-      setModeLabel(MODE_CONFIG[next].label);
-      if (labelTimer.current) clearTimeout(labelTimer.current);
-      labelTimer.current = setTimeout(() => setModeLabel(null), 1500);
+      showToast(MODE_CONFIG[next].label);
       savePlayerState({ trackIndex: getCurrentIndex(), playMode: next });
       return next;
     });
-  }, []);
+  }, [showToast]);
+
+  const handleToggleSync = useCallback(() => {
+    toggleSyncMode();
+    showToast(isSyncMode ? '同步播放：关闭' : '同步播放：开启');
+  }, [isSyncMode, toggleSyncMode, showToast]);
 
   const alignAndPlay = async () => {
     resetCycleIfCompleted();
@@ -125,10 +134,12 @@ const PlayerScreen: React.FC = () => {
           isPlaying={isPlaying}
           playMode={playMode}
           modeLabel={modeLabel}
+          isSyncMode={isSyncMode}
           onPlayPause={isPlaying ? () => TrackPlayer.pause() : () => alignAndPlay()}
           onSkipToNext={handleSkipNext}
           onSkipToPrevious={handleSkipPrev}
           onToggleMode={toggleMode}
+          onToggleSync={handleToggleSync}
           isCareMode={isCareMode}
         />
       </View>
