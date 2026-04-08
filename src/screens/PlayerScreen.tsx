@@ -111,11 +111,13 @@ const PlayerScreen: React.FC = () => {
   }, [isSyncMode, toggleSyncMode, showToast, activeTrack]);
 
   const alignAndPlay = async () => {
-    resetCycleIfCompleted();
+    const didReset = resetCycleIfCompleted();
     const track = TRACKS.find(t => t.id === activeTrack?.id);
     if (track?.durationMs && shouldSeekAlign(playMode)) {
       setAlignSeekExpectedUntil(Date.now() + 3000);
       await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(track.durationMs)));
+    } else if (didReset) {
+      await TrackPlayer.seekTo(0);
     }
     await TrackPlayer.play();
   };

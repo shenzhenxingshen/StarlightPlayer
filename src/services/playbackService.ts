@@ -14,13 +14,15 @@ let currentTrackId: string | null = null;
 // UI 端读取用 loadStartedFromZero()
 export function isStartedFromZero() { return loadStartedFromZero(); }
 
-// 手动播放前调用：如果上一轮已结束，重置遍数开启新一轮
-export function resetCycleIfCompleted() {
+// 手动播放前调用：如果上一轮已结束，重置遍数开启新一轮。返回是否重置。
+export function resetCycleIfCompleted(): boolean {
   const { repeatCount } = getSettings();
   if (loadSessionCount() >= repeatCount) {
     saveSessionCount(0);
     saveStartedFromZero(!shouldSeekAlign(''));
+    return true;
   }
+  return false;
 }
 
 const increment = (id: string) => useStatsStore.getState().increment(id);
@@ -66,8 +68,12 @@ async function seekAlignedForResume() {
 export default async function PlaybackService() {
   // ─── 远程控制 ───
   TrackPlayer.addEventListener(Event.RemotePlay, async () => {
-    resetCycleIfCompleted();
-    try { await seekAlignedForResume(); } catch {}
+    const didReset = resetCycleIfCompleted();
+    if (shouldSeekAlign('')) {
+      try { await seekAlignedForResume(); } catch {}
+    } else if (didReset) {
+      await TrackPlayer.seekTo(0);
+    }
     await TrackPlayer.play();
   });
   TrackPlayer.addEventListener(Event.RemotePause, () => TrackPlayer.pause());
