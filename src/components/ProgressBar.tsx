@@ -46,9 +46,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, onSeek, i
   return (
     <View style={styles.container}>
       <View style={styles.barWrap} {...(seekable ? panResponder.panHandlers : {})} onLayout={onLayout}>
-        <View style={styles.track}>
-          <View style={[styles.fill, { flex: progress }]} />
-          <View style={[styles.thumb, progress > 0 && styles.thumbActive, seekable && progress > 0 && styles.thumbSeekable]} />
+        <View style={[styles.track, seekable && styles.trackSeekable]}>
+          <View style={[styles.fill, { flex: progress }, seekable && styles.fillSeekable]} />
+          <View style={[styles.thumb, progress > 0 && (seekable ? styles.thumbSeekable : styles.thumbLocked)]} />
           <View style={{ flex: Math.max(1 - progress, 0.001) }} />
         </View>
       </View>
@@ -66,11 +66,13 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, onSeek, i
 const styles = StyleSheet.create({
   container: { paddingHorizontal: 30, paddingVertical: 8 },
   barWrap: { paddingVertical: 8 },
-  track: { height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2, flexDirection: 'row', alignItems: 'center' },
-  fill: { height: 4, backgroundColor: GOLD, borderRadius: 2 },
+  track: { height: 3, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 2, flexDirection: 'row', alignItems: 'center' },
+  trackSeekable: { height: 6, borderRadius: 3 },
+  fill: { height: 3, backgroundColor: GOLD_DIM, borderRadius: 2 },
+  fillSeekable: { height: 6, backgroundColor: GOLD, borderRadius: 3 },
   thumb: { width: 0, height: 0 },
-  thumbActive: { width: 10, height: 10, borderRadius: 5, backgroundColor: GOLD, marginLeft: -5 },
-  thumbSeekable: { width: 14, height: 14, borderRadius: 7, marginLeft: -7 },
+  thumbLocked: { width: 8, height: 8, borderRadius: 4, backgroundColor: GOLD_DIM, marginLeft: -4 },
+  thumbSeekable: { width: 16, height: 16, borderRadius: 8, backgroundColor: GOLD, marginLeft: -8, borderWidth: 2, borderColor: GOLD_GLOW },
   timeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   time: { color: 'rgba(255,255,255,0.5)' },
   repeatText: { color: GOLD_DIM },
