@@ -23,20 +23,26 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, onSeek, i
   const textSize = isCareMode ? 18 : 15;
   const repeatSize = isCareMode ? 28 : 22;
   const trackWidth = useRef(0);
+  const seekableRef = useRef(seekable);
+  const durationRef = useRef(duration);
+  const onSeekRef = useRef(onSeek);
+  seekableRef.current = seekable;
+  durationRef.current = duration;
+  onSeekRef.current = onSeek;
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => seekable && duration > 0,
-      onMoveShouldSetPanResponder: () => seekable && duration > 0,
+      onStartShouldSetPanResponder: () => seekableRef.current && durationRef.current > 0,
+      onMoveShouldSetPanResponder: () => seekableRef.current && durationRef.current > 0,
       onPanResponderGrant: (e) => {
-        if (!seekable || duration <= 0) return;
+        if (!seekableRef.current || durationRef.current <= 0) return;
         const x = e.nativeEvent.locationX;
-        onSeek(Math.max(0, Math.min(1, x / trackWidth.current)) * duration);
+        onSeekRef.current(Math.max(0, Math.min(1, x / trackWidth.current)) * durationRef.current);
       },
       onPanResponderMove: (e) => {
-        if (!seekable || duration <= 0) return;
+        if (!seekableRef.current || durationRef.current <= 0) return;
         const x = e.nativeEvent.locationX;
-        onSeek(Math.max(0, Math.min(1, x / trackWidth.current)) * duration);
+        onSeekRef.current(Math.max(0, Math.min(1, x / trackWidth.current)) * durationRef.current);
       },
     })
   ).current;
@@ -45,7 +51,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, onSeek, i
 
   return (
     <View style={styles.container}>
-      <View style={styles.barWrap} {...(seekable ? panResponder.panHandlers : {})} onLayout={onLayout}>
+      <View style={styles.barWrap} {...panResponder.panHandlers} onLayout={onLayout}>
         <View style={[styles.track, seekable && styles.trackSeekable]}>
           <View style={[styles.fill, { flex: progress }, seekable && styles.fillSeekable]} />
           <View style={[styles.thumb, progress > 0 && (seekable ? styles.thumbSeekable : styles.thumbLocked)]} />
