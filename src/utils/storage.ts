@@ -43,15 +43,15 @@ export function loadPlayerState(): PlayerState | null {
 export function getSettings(): { isCareMode: boolean; isSyncMode: boolean; repeatCount: number } {
   try {
     const data = storage.getString(SETTINGS_KEY);
-    if (!data) return { isCareMode: false, isSyncMode: false, repeatCount: 1 };
+    if (!data) return { isCareMode: false, isSyncMode: true, repeatCount: 1 };
     const parsed = JSON.parse(data);
     return {
       isCareMode: parsed.isCareMode ?? parsed.isLargeTextMode ?? false,
-      isSyncMode: parsed.isSyncMode ?? false,
+      isSyncMode: parsed.isSyncMode ?? true,
       repeatCount: parsed.repeatCount ?? 1,
     };
   } catch {
-    return { isCareMode: false, isSyncMode: false, repeatCount: 1 };
+    return { isCareMode: false, isSyncMode: true, repeatCount: 1 };
   }
 }
 
