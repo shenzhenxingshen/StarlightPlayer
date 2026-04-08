@@ -66,6 +66,7 @@ export function shouldSeekAlign(playMode: string): boolean {
 
 // --- Session Count（跨运行时共享） ---
 const SESSION_COUNT_KEY = 'session_count';
+const STARTED_FROM_ZERO_KEY = 'started_from_zero';
 
 export function saveSessionCount(count: number): void {
   storage.set(SESSION_COUNT_KEY, count);
@@ -73,6 +74,14 @@ export function saveSessionCount(count: number): void {
 
 export function loadSessionCount(): number {
   try { return storage.getNumber(SESSION_COUNT_KEY) ?? 0; } catch { return 0; }
+}
+
+export function saveStartedFromZero(value: boolean): void {
+  storage.set(STARTED_FROM_ZERO_KEY, value);
+}
+
+export function loadStartedFromZero(): boolean {
+  try { return storage.getBoolean(STARTED_FROM_ZERO_KEY) ?? false; } catch { return false; }
 }
 
 // --- Playback Stats ---
