@@ -11,10 +11,9 @@ interface TrackInfoProps {
 }
 
 const TrackInfo: React.FC<TrackInfoProps> = ({ track, isPlaying, isCareMode = false }) => {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const titleSize = isCareMode ? 28 : 22;
-  // 唱片取屏幕宽度的 65%，限制最大 300px
-  const vinylSize = Math.min(width * 0.65, 300);
+  const vinylSize = Math.min(width, height * 0.4) * 0.65;
 
   return (
     <View style={styles.container}>

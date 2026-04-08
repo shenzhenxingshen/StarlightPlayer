@@ -174,9 +174,9 @@ const PlayerScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
-  albumArea: { flex: 1, justifyContent: 'center' },
+  albumArea: { flex: 1, justifyContent: 'center', overflow: 'hidden' },
   progressArea: { paddingBottom: 8 },
-  controlArea: { paddingBottom: 24 },
+  controlArea: { paddingBottom: 24, paddingTop: 16 },
   toast: { position: 'absolute', bottom: 200, alignSelf: 'center' },
   toastText: { color: GOLD, fontSize: 14, backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW, overflow: 'hidden' },
 });

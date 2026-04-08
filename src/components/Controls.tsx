@@ -54,10 +54,11 @@ const Controls: React.FC<ControlsProps> = ({
     <View style={styles.container}>
       <View style={styles.mainRow}>
         <View style={styles.leftCol}>
-          <Pressable onPress={onToggleMode} hitSlop={12} style={{ padding: sidePad }}>
+          <Pressable onPress={onToggleMode} hitSlop={8} style={{ padding: sidePad }}>
             <Icon name={modeIcon} size={modeSize} color="rgba(255,255,255,0.55)" />
           </Pressable>
-          <Pressable onPress={onSkipToPrevious} hitSlop={12} style={{ padding: sidePad }}>
+          <View style={{ height: 12 }} />
+          <Pressable onPress={onSkipToPrevious} hitSlop={8} style={{ padding: sidePad }}>
             <Icon name="skip-previous" size={skipSize} color="rgba(255,255,255,0.8)" />
           </Pressable>
         </View>
@@ -67,10 +68,11 @@ const Controls: React.FC<ControlsProps> = ({
           </View>
         </Pressable>
         <View style={styles.rightCol}>
-          <Pressable onPress={onToggleSync} hitSlop={12} style={{ padding: sidePad }}>
+          <Pressable onPress={onToggleSync} hitSlop={8} style={{ padding: sidePad }}>
             <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={modeSize} color="rgba(255,255,255,0.55)" />
           </Pressable>
-          <Pressable onPress={onSkipToNext} hitSlop={12} style={{ padding: sidePad }}>
+          <View style={{ height: 12 }} />
+          <Pressable onPress={onSkipToNext} hitSlop={8} style={{ padding: sidePad }}>
             <Icon name="skip-next" size={skipSize} color="rgba(255,255,255,0.8)" />
           </Pressable>
         </View>
