@@ -7,6 +7,7 @@ import {
   saveSessionCount, loadSessionCount, saveStartedFromZero, loadStartedFromZero, getSettings,
 } from '../utils/storage';
 import { loadTrack, getCurrentIndex, getNextIndex, isLastTrack } from '../utils/trackManager';
+import { addLog } from '../utils/logger';
 
 // currentTrackId 仅 Service 端使用，不需要跨运行时
 let currentTrackId: string | null = null;
@@ -17,9 +18,11 @@ export function isStartedFromZero() { return loadStartedFromZero(); }
 // 手动播放前调用：如果上一轮已结束，重置遍数开启新一轮。返回是否重置。
 export function resetCycleIfCompleted(): boolean {
   const { repeatCount } = getSettings();
-  if (loadSessionCount() >= repeatCount) {
+  const count = loadSessionCount();
+  if (count >= repeatCount) {
     saveSessionCount(0);
     saveStartedFromZero(!shouldSeekAlign(''));
+    addLog('INFO', `resetCycle: ${count}>=${repeatCount} → reset`);
     return true;
   }
   return false;
@@ -34,6 +37,7 @@ async function seekAligned() {
       setAlignSeekExpectedUntil(Date.now() + 3000);
       const pos = msToSeconds(calculateAlignedPosition(t.durationMs));
       await TrackPlayer.seekTo(pos);
+      addLog('INFO', `seekAligned: ${currentTrackId} → ${pos.toFixed(1)}s/${msToSeconds(t.durationMs).toFixed(1)}s`);
       return pos;
     }
   }
@@ -42,15 +46,20 @@ async function seekAligned() {
 }
 
 function completeCycle() {
-  if (currentTrackId && loadStartedFromZero()) {
+  const sfz = loadStartedFromZero();
+  if (currentTrackId && sfz) {
     increment(currentTrackId);
     const next = loadSessionCount() + 1;
     saveSessionCount(next);
+    addLog('INFO', `completeCycle: ${currentTrackId} counted, session=${next}`);
+  } else {
+    addLog('INFO', `completeCycle: ${currentTrackId} skipped(sfz=${sfz})`);
   }
   saveStartedFromZero(true);
 }
 
 async function switchToTrack(idx: number) {
+  addLog('INFO', `switchToTrack: idx=${getCurrentIndex()}→${idx}, track=${TRACKS[idx]?.id}`);
   await loadTrack(idx);
   await TrackPlayer.play();
 }
@@ -68,6 +77,7 @@ async function seekAlignedForResume() {
 export default async function PlaybackService() {
   // ─── 远程控制 ───
   TrackPlayer.addEventListener(Event.RemotePlay, async () => {
+    addLog('INFO', 'RemotePlay');
     const didReset = resetCycleIfCompleted();
     if (shouldSeekAlign('')) {
       try { await seekAlignedForResume(); } catch {}
@@ -84,6 +94,7 @@ export default async function PlaybackService() {
 
   // ─── 来电恢复 ───
   TrackPlayer.addEventListener(Event.RemoteDuck, async ({ paused, permanent }) => {
+    addLog('INFO', `RemoteDuck: paused=${paused} permanent=${permanent}`);
     if (permanent) { await TrackPlayer.stop(); return; }
     if (paused) { await TrackPlayer.pause(); return; }
     try { await seekAlignedForResume(); } catch {}
@@ -93,6 +104,7 @@ export default async function PlaybackService() {
   // ─── 换歌 ───
   TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async ({ track }) => {
     if (!track) return;
+    addLog('INFO', `ActiveTrackChanged: ${track.id}, sync=${shouldSeekAlign('')}`);
     currentTrackId = track.id;
     saveSessionCount(0);
     if (shouldSeekAlign('')) {
@@ -112,10 +124,11 @@ export default async function PlaybackService() {
 
   // ─── 队列结束 ───
   TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async () => {
-    completeCycle();
-
     const pm = loadPlayerState()?.playMode || 'repeat-one';
     const { repeatCount } = getSettings();
+    addLog('INFO', `QueueEnded: track=${currentTrackId} mode=${pm} session=${loadSessionCount()} repeat=${repeatCount}`);
+    completeCycle();
+
     const count = loadSessionCount();
 
     if (count < repeatCount) {

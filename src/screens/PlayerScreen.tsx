@@ -12,6 +12,7 @@ import { TRACKS } from '../constants/tracks';
 import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState, shouldSeekAlign, loadSessionCount } from '../utils/storage';
 import { isStartedFromZero, resetCycleIfCompleted } from '../services/playbackService';
 import { loadTrack, getCurrentIndex, getNextIndex, getPrevIndex } from '../utils/trackManager';
+import { addLog } from '../utils/logger';
 
 // 标志：是否正在恢复上次状态，期间不保存
 let restoring = true;
@@ -60,6 +61,7 @@ const PlayerScreen: React.FC = () => {
   // App 进入后台时保存
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state) => {
+      if (state === 'background' || state === 'active') addLog('INFO', `AppState: ${state}`);
       if (state === 'background') {
         savePlayerState({ trackIndex: getCurrentIndex(), playMode });
       }
@@ -91,6 +93,7 @@ const PlayerScreen: React.FC = () => {
   const toggleMode = useCallback(() => {
     setPlayMode(prev => {
       const next = MODE_CONFIG[prev].next;
+      addLog('INFO', `toggleMode: ${prev}→${next}`);
       showToast(MODE_CONFIG[next].label);
       savePlayerState({ trackIndex: getCurrentIndex(), playMode: next });
       return next;
@@ -99,6 +102,7 @@ const PlayerScreen: React.FC = () => {
 
   const handleToggleSync = useCallback(async () => {
     const willSync = !isSyncMode;
+    addLog('INFO', `toggleSync: ${isSyncMode}→${willSync}`);
     toggleSyncMode();
     showToast(willSync ? '同步播放：开启' : '同步播放：关闭');
     // 开启同步时立即执行一次进度对齐
@@ -112,6 +116,7 @@ const PlayerScreen: React.FC = () => {
   }, [isSyncMode, toggleSyncMode, showToast, activeTrack]);
 
   const alignAndPlay = async () => {
+    addLog('INFO', `Play(UI): track=${activeTrack?.id} session=${loadSessionCount()}`);
     const didReset = resetCycleIfCompleted();
     const track = TRACKS.find(t => t.id === activeTrack?.id);
     if (track?.durationMs && shouldSeekAlign(playMode)) {
@@ -124,11 +129,13 @@ const PlayerScreen: React.FC = () => {
   };
 
   const handleSkipNext = async () => {
+    addLog('INFO', `SkipNext: ${getCurrentIndex()}→${getNextIndex()}`);
     await loadTrack(getNextIndex());
     await TrackPlayer.play();
   };
 
   const handleSkipPrev = async () => {
+    addLog('INFO', `SkipPrev: ${getCurrentIndex()}→${getPrevIndex()}`);
     await loadTrack(getPrevIndex());
     await TrackPlayer.play();
   };
