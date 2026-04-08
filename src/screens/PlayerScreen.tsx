@@ -9,7 +9,7 @@ import ProgressBar from '../components/ProgressBar';
 import { useSettingsStore } from '../store/settingsStore';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { TRACKS } from '../constants/tracks';
-import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState, shouldSeekAlign, loadSessionCount } from '../utils/storage';
+import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState, shouldSeekAlign, loadSessionCount, saveStartedFromZero } from '../utils/storage';
 import { isStartedFromZero, resetCycleIfCompleted } from '../services/playbackService';
 import { loadTrack, getCurrentIndex, getNextIndex, getPrevIndex } from '../utils/trackManager';
 
@@ -101,12 +101,14 @@ const PlayerScreen: React.FC = () => {
     const willSync = !isSyncMode;
     toggleSyncMode();
     showToast(willSync ? '同步播放：开启' : '同步播放：关闭');
-    // 开启同步时立即执行一次进度对齐
     if (willSync && activeTrack?.id) {
       const track = TRACKS.find(t => t.id === activeTrack.id);
       if (track?.durationMs) {
         setAlignSeekExpectedUntil(Date.now() + 3000);
-        await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(track.durationMs)));
+        const pos = msToSeconds(calculateAlignedPosition(track.durationMs));
+        await TrackPlayer.seekTo(pos);
+        // seek 到非零位置，当前这遍不算完整播放
+        saveStartedFromZero(pos <= 1.5);
       }
     }
   }, [isSyncMode, toggleSyncMode, showToast, activeTrack]);
