@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   rightCol: { alignItems: 'center' },
   playBtn: { marginHorizontal: 16, marginBottom: 8 },
   playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, alignItems: 'center', justifyContent: 'center' },
-  toast: { position: 'absolute', top: 4, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW },
+  toast: { position: 'absolute', top: -28, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW },
   toastText: { color: GOLD, fontSize: 14 },
 });
 

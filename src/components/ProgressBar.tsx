@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   thumbSeekable: { width: 16, height: 16, borderRadius: 8, backgroundColor: GOLD, marginLeft: -8, borderWidth: 2, borderColor: GOLD_GLOW },
   timeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   time: { color: 'rgba(255,255,255,0.5)' },
-  repeatText: { color: GOLD_DIM },
+  repeatText: { color: GOLD, fontWeight: 'bold' },
 });
 
 export default ProgressBar;
