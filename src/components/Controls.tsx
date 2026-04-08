@@ -52,25 +52,25 @@ const Controls: React.FC<ControlsProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.diamond}>
-        <View style={styles.topRow}>
-          <Pressable onPress={onToggleMode} hitSlop={8} style={styles.cornerBtn}>
+      <View style={styles.mainRow}>
+        <View style={styles.leftCol}>
+          <Pressable onPress={onToggleMode} hitSlop={12} style={{ padding: sidePad }}>
             <Icon name={modeIcon} size={modeSize} color="rgba(255,255,255,0.55)" />
           </Pressable>
-          <Pressable onPress={onToggleSync} hitSlop={8} style={styles.cornerBtn}>
-            <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={modeSize} color="rgba(255,255,255,0.55)" />
+          <Pressable onPress={onSkipToPrevious} hitSlop={12} style={{ padding: sidePad }}>
+            <Icon name="skip-previous" size={skipSize} color="rgba(255,255,255,0.8)" />
           </Pressable>
         </View>
-        <Pressable onPress={onPlayPause} hitSlop={8}>
+        <Pressable onPress={onPlayPause} hitSlop={8} style={styles.playBtn}>
           <View style={[styles.playCircle, { width: playCircleSize, height: playCircleSize, borderRadius: playCircleSize / 2 }]}>
             <Icon name={isPlaying ? 'pause' : 'play-arrow'} size={playSize} color={GOLD} />
           </View>
         </Pressable>
-        <View style={styles.bottomRow}>
-          <Pressable onPress={onSkipToPrevious} hitSlop={8} style={styles.cornerBtn}>
-            <Icon name="skip-previous" size={skipSize} color="rgba(255,255,255,0.8)" />
+        <View style={styles.rightCol}>
+          <Pressable onPress={onToggleSync} hitSlop={12} style={{ padding: sidePad }}>
+            <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={modeSize} color="rgba(255,255,255,0.55)" />
           </Pressable>
-          <Pressable onPress={onSkipToNext} hitSlop={8} style={styles.cornerBtn}>
+          <Pressable onPress={onSkipToNext} hitSlop={12} style={{ padding: sidePad }}>
             <Icon name="skip-next" size={skipSize} color="rgba(255,255,255,0.8)" />
           </Pressable>
         </View>
@@ -81,10 +81,10 @@ const Controls: React.FC<ControlsProps> = ({
 
 const styles = StyleSheet.create({
   container: {},
-  diamond: { alignItems: 'center' },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', width: 240, marginBottom: 12 },
-  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', width: 240, marginTop: 12 },
-  cornerBtn: { padding: 12 },
+  mainRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center' },
+  leftCol: { alignItems: 'center' },
+  rightCol: { alignItems: 'center' },
+  playBtn: { marginHorizontal: 16, marginBottom: 8 },
   playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, alignItems: 'center', justifyContent: 'center' },
 });
 
