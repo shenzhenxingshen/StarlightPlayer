@@ -1,4 +1,4 @@
-import { GOLD, GOLD_BORDER, GOLD_GLOW } from '../constants/colors';
+import { GOLD, GOLD_BORDER } from '../constants/colors';
 import React from 'react';
 import { View, StyleSheet, Pressable, Text } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -15,7 +15,6 @@ export const MODE_CONFIG: Record<PlayMode, { icon: string; label: string; next: 
 interface ControlsProps {
   isPlaying: boolean;
   playMode: PlayMode;
-  modeLabel: string | null;
   isSyncMode: boolean;
   onPlayPause: () => void;
   onSkipToNext: () => void;
@@ -26,7 +25,7 @@ interface ControlsProps {
 }
 
 const Controls: React.FC<ControlsProps> = ({
-  isPlaying, playMode, modeLabel, isSyncMode, onPlayPause, onSkipToNext, onSkipToPrevious, onToggleMode, onToggleSync, isCareMode = false,
+  isPlaying, playMode, isSyncMode, onPlayPause, onSkipToNext, onSkipToPrevious, onToggleMode, onToggleSync, isCareMode = false,
 }) => {
   // 需求3: 普通模式 +20%, 关怀模式 +50%
   const playSize = isCareMode ? 123 : 98;
@@ -76,11 +75,6 @@ const Controls: React.FC<ControlsProps> = ({
           </Pressable>
         </View>
       </View>
-      {modeLabel && (
-        <View style={styles.toast}>
-          <Text style={styles.toastText}>{modeLabel}</Text>
-        </View>
-      )}
     </View>
   );
 };
@@ -92,8 +86,6 @@ const styles = StyleSheet.create({
   rightCol: { alignItems: 'center' },
   playBtn: { marginHorizontal: 16, marginBottom: 8 },
   playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, alignItems: 'center', justifyContent: 'center' },
-  toast: { position: 'absolute', top: -28, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW },
-  toastText: { color: GOLD, fontSize: 14 },
 });
 
 export default Controls;

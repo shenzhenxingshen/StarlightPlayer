@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, AppState } from 'react-native';
+import { View, StyleSheet, AppState, Text } from 'react-native';
+import { GOLD, GOLD_GLOW } from '../constants/colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TrackPlayer, { usePlaybackState, useProgress, useActiveTrack, State, RepeatMode, Event, Capability } from 'react-native-track-player';
 import TrackInfo from '../components/TrackInfo';
@@ -142,11 +143,13 @@ const PlayerScreen: React.FC = () => {
       <View style={styles.progressArea}>
         <ProgressBar position={progress.position} duration={progress.duration} onSeek={(s) => TrackPlayer.seekTo(s)} seekable={!isSyncMode && !isCareMode} isCareMode={isCareMode} currentRepeat={currentRepeat} totalRepeat={repeatCount} />
       </View>
+      <View style={styles.toastArea}>
+        {modeLabel && <Text style={styles.toastText}>{modeLabel}</Text>}
+      </View>
       <View style={styles.controlArea}>
         <Controls
           isPlaying={isPlaying}
           playMode={playMode}
-          modeLabel={modeLabel}
           isSyncMode={isSyncMode}
           onPlayPause={isPlaying ? () => TrackPlayer.pause() : () => alignAndPlay()}
           onSkipToNext={handleSkipNext}
@@ -163,7 +166,9 @@ const PlayerScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
   albumArea: { flex: 1, justifyContent: 'center' },
-  progressArea: { paddingBottom: 8 },
+  progressArea: { paddingBottom: 4 },
+  toastArea: { height: 30, alignItems: 'center', justifyContent: 'center' },
+  toastText: { color: GOLD, fontSize: 14, backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW, overflow: 'hidden' },
   controlArea: { paddingBottom: 24 },
 });
 
