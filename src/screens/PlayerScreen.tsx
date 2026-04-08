@@ -143,9 +143,6 @@ const PlayerScreen: React.FC = () => {
       <View style={styles.progressArea}>
         <ProgressBar position={progress.position} duration={progress.duration} onSeek={(s) => TrackPlayer.seekTo(s)} seekable={!isSyncMode && !isCareMode} isCareMode={isCareMode} currentRepeat={currentRepeat} totalRepeat={repeatCount} />
       </View>
-      <View style={styles.toastArea}>
-        {modeLabel && <Text style={styles.toastText}>{modeLabel}</Text>}
-      </View>
       <View style={styles.controlArea}>
         <Controls
           isPlaying={isPlaying}
@@ -159,6 +156,11 @@ const PlayerScreen: React.FC = () => {
           isCareMode={isCareMode}
         />
       </View>
+      {modeLabel && (
+        <View style={styles.toast}>
+          <Text style={styles.toastText}>{modeLabel}</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -166,10 +168,10 @@ const PlayerScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
   albumArea: { flex: 1, justifyContent: 'center' },
-  progressArea: { paddingBottom: 4 },
-  toastArea: { height: 30, alignItems: 'center', justifyContent: 'center' },
-  toastText: { color: GOLD, fontSize: 14, backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW, overflow: 'hidden' },
+  progressArea: { paddingBottom: 8 },
   controlArea: { paddingBottom: 24 },
+  toast: { position: 'absolute', bottom: 200, alignSelf: 'center' },
+  toastText: { color: GOLD, fontSize: 14, backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW, overflow: 'hidden' },
 });
 
 export default PlayerScreen;
