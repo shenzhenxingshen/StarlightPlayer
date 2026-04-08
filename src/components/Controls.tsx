@@ -82,9 +82,9 @@ const Controls: React.FC<ControlsProps> = ({
 const styles = StyleSheet.create({
   container: {},
   diamond: { alignItems: 'center' },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', width: 220, marginBottom: 4 },
-  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', width: 220, marginTop: 4 },
-  cornerBtn: { padding: 8 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', width: 240, marginBottom: 12 },
+  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', width: 240, marginTop: 12 },
+  cornerBtn: { padding: 12 },
   playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, alignItems: 'center', justifyContent: 'center' },
 });
 
