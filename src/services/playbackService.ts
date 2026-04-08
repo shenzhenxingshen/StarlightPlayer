@@ -3,7 +3,7 @@ import { TRACKS } from '../constants/tracks';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { useStatsStore } from '../store/statsStore';
 import {
-  setAlignSeekExpectedUntil, consumeAlignSeekExpected, shouldSeekAlign, loadPlayerState,
+  setAlignSeekExpectedUntil, shouldSeekAlign, loadPlayerState,
   saveSessionCount, loadSessionCount, saveStartedFromZero, loadStartedFromZero, getSettings,
 } from '../utils/storage';
 import { loadTrack, getCurrentIndex, getNextIndex, isLastTrack } from '../utils/trackManager';
@@ -112,9 +112,6 @@ export default async function PlaybackService() {
 
   // ─── 队列结束 ───
   TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async () => {
-    // 如果是 seek 对齐触发的（非正常播完），忽略
-    if (consumeAlignSeekExpected(Date.now())) return;
-
     completeCycle();
 
     const pm = loadPlayerState()?.playMode || 'repeat-one';
