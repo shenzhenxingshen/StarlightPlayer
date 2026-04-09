@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, AppState, Text } from 'react-native';
-import { GOLD, GOLD_GLOW } from '../constants/colors';
+import { View, StyleSheet, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TrackPlayer, { usePlaybackState, useProgress, useActiveTrack, State, RepeatMode, Event, Capability } from 'react-native-track-player';
 import TrackInfo from '../components/TrackInfo';
@@ -155,6 +154,7 @@ const PlayerScreen: React.FC = () => {
           isPlaying={isPlaying}
           playMode={playMode}
           isSyncMode={isSyncMode}
+          modeLabel={modeLabel}
           onPlayPause={isPlaying ? () => TrackPlayer.pause() : () => alignAndPlay()}
           onSkipToNext={handleSkipNext}
           onSkipToPrevious={handleSkipPrev}
@@ -163,11 +163,6 @@ const PlayerScreen: React.FC = () => {
           isCareMode={isCareMode}
         />
       </View>
-      {modeLabel && (
-        <View style={styles.toast}>
-          <Text style={styles.toastText}>{modeLabel}</Text>
-        </View>
-      )}
     </SafeAreaView>
   );
 };
@@ -177,8 +172,6 @@ const styles = StyleSheet.create({
   albumArea: { flex: 1, justifyContent: 'center', overflow: 'hidden' },
   progressArea: { paddingBottom: 8 },
   controlArea: { paddingBottom: 24, paddingTop: 16 },
-  toast: { position: 'absolute', bottom: 200, alignSelf: 'center' },
-  toastText: { color: GOLD, fontSize: 14, backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW, overflow: 'hidden' },
 });
 
 export default PlayerScreen;
