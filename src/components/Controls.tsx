@@ -53,6 +53,11 @@ const Controls: React.FC<ControlsProps> = ({
 
   return (
     <View style={styles.container}>
+      {modeLabel && (
+        <View style={styles.toast}>
+          <Text style={styles.toastText}>{modeLabel}</Text>
+        </View>
+      )}
       <View style={styles.topRow}>
         <Pressable onPress={onToggleMode} hitSlop={8} style={{ padding: sidePad }}>
           <Icon name={modeIcon} size={modeSize} color="rgba(255,255,255,0.55)" />
@@ -61,9 +66,7 @@ const Controls: React.FC<ControlsProps> = ({
           <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={modeSize} color="rgba(255,255,255,0.55)" />
         </Pressable>
       </View>
-      <View style={styles.toastRow}>
-        {modeLabel && <Text style={styles.toastText}>{modeLabel}</Text>}
-      </View>
+      <View style={styles.spacer} />
       <View style={styles.bottomRow}>
         <Pressable onPress={onSkipToPrevious} hitSlop={8} style={{ padding: sidePad }}>
           <Icon name="skip-previous" size={skipSize} color="rgba(255,255,255,0.8)" />
@@ -83,9 +86,10 @@ const Controls: React.FC<ControlsProps> = ({
 
 const styles = StyleSheet.create({
   container: {},
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 40 },
-  toastRow: { height: 28, alignItems: 'center', justifyContent: 'center' },
+  toast: { position: 'absolute', top: -24, alignSelf: 'center', zIndex: 1 },
   toastText: { color: GOLD, fontSize: 14, backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW, overflow: 'hidden' },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 40 },
+  spacer: { height: 12 },
   bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20 },
   playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, alignItems: 'center', justifyContent: 'center' },
 });
