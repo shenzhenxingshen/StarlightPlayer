@@ -64,7 +64,7 @@ const Controls: React.FC<ControlsProps> = ({
           <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={iconSize} color="rgba(255,255,255,0.55)" />
         </Pressable>
       </View>
-      <View style={{ alignItems: 'center', marginVertical: 8 }}>
+      <View style={{ alignItems: 'center' }}>
         <Pressable onPress={onPlayPause} hitSlop={8}>
           <View style={[styles.playCircle, { width: playCircleSize, height: playCircleSize, borderRadius: playCircleSize / 2 }]}>
             <Icon name={isPlaying ? 'pause' : 'play-arrow'} size={playIconSize} color={GOLD} />
