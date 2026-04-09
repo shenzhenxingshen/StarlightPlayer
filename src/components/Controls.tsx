@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   toastText: { color: GOLD, fontSize: 14, backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW, overflow: 'hidden' },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 40 },
   spacer: { height: 12 },
-  bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20 },
+  bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 40 },
   playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, alignItems: 'center', justifyContent: 'center' },
 });
 
