@@ -57,6 +57,14 @@ const Controls: React.FC<ControlsProps> = ({
           <Text style={styles.toastText}>{modeLabel}</Text>
         </View>
       )}
+      <View style={styles.funcRow}>
+        <Pressable onPress={onToggleMode} hitSlop={8} style={styles.funcBtn}>
+          <Icon name={modeIcon} size={funcSize} color={TEXT_SEC} />
+        </Pressable>
+        <Pressable onPress={onToggleSync} hitSlop={8} style={styles.funcBtn}>
+          <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={funcSize} color={TEXT_SEC} />
+        </Pressable>
+      </View>
       <View style={styles.mainRow}>
         <Pressable onPress={onSkipToPrevious} hitSlop={8} style={styles.skipBtn}>
           <Icon name="skip-previous" size={skipSize} color={INK} />
@@ -70,14 +78,6 @@ const Controls: React.FC<ControlsProps> = ({
           <Icon name="skip-next" size={skipSize} color={INK} />
         </Pressable>
       </View>
-      <View style={styles.funcRow}>
-        <Pressable onPress={onToggleMode} hitSlop={8} style={styles.funcBtn}>
-          <Icon name={modeIcon} size={funcSize} color={TEXT_SEC} />
-        </Pressable>
-        <Pressable onPress={onToggleSync} hitSlop={8} style={styles.funcBtn}>
-          <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={funcSize} color={TEXT_SEC} />
-        </Pressable>
-      </View>
     </View>
   );
 };
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   mainRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   skipBtn: { paddingHorizontal: 20 },
   playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, backgroundColor: GOLD_GLOW, alignItems: 'center', justifyContent: 'center' },
-  funcRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 8, gap: 32 },
+  funcRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 8, gap: 32 },
   funcBtn: { padding: 8 },
 });
 
