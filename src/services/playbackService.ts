@@ -1,4 +1,4 @@
-import TrackPlayer, { Event } from 'react-native-track-player';
+import TrackPlayer, { Event, State } from 'react-native-track-player';
 import { TRACKS } from '../constants/tracks';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { useStatsStore } from '../store/statsStore';
@@ -93,10 +93,17 @@ export default async function PlaybackService() {
   TrackPlayer.addEventListener(Event.RemoteSeek, ({ position }) => TrackPlayer.seekTo(position));
 
   // ─── 来电恢复 ───
+  let wasPausedBeforeDuck = false;
   TrackPlayer.addEventListener(Event.RemoteDuck, async ({ paused, permanent }) => {
-    addLog('INFO', `RemoteDuck: paused=${paused} permanent=${permanent}`);
+    addLog('INFO', `RemoteDuck: paused=${paused} permanent=${permanent} wasPaused=${wasPausedBeforeDuck}`);
     if (permanent) { await TrackPlayer.stop(); return; }
-    if (paused) { await TrackPlayer.pause(); return; }
+    if (paused) {
+      const s = await TrackPlayer.getPlaybackState();
+      wasPausedBeforeDuck = s.state !== State.Playing;
+      await TrackPlayer.pause();
+      return;
+    }
+    if (wasPausedBeforeDuck) return;
     try { await seekAlignedForResume(); } catch {}
     await TrackPlayer.play();
   });
