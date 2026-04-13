@@ -57,26 +57,28 @@ const Controls: React.FC<ControlsProps> = ({
           <Text style={styles.toastText}>{modeLabel}</Text>
         </View>
       )}
-      <View style={styles.funcRow}>
-        <Pressable onPress={onToggleMode} hitSlop={8} style={styles.funcBtn}>
-          <Icon name={modeIcon} size={funcSize} color={TEXT_SEC} />
-        </Pressable>
-        <Pressable onPress={onToggleSync} hitSlop={8} style={styles.funcBtn}>
-          <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={funcSize} color={TEXT_SEC} />
-        </Pressable>
-      </View>
-      <View style={styles.mainRow}>
-        <Pressable onPress={onSkipToPrevious} hitSlop={8} style={styles.skipBtn}>
-          <Icon name="skip-previous" size={skipSize} color={INK} />
-        </Pressable>
-        <Pressable onPress={onPlayPause} hitSlop={8}>
-          <View style={[styles.playCircle, { width: playCircleSize, height: playCircleSize, borderRadius: playCircleSize / 2 }]}>
-            <Icon name={isPlaying ? 'pause' : 'play-arrow'} size={playIconSize} color={GOLD} />
-          </View>
-        </Pressable>
-        <Pressable onPress={onSkipToNext} hitSlop={8} style={styles.skipBtn}>
-          <Icon name="skip-next" size={skipSize} color={INK} />
-        </Pressable>
+      <View style={{ alignItems: 'center' }}>
+        <View style={[styles.funcRow, { width: playCircleSize + 120 }]}>
+          <Pressable onPress={onToggleMode} hitSlop={8} style={styles.funcBtn}>
+            <Icon name={modeIcon} size={funcSize} color={TEXT_SEC} />
+          </Pressable>
+          <Pressable onPress={onToggleSync} hitSlop={8} style={styles.funcBtn}>
+            <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={funcSize} color={TEXT_SEC} />
+          </Pressable>
+        </View>
+        <View style={styles.mainRow}>
+          <Pressable onPress={onSkipToPrevious} hitSlop={8} style={styles.sideBtn}>
+            <Icon name="skip-previous" size={skipSize} color={INK} />
+          </Pressable>
+          <Pressable onPress={onPlayPause} hitSlop={8}>
+            <View style={[styles.playCircle, { width: playCircleSize, height: playCircleSize, borderRadius: playCircleSize / 2 }]}>
+              <Icon name={isPlaying ? 'pause' : 'play-arrow'} size={playIconSize} color={GOLD} />
+            </View>
+          </Pressable>
+          <Pressable onPress={onSkipToNext} hitSlop={8} style={styles.sideBtn}>
+            <Icon name="skip-next" size={skipSize} color={INK} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -86,11 +88,11 @@ const styles = StyleSheet.create({
   container: {},
   toast: { position: 'absolute', top: -24, alignSelf: 'center', zIndex: 1 },
   toastText: { color: GOLD, fontSize: 14, backgroundColor: BG_SURFACE, paddingHorizontal: 16, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: GOLD_BORDER, overflow: 'hidden' },
-  mainRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  skipBtn: { paddingHorizontal: 20 },
+  mainRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center' },
+  sideBtn: { width: 60, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 4 },
   playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, backgroundColor: GOLD_GLOW, alignItems: 'center', justifyContent: 'center' },
-  funcRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 8, gap: 32 },
-  funcBtn: { padding: 8 },
+  funcRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  funcBtn: { width: 60, alignItems: 'center', padding: 8 },
 });
 
 export default Controls;
