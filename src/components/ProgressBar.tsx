@@ -1,4 +1,4 @@
-import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from '../constants/colors';
+import { GOLD, GOLD_DIM, GOLD_GLOW, BG_RECESS, TEXT_SEC } from '../constants/colors';
 import React, { useRef } from 'react';
 import { View, Text, StyleSheet, PanResponder, LayoutChangeEvent } from 'react-native';
 
@@ -72,7 +72,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ position, duration, onSeek, i
 const styles = StyleSheet.create({
   container: { paddingHorizontal: 30, paddingVertical: 8 },
   barWrap: { paddingVertical: 8 },
-  track: { height: 3, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 2, flexDirection: 'row', alignItems: 'center' },
+  track: { height: 3, backgroundColor: BG_RECESS, borderRadius: 2, flexDirection: 'row', alignItems: 'center' },
   trackSeekable: { height: 6, borderRadius: 3 },
   fill: { height: 3, backgroundColor: GOLD_DIM, borderRadius: 2 },
   fillSeekable: { height: 6, backgroundColor: GOLD, borderRadius: 3 },
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   thumbLocked: { width: 8, height: 8, borderRadius: 4, backgroundColor: GOLD_DIM, marginLeft: -4 },
   thumbSeekable: { width: 16, height: 16, borderRadius: 8, backgroundColor: GOLD, marginLeft: -8, borderWidth: 2, borderColor: GOLD_GLOW },
   timeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
-  time: { color: 'rgba(255,255,255,0.5)' },
+  time: { color: TEXT_SEC },
   repeatText: { color: GOLD, fontWeight: 'bold' },
 });
 

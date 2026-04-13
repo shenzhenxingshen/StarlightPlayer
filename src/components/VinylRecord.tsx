@@ -51,7 +51,6 @@ const VinylRecord: React.FC<VinylRecordProps> = ({ isPlaying, size = 230 }) => {
           <View style={[styles.labelHole, { width: size * 0.06, height: size * 0.06, borderRadius: (size * 0.06) / 2 }]} />
         </View>
       </Animated.View>
-      {/* 呼吸光晕叠在唱片上，绝对定位居中 */}
       <Animated.View style={{
         position: 'absolute',
         width: size + 16, height: size + 16, borderRadius: (size + 16) / 2,
@@ -63,8 +62,7 @@ const VinylRecord: React.FC<VinylRecordProps> = ({ isPlaying, size = 230 }) => {
 };
 
 const styles = StyleSheet.create({
-  glowRing: { position: 'absolute', borderWidth: 2.5, borderColor: GOLD_GLOW },
-  disc: { backgroundColor: '#111', alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: '#2a2a2a', elevation: 6 },
+  disc: { backgroundColor: '#111', alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: '#3A3530', elevation: 6 },
   label: { backgroundColor: '#8B6914', alignItems: 'center', justifyContent: 'center' },
   labelHole: { backgroundColor: '#222' },
 });

@@ -1,4 +1,4 @@
-import { GOLD, GOLD_BORDER, GOLD_GLOW } from '../constants/colors';
+import { GOLD, GOLD_BORDER, GOLD_GLOW, INK, TEXT_SEC, BG_SURFACE } from '../constants/colors';
 import React from 'react';
 import { View, StyleSheet, Pressable, Text, useWindowDimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -29,11 +29,10 @@ const Controls: React.FC<ControlsProps> = ({
   isPlaying, playMode, isSyncMode, modeLabel, onPlayPause, onSkipToNext, onSkipToPrevious, onToggleMode, onToggleSync, isCareMode = false,
 }) => {
   const { width } = useWindowDimensions();
-  const iconSize = Math.round(width * 0.1);
-  const playCircleSize = isCareMode ? Math.round(width * 0.38) : Math.round(width * 0.28);
+  const playCircleSize = isCareMode ? Math.round(width * 0.38) : Math.round(width * 0.22);
   const playIconSize = Math.round(playCircleSize * 0.8);
-  const sidePad = Math.round(width * 0.1);
-  const modeIcon = MODE_CONFIG[playMode]?.icon || 'repeat';
+  const skipSize = Math.round(width * 0.1);
+  const funcSize = Math.round(width * 0.07);
 
   if (isCareMode) {
     return (
@@ -49,6 +48,8 @@ const Controls: React.FC<ControlsProps> = ({
     );
   }
 
+  const modeIcon = MODE_CONFIG[playMode]?.icon || 'repeat';
+
   return (
     <View style={styles.container}>
       {modeLabel && (
@@ -56,27 +57,25 @@ const Controls: React.FC<ControlsProps> = ({
           <Text style={styles.toastText}>{modeLabel}</Text>
         </View>
       )}
-      <View style={[styles.row, { paddingHorizontal: sidePad }]}>
-        <Pressable onPress={onToggleMode} hitSlop={8} style={styles.cornerBtn}>
-          <Icon name={modeIcon} size={iconSize} color="rgba(255,255,255,0.55)" />
+      <View style={styles.mainRow}>
+        <Pressable onPress={onSkipToPrevious} hitSlop={8} style={styles.skipBtn}>
+          <Icon name="skip-previous" size={skipSize} color={INK} />
         </Pressable>
-        <Pressable onPress={onToggleSync} hitSlop={8} style={styles.cornerBtn}>
-          <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={iconSize} color="rgba(255,255,255,0.55)" />
-        </Pressable>
-      </View>
-      <View style={{ alignItems: 'center' }}>
         <Pressable onPress={onPlayPause} hitSlop={8}>
           <View style={[styles.playCircle, { width: playCircleSize, height: playCircleSize, borderRadius: playCircleSize / 2 }]}>
             <Icon name={isPlaying ? 'pause' : 'play-arrow'} size={playIconSize} color={GOLD} />
           </View>
         </Pressable>
-      </View>
-      <View style={[styles.row, { paddingHorizontal: sidePad }]}>
-        <Pressable onPress={onSkipToPrevious} hitSlop={8} style={styles.cornerBtn}>
-          <Icon name="skip-previous" size={iconSize} color="rgba(255,255,255,0.8)" />
+        <Pressable onPress={onSkipToNext} hitSlop={8} style={styles.skipBtn}>
+          <Icon name="skip-next" size={skipSize} color={INK} />
         </Pressable>
-        <Pressable onPress={onSkipToNext} hitSlop={8} style={styles.cornerBtn}>
-          <Icon name="skip-next" size={iconSize} color="rgba(255,255,255,0.8)" />
+      </View>
+      <View style={styles.funcRow}>
+        <Pressable onPress={onToggleMode} hitSlop={8} style={styles.funcBtn}>
+          <Icon name={modeIcon} size={funcSize} color={TEXT_SEC} />
+        </Pressable>
+        <Pressable onPress={onToggleSync} hitSlop={8} style={styles.funcBtn}>
+          <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={funcSize} color={TEXT_SEC} />
         </Pressable>
       </View>
     </View>
@@ -86,10 +85,12 @@ const Controls: React.FC<ControlsProps> = ({
 const styles = StyleSheet.create({
   container: {},
   toast: { position: 'absolute', top: -24, alignSelf: 'center', zIndex: 1 },
-  toastText: { color: GOLD, fontSize: 14, backgroundColor: 'rgba(0,0,0,0.85)', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 16, borderWidth: 1, borderColor: GOLD_GLOW, overflow: 'hidden' },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  cornerBtn: { padding: 10 },
-  playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, alignItems: 'center', justifyContent: 'center' },
+  toastText: { color: GOLD, fontSize: 14, backgroundColor: BG_SURFACE, paddingHorizontal: 16, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: GOLD_BORDER, overflow: 'hidden' },
+  mainRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  skipBtn: { paddingHorizontal: 20 },
+  playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, backgroundColor: GOLD_GLOW, alignItems: 'center', justifyContent: 'center' },
+  funcRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 8, gap: 32 },
+  funcBtn: { padding: 8 },
 });
 
 export default Controls;

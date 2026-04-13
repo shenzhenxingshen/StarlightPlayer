@@ -12,6 +12,7 @@ import { setAlignSeekExpectedUntil, savePlayerState, loadPlayerState, shouldSeek
 import { isStartedFromZero, resetCycleIfCompleted } from '../services/playbackService';
 import { loadTrack, getCurrentIndex, getNextIndex, getPrevIndex } from '../utils/trackManager';
 import { addLog } from '../utils/logger';
+import { BG_GROUND } from '../constants/colors';
 
 // 标志：是否正在恢复上次状态，期间不保存
 let restoring = true;
@@ -168,7 +169,7 @@ const PlayerScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212' },
+  container: { flex: 1, backgroundColor: BG_GROUND },
   albumArea: { flex: 1, justifyContent: 'center', overflow: 'hidden' },
   progressArea: { paddingBottom: 8 },
   controlArea: { paddingBottom: 24, paddingTop: 16 },

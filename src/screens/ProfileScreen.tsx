@@ -1,4 +1,4 @@
-import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from '../constants/colors';
+import { GOLD, GOLD_DIM, GOLD_FAINT, BG_GROUND, BG_SURFACE, BG_RECESS, INK, TEXT_SEC, TEXT_TER } from '../constants/colors';
 import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Platform, Alert, NativeModules, Pressable, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';import React, { useState, useCallback } from 'react';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -51,12 +51,12 @@ const ProfileScreen: React.FC = () => {
     }
   }, [deviceInfo]);
 
-  const tracksWithStats = TRACKS.filter(tr => (stats[tr.id] || 0) > 0);
-  const totalToday = Object.values(stats).reduce((a, b) => a + b, 0);
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView style={styles.content}>
+        {/* 播放设置 */}
+        <Text style={styles.groupTitle}>播放设置</Text>
+
         {/* 关怀模式 */}
         <View style={styles.card}>
           <View style={styles.cardRow}>
@@ -72,12 +72,12 @@ const ProfileScreen: React.FC = () => {
             <Pressable
               onPress={toggleCareMode}
               style={{
-                backgroundColor: isCareMode ? '#b8860b' : '#333',
+                backgroundColor: isCareMode ? GOLD : BG_RECESS,
                 paddingVertical: 12,
-                borderRadius: 10,
+                borderRadius: 8,
                 alignItems: 'center',
               }}>
-              <Text style={{ color: '#fff', fontSize: t(15), fontWeight: '600' }}>
+              <Text style={{ color: isCareMode ? '#fff' : INK, fontSize: t(15), fontWeight: '600' }}>
                 {isCareMode ? '切换到普通模式' : '切换到关怀模式'}
               </Text>
             </Pressable>
@@ -100,16 +100,16 @@ const ProfileScreen: React.FC = () => {
                 key={n}
                 onPress={() => setRepeatCount(n)}
                 style={{
-                  backgroundColor: repeatCount === n ? '#b8860b' : '#333',
+                  backgroundColor: repeatCount === n ? GOLD : BG_RECESS,
                   paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8,
                 }}>
-                <Text style={{ color: '#fff', fontSize: t(14), fontWeight: repeatCount === n ? '700' : '400' }}>{n}</Text>
+                <Text style={{ color: repeatCount === n ? '#fff' : INK, fontSize: t(14), fontWeight: repeatCount === n ? '700' : '400' }}>{n}</Text>
               </Pressable>
             ))}
             <Pressable
               onPress={() => { setShowCustomInput(true); setCustomRepeatText(String(repeatCount)); }}
-              style={{ backgroundColor: ![1,7,21,49,108].includes(repeatCount) ? '#b8860b' : '#333', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}>
-              <Text style={{ color: '#fff', fontSize: t(14) }}>自定义</Text>
+              style={{ backgroundColor: ![1,7,21,49,108].includes(repeatCount) ? GOLD : BG_RECESS, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}>
+              <Text style={{ color: ![1,7,21,49,108].includes(repeatCount) ? '#fff' : INK, fontSize: t(14) }}>自定义</Text>
             </Pressable>
           </View>
           {showCustomInput && (
@@ -118,16 +118,16 @@ const ProfileScreen: React.FC = () => {
                 value={customRepeatText}
                 onChangeText={setCustomRepeatText}
                 keyboardType="number-pad"
-                style={{ flex: 1, backgroundColor: '#222', color: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 16 }}
+                style={{ flex: 1, backgroundColor: BG_RECESS, color: INK, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 16 }}
                 placeholder="输入遍数"
-                placeholderTextColor="#666"
+                placeholderTextColor={TEXT_TER}
               />
               <Pressable
                 onPress={() => {
                   const n = parseInt(customRepeatText, 10);
                   if (n >= 1) { setRepeatCount(n); setShowCustomInput(false); }
                 }}
-                style={{ backgroundColor: '#b8860b', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, marginLeft: 8 }}>
+                style={{ backgroundColor: GOLD, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, marginLeft: 8 }}>
                 <Text style={{ color: '#fff', fontWeight: '600' }}>确定</Text>
               </Pressable>
             </View>
@@ -135,41 +135,20 @@ const ProfileScreen: React.FC = () => {
         </View>
         )}
 
-        {/* 今日统计 - 暂时隐藏 */}
-        {/*
-        <View style={styles.card}>
-          <Text style={[styles.cardTitle, { fontSize: t(17) }]}>
-            <Icon name="bar-chart" size={t(17)} color={GOLD} />  今日播放统计
-          </Text>
-          {tracksWithStats.length === 0 ? (
-            <View style={styles.emptyWrap}>
-              {['当勤精进', '慎勿放逸', '都摄六根', '净念相继'].map(line => (
-                <Text key={line} style={[styles.emptyLine, { fontSize: t(18) }]}>{line}</Text>
-              ))}
-            </View>
-          ) : (
-            tracksWithStats.map(track => (
-              <View key={track.id} style={styles.statRow}>
-                <Text style={[styles.statTitle, { fontSize: t(14) }]} numberOfLines={1}>{track.title}</Text>
-                <View style={styles.badge}>
-                  <Text style={[styles.badgeText, { fontSize: t(13) }]}>{stats[track.id]} 遍</Text>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
-        */}
-
-        {/* 诊断信息 - 关怀模式下隐藏 */}
+        {/* 其他 */}
         {!isCareMode && (
+        <>
+        <Text style={styles.groupTitle}>其他</Text>
+
+        {/* 诊断信息 */}
         <View style={styles.card}>
           <TouchableOpacity style={styles.cardRow} onPress={() => setShowLogs(!showLogs)}>
-            <Icon name="bug-report" size={t(22)} color="rgba(255,255,255,0.5)" />
+            <Icon name="bug-report" size={t(22)} color={TEXT_SEC} />
             <View style={styles.cardInfo}>
               <Text style={[styles.cardLabel, { fontSize: t(16) }]}>诊断信息</Text>
               <Text style={[styles.cardDesc, { fontSize: t(12) }]}>遇到问题时提供给开发者</Text>
             </View>
-            <Icon name={showLogs ? 'expand-less' : 'expand-more'} size={24} color="rgba(255,255,255,0.4)" />
+            <Icon name={showLogs ? 'expand-less' : 'expand-more'} size={24} color={TEXT_TER} />
           </TouchableOpacity>
           {showLogs && (
             <View style={styles.logArea}>
@@ -185,6 +164,7 @@ const ProfileScreen: React.FC = () => {
             </View>
           )}
         </View>
+        </>
         )}
 
         <View style={{ height: 40 }} />
@@ -194,22 +174,16 @@ const ProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212' },
+  container: { flex: 1, backgroundColor: BG_GROUND },
   content: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
-  card: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 16, marginBottom: 12 },
+  groupTitle: { color: TEXT_TER, fontSize: 13, fontWeight: '600', marginBottom: 8, marginTop: 8, marginLeft: 4 },
+  card: { backgroundColor: BG_SURFACE, borderRadius: 12, padding: 16, marginBottom: 12 },
   cardRow: { flexDirection: 'row', alignItems: 'center' },
   cardInfo: { flex: 1, marginLeft: 12 },
-  cardLabel: { color: '#fff', fontWeight: '600' },
-  cardDesc: { color: 'rgba(255,255,255,0.4)', marginTop: 2 },
-  cardTitle: { color: GOLD, fontWeight: 'bold', marginBottom: 12 },
-  emptyWrap: { alignItems: 'center', paddingVertical: 16 },
-  emptyLine: { color: GOLD_DIM, letterSpacing: 6, lineHeight: 36 },
-  statRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  statTitle: { color: '#fff', flex: 1, marginRight: 8 },
-  badge: { backgroundColor: GOLD_FAINT, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  badgeText: { color: GOLD, fontWeight: '600' },
-  logArea: { marginTop: 12, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: 12 },
-  logText: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: 'monospace', lineHeight: 20 },
+  cardLabel: { color: INK, fontWeight: '600' },
+  cardDesc: { color: TEXT_SEC, marginTop: 2 },
+  logArea: { marginTop: 12, backgroundColor: BG_RECESS, borderRadius: 8, padding: 12 },
+  logText: { color: TEXT_SEC, fontSize: 12, fontFamily: 'monospace', lineHeight: 20 },
   copyBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 10, alignSelf: 'flex-end' },
   copyText: { color: GOLD, fontSize: 13, marginLeft: 6 },
 });

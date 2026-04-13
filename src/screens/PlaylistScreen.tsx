@@ -1,4 +1,4 @@
-import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from '../constants/colors';
+import { GOLD, GOLD_FAINT, BG_GROUND, BG_SURFACE, INK, TEXT_SEC, BORDER, SECTION_A, SECTION_B, SECTION_C, SECTION_D } from '../constants/colors';
 import React from 'react';
 import { View, StyleSheet, SectionList, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,7 +11,7 @@ import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { setAlignSeekExpectedUntil, shouldSeekAlign, loadPlayerState } from '../utils/storage';
 import { loadTrack } from '../utils/trackManager';
 
-const SECTION_COLORS: Record<string, string> = { A: '#e74c3c', B: '#f39c12', C: '#2ecc71', D: '#3498db' };
+const SECTION_COLORS: Record<string, string> = { A: SECTION_A, B: SECTION_B, C: SECTION_C, D: SECTION_D };
 
 interface SectionData { title: string; code: string; data: Track[]; }
 
@@ -82,18 +82,18 @@ const PlaylistScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212' },
+  container: { flex: 1, backgroundColor: BG_GROUND },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, marginTop: 8 },
   sectionBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginRight: 10 },
   sectionBadgeText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  sectionTitle: { color: 'rgba(255,255,255,0.85)', fontSize: 17, fontWeight: 'bold' },
-  trackItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  activeTrack: { backgroundColor: GOLD_SUBTLE },
-  activeBar: { position: 'absolute', left: 0, top: 4, bottom: 4, width: 3, borderRadius: 2 },
+  sectionTitle: { color: INK, fontSize: 17, fontWeight: 'bold' },
+  trackItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 20, backgroundColor: BG_SURFACE, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
+  activeTrack: { backgroundColor: GOLD_FAINT },
+  activeBar: { position: 'absolute', left: 0, top: 4, bottom: 4, width: 4, borderRadius: 2 },
   codeBox: { width: 42, height: 28, borderRadius: 4, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  codeText: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '600' },
+  codeText: { color: TEXT_SEC, fontSize: 11, fontWeight: '600' },
   trackInfo: { flex: 1 },
-  trackTitle: { color: '#fff', fontSize: 16 },
+  trackTitle: { color: INK, fontSize: 16 },
   activeText: { color: GOLD, fontWeight: '600' },
 });
 
