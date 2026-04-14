@@ -62,8 +62,8 @@ const VinylRecord: React.FC<VinylRecordProps> = ({ isPlaying, size = 230 }) => {
 };
 
 const styles = StyleSheet.create({
-  disc: { backgroundColor: '#111', alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: '#3A3530', elevation: 6 },
-  label: { backgroundColor: '#8B6914', alignItems: 'center', justifyContent: 'center' },
+  disc: { backgroundColor: '#111', alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: '#2a2a2a', elevation: 6 },
+  label: { backgroundColor: '#3A9B8C', alignItems: 'center', justifyContent: 'center' },
   labelHole: { backgroundColor: '#222' },
 });
 
