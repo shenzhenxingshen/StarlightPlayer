@@ -139,7 +139,7 @@ export default async function PlaybackService() {
     const count = loadSessionCount();
 
     if (count < repeatCount) {
-      const pos = await seekAligned();
+      await TrackPlayer.seekTo(0);
       saveStartedFromZero(true);
       await TrackPlayer.play();
       return;
@@ -148,8 +148,8 @@ export default async function PlaybackService() {
     switch (pm) {
       case 'repeat-one':
         saveSessionCount(0);
-        const pos = await seekAligned();
-        saveStartedFromZero(pos <= 1.5);
+        await TrackPlayer.seekTo(0);
+        saveStartedFromZero(true);
         await TrackPlayer.play();
         break;
       case 'play-one':
