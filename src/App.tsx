@@ -55,7 +55,7 @@ const App: React.FC = () => {
           PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(() => {});
         }
         const elapsed = Date.now() - startTime;
-        const minSplash = 300;
+        const minSplash = 500;
         if (elapsed < minSplash) {
           await new Promise(r => setTimeout(r, minSplash - elapsed));
         }
