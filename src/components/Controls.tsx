@@ -63,7 +63,7 @@ const Controls: React.FC<ControlsProps> = ({
             <Icon name={modeIcon} size={funcSize} color={TEXT_SEC} />
           </Pressable>
           <Pressable onPress={onToggleSync} hitSlop={8} style={styles.funcBtn}>
-            <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={funcSize} color={TEXT_SEC} />
+            <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={funcSize} color={isSyncMode ? GOLD : TEXT_SEC} />
           </Pressable>
         </View>
         <View style={styles.mainRow}>
