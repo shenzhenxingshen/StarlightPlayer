@@ -1,5 +1,9 @@
-const MAX_LOGS = 100;
-const logs: string[] = [];
+import { MMKV } from 'react-native-mmkv';
+
+const storage = new MMKV();
+const LOG_KEY = 'app_logs';
+const MAX_LOGS = 200;
+const MAX_MSG_LEN = 500;
 
 function timestamp(): string {
   return new Date().toLocaleTimeString('zh-CN', { hour12: false });
@@ -11,17 +15,23 @@ export function addLog(level: string, ...args: any[]) {
       try { return JSON.stringify(a); } catch { return String(a); }
     }
     return String(a);
-  }).join(' ');
+  }).join(' ').slice(0, MAX_MSG_LEN);
+
+  const logs = getLogs();
   logs.push(`[${timestamp()}] ${level}: ${msg}`);
-  if (logs.length > MAX_LOGS) logs.shift();
+  if (logs.length > MAX_LOGS) logs.splice(0, logs.length - MAX_LOGS);
+  storage.set(LOG_KEY, JSON.stringify(logs));
 }
 
 export function getLogs(): string[] {
-  return [...logs];
+  try {
+    const data = storage.getString(LOG_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch { return []; }
 }
 
 export function clearLogs() {
-  logs.length = 0;
+  storage.delete(LOG_KEY);
 }
 
 // 拦截全局错误

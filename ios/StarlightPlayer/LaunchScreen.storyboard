@@ -13,18 +13,7 @@
                     <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                        <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" image="SplashImage" translatesAutoresizingMaskIntoConstraints="NO" id="img-splash">
-                                <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
-                            </imageView>
-                        </subviews>
-                        <color key="backgroundColor" red="0.07058823529" green="0.07058823529" blue="0.07058823529" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                        <constraints>
-                            <constraint firstItem="img-splash" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="c1"/>
-                            <constraint firstItem="img-splash" firstAttribute="bottom" secondItem="Ze5-6b-2t3" secondAttribute="bottom" id="c2"/>
-                            <constraint firstItem="img-splash" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="c3"/>
-                            <constraint firstItem="img-splash" firstAttribute="trailing" secondItem="Ze5-6b-2t3" secondAttribute="trailing" id="c4"/>
-                        </constraints>
+                        <color key="backgroundColor" red="0.94901960784" green="0.94901960784" blue="0.94901960784" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
                     </view>
                 </viewController>
@@ -33,7 +22,4 @@
             <point key="canvasLocation" x="52.173913043478265" y="375"/>
         </scene>
     </scenes>
-    <resources>
-        <image name="SplashImage" width="1080" height="1920"/>
-    </resources>
 </document>

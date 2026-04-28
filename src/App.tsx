@@ -1,17 +1,16 @@
-import { GOLD, GOLD_LIGHT, GOLD_DIM, GOLD_FAINT, GOLD_GLOW, GOLD_BORDER, GOLD_SUBTLE } from './constants/colors';
+import './utils/logger'; // 最先加载，拦截全局错误
+import { GOLD, GOLD_DIM, BG_GROUND, BG_SURFACE, BORDER_STRONG, TEXT_TER } from './constants/colors';
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StatusBar, View, Text, StyleSheet, Image, Platform, PermissionsAndroid } from 'react-native';
+import { StatusBar, View, Text, StyleSheet, Platform, PermissionsAndroid } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import TrackPlayer, { Capability } from 'react-native-track-player';
 import PlayerScreen from './screens/PlayerScreen';
 import PlaylistScreen from './screens/PlaylistScreen';
 import ProfileScreen from './screens/ProfileScreen';
-import { TRACKS } from './constants/tracks';
-import { msToSeconds } from './utils/syncUtils';
-import { getLocalAudioUrl } from './utils/getLocalAudioUrl';
+import { loadTrack } from './utils/trackManager';
 import { useSettingsStore } from './store/settingsStore';
 
 const Tab = createBottomTabNavigator();
@@ -50,22 +49,13 @@ const App: React.FC = () => {
           compactCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToPrevious, Capability.SkipToNext],
           progressUpdateEventInterval: 1,
         });
-        await TrackPlayer.add(
-          TRACKS.map(t => ({
-            id: t.id,
-            url: getLocalAudioUrl(t.audioUrl),
-            title: t.title,
-            artist: t.subtitle || '',
-            artwork: require('./assets/images/vinyl-cover.png'),
-            duration: msToSeconds(t.durationMs || 0),
-          }))
-        );
+        await loadTrack(0);
         // Android 13+ 通知权限
         if (Platform.OS === 'android' && Platform.Version >= 33) {
           PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(() => {});
         }
         const elapsed = Date.now() - startTime;
-        const minSplash = 300;
+        const minSplash = 500;
         if (elapsed < minSplash) {
           await new Promise(r => setTimeout(r, minSplash - elapsed));
         }
@@ -81,7 +71,7 @@ const App: React.FC = () => {
   if (error) {
     return (
       <View style={st.center}>
-        <Text style={{ color: '#ff6b6b', padding: 20 }}>初始化失败: {error}</Text>
+        <Text style={{ color: '#C45B4F', padding: 20 }}>初始化失败: {error}</Text>
       </View>
     );
   }
@@ -89,16 +79,18 @@ const App: React.FC = () => {
   if (!ready) {
     return (
       <View style={st.center}>
-        <Image source={require('./assets/images/splash.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+        {['当勤精进', '慎勿放逸', '都摄六根', '净念相继'].map(line => (
+          <Text key={line} style={st.verse}>{line}</Text>
+        ))}
       </View>
     );
   }
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor="#121212" translucent={true} />
+      <StatusBar barStyle="dark-content" backgroundColor={BG_GROUND} translucent={true} />
       <NavigationContainer
-        theme={{ dark: true, colors: { primary: GOLD, background: '#121212', card: '#121212', text: '#fff', border: '#333', notification: GOLD } }}>
+        theme={{ dark: false, colors: { primary: GOLD, background: BG_GROUND, card: BG_SURFACE, text: '#2C2820', border: BORDER_STRONG, notification: GOLD } }}>
         <AppTabs />
       </NavigationContainer>
     </SafeAreaProvider>
@@ -112,9 +104,9 @@ const AppTabs: React.FC = () => {
           initialRouteName="Player"
           screenOptions={{
             headerShown: false,
-            tabBarStyle: { backgroundColor: '#121212', borderTopColor: '#333', height: 72, paddingBottom: 10, paddingTop: 6 },
+            tabBarStyle: { backgroundColor: BG_SURFACE, borderTopColor: BORDER_STRONG, height: 72, paddingBottom: 10, paddingTop: 6 },
             tabBarActiveTintColor: GOLD,
-            tabBarInactiveTintColor: '#888',
+            tabBarInactiveTintColor: TEXT_TER,
             tabBarLabelStyle: { fontSize: 14 },
             tabBarIconStyle: { marginBottom: -2 },
           }}>
@@ -123,7 +115,7 @@ const AppTabs: React.FC = () => {
             component={PlayerScreen}
             options={{
               title: '播放',
-              tabBarIcon: ({ color }) => <Icon name="play-circle-outline" size={38} color={color} />,
+              tabBarIcon: ({ color }) => <Icon name="play-circle-outline" size={32} color={color} />,
             }}
           />
           {!isCareMode && (
@@ -132,7 +124,7 @@ const AppTabs: React.FC = () => {
               component={PlaylistScreen}
               options={{
                 title: '列表',
-                tabBarIcon: ({ color }) => <Icon name="queue-music" size={38} color={color} />,
+                tabBarIcon: ({ color }) => <Icon name="queue-music" size={32} color={color} />,
               }}
             />
           )}
@@ -141,7 +133,7 @@ const AppTabs: React.FC = () => {
             component={ProfileScreen}
             options={{
               title: '我的',
-              tabBarIcon: ({ color }) => <Icon name="person" size={38} color={color} />,
+              tabBarIcon: ({ color }) => <Icon name="person" size={32} color={color} />,
             }}
           />
         </Tab.Navigator>
@@ -149,8 +141,7 @@ const AppTabs: React.FC = () => {
 };
 
 const st = StyleSheet.create({
-  center: { flex: 1, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center' },
-  splash: { width: '80%', height: '60%' },
+  center: { flex: 1, backgroundColor: BG_GROUND, alignItems: 'center', justifyContent: 'center' },
   verse: { color: GOLD_DIM, fontSize: 20, letterSpacing: 6, lineHeight: 38 },
 });
 

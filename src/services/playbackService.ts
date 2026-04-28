@@ -2,340 +2,169 @@ import TrackPlayer, { Event, State } from 'react-native-track-player';
 import { TRACKS } from '../constants/tracks';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { useStatsStore } from '../store/statsStore';
-import { consumeAlignSeekExpected, setAlignSeekExpectedUntil, shouldSeekAlign, loadPlayerState, saveSessionCount, getSettings } from '../utils/storage';
+import {
+  setAlignSeekExpectedUntil, shouldSeekAlign, loadPlayerState,
+  saveSessionCount, loadSessionCount, saveStartedFromZero, loadStartedFromZero, getSettings,
+} from '../utils/storage';
+import { loadTrack, getCurrentIndex, getNextIndex, isLastTrack } from '../utils/trackManager';
+import { addLog } from '../utils/logger';
 
-// ─── 参数 ───
-const ZERO_EPS = 1.5;
-const END_EPS = 1.5;
-const ALIGN_EPS = 2.5;
-const SYNC_PAUSE_MAX_SINGLE = 12;
-const SYNC_PAUSE_MAX_TOTAL = 60;
-const MAX_NORMAL_DELTA = 3; // progressInterval(1) + 容差
-
-// ─── 状态机 ───
-type CycleState = 'PRE_ZERO' | 'OFFICIAL_CYCLE' | 'SYNC_PAUSED' | 'ABORTED_WAIT_ZERO';
-
-let state: CycleState = 'PRE_ZERO';
+// currentTrackId 仅 Service 端使用，不需要跨运行时
 let currentTrackId: string | null = null;
-let trackDuration = 0;
-let lastPosition = -1;
-let pauseStartAt = 0;
-let totalPauseTime = 0;
-let awaitResumeValidation = false;
-let wasPlaying = false;
-let sessionCount = 0; // 当前歌曲已完成遍数
-let lastCycleCompleteTime = 0; // 防抖：避免同一次回绕被重复计数
+
+// UI 端读取用 loadStartedFromZero()
+export function isStartedFromZero() { return loadStartedFromZero(); }
+
+// 手动播放前调用：如果上一轮已结束，重置遍数开启新一轮。返回是否重置。
+export function resetCycleIfCompleted(): boolean {
+  const { repeatCount } = getSettings();
+  const count = loadSessionCount();
+  if (count >= repeatCount) {
+    saveSessionCount(0);
+    saveStartedFromZero(!shouldSeekAlign(''));
+    addLog('INFO', `resetCycle: ${count}>=${repeatCount} → reset`);
+    return true;
+  }
+  return false;
+}
 
 const increment = (id: string) => useStatsStore.getState().increment(id);
 
-function circularDiff(a: number, b: number, dur: number): number {
-  const d = Math.abs(a - b);
-  return Math.min(d, dur - d);
-}
-
-function isNearZero(pos: number): boolean {
-  return pos <= ZERO_EPS || (trackDuration > 0 && trackDuration - pos <= ZERO_EPS);
-}
-
-function isNearEnd(pos: number): boolean {
-  return trackDuration > 0 && trackDuration - pos <= END_EPS;
+async function seekAligned() {
+  if (shouldSeekAlign('') && currentTrackId) {
+    const t = TRACKS.find(tr => tr.id === currentTrackId);
+    if (t?.durationMs) {
+      setAlignSeekExpectedUntil(Date.now() + 3000);
+      const pos = msToSeconds(calculateAlignedPosition(t.durationMs));
+      await TrackPlayer.seekTo(pos);
+      addLog('INFO', `seekAligned: ${currentTrackId} → ${pos.toFixed(1)}s/${msToSeconds(t.durationMs).toFixed(1)}s`);
+      return pos;
+    }
+  }
+  await TrackPlayer.seekTo(0);
+  return 0;
 }
 
 function completeCycle() {
-  if (state === 'OFFICIAL_CYCLE' && currentTrackId) {
-    const now = Date.now();
-    if (now - lastCycleCompleteTime < 2000) return;
-    lastCycleCompleteTime = now;
+  const sfz = loadStartedFromZero();
+  if (currentTrackId && sfz) {
     increment(currentTrackId);
-    sessionCount++;
-    saveSessionCount(sessionCount);
-  }
-}
-
-async function onCycleComplete() {
-  const ps = loadPlayerState();
-  const pm = ps?.playMode || 'repeat-one';
-  const { repeatCount } = getSettings();
-
-  // 未达到设定遍数，继续循环（RNTP RepeatMode.Track 自动处理）
-  if (sessionCount < repeatCount) return;
-
-  // 达到设定遍数，根据模式决定下一步
-  switch (pm) {
-    case 'repeat-one':
-      // 单曲循环：重置计数，继续循环
-      sessionCount = 0;
-      saveSessionCount(0);
-      break;
-    case 'play-one':
-      // 单曲播放：暂停并重置遍数，下次手动播放从第 1 遍开始
-      sessionCount = 0;
-      saveSessionCount(0);
-      await TrackPlayer.pause();
-      break;
-    case 'repeat-all': {
-      // 列表循环：切下一首
-      sessionCount = 0;
-      saveSessionCount(0);
-      setAlignSeekExpectedUntil(Date.now() + 3000);
-      await TrackPlayer.skipToNext().catch(() => {});
-      break;
-    }
-    case 'play-all': {
-      // 列表播放：切下一首，最后一首暂停
-      const idx = await TrackPlayer.getActiveTrackIndex();
-      const queue = await TrackPlayer.getQueue();
-      if (idx != null && idx >= queue.length - 1) {
-        sessionCount = 0;
-        saveSessionCount(0);
-        await TrackPlayer.pause();
-      } else {
-        sessionCount = 0;
-        saveSessionCount(0);
-        setAlignSeekExpectedUntil(Date.now() + 3000);
-        await TrackPlayer.skipToNext().catch(() => {});
-      }
-      break;
-    }
-  }
-}
-
-function resetCycle(pos: number) {
-  totalPauseTime = 0;
-  awaitResumeValidation = false;
-  lastPosition = pos;
-  if (isNearZero(pos)) {
-    state = 'OFFICIAL_CYCLE';
+    const next = loadSessionCount() + 1;
+    saveSessionCount(next);
+    addLog('INFO', `completeCycle: ${currentTrackId} counted, session=${next}`);
   } else {
-    state = 'PRE_ZERO';
+    addLog('INFO', `completeCycle: ${currentTrackId} skipped(sfz=${sfz})`);
   }
+  saveStartedFromZero(true);
 }
 
-function abortCycle() {
-  state = 'ABORTED_WAIT_ZERO';
-  totalPauseTime = 0;
-  awaitResumeValidation = false;
+async function switchToTrack(idx: number) {
+  addLog('INFO', `switchToTrack: idx=${getCurrentIndex()}→${idx}, track=${TRACKS[idx]?.id}`);
+  await loadTrack(idx);
+  await TrackPlayer.play();
+}
+
+async function seekAlignedForResume() {
+  if (shouldSeekAlign('')) {
+    const t = TRACKS.find(tr => tr.id === currentTrackId);
+    if (t?.durationMs) {
+      setAlignSeekExpectedUntil(Date.now() + 3000);
+      await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
+    }
+  }
 }
 
 export default async function PlaybackService() {
   // ─── 远程控制 ───
-  // 远程播放时根据同步设置决定是否对齐
   TrackPlayer.addEventListener(Event.RemotePlay, async () => {
-    try {
-      const ps = loadPlayerState();
-      const pm = ps?.playMode || 'repeat-one';
-      if (shouldSeekAlign(pm)) {
-        const idx = await TrackPlayer.getActiveTrackIndex();
-        const queue = await TrackPlayer.getQueue();
-        if (idx != null && queue[idx]) {
-          const t = TRACKS.find(tr => tr.id === queue[idx].id);
-          if (t?.durationMs) {
-            setAlignSeekExpectedUntil(Date.now() + 3000);
-            await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
-          }
-        }
-      }
-    } catch {}
+    addLog('INFO', 'RemotePlay');
+    const didReset = resetCycleIfCompleted();
+    if (shouldSeekAlign('')) {
+      try { await seekAlignedForResume(); } catch {}
+    } else if (didReset) {
+      await TrackPlayer.seekTo(0);
+    }
     await TrackPlayer.play();
   });
   TrackPlayer.addEventListener(Event.RemotePause, () => TrackPlayer.pause());
-  TrackPlayer.addEventListener(Event.RemoteNext, () => TrackPlayer.skipToNext().catch(() => {}));
-  TrackPlayer.addEventListener(Event.RemotePrevious, () => TrackPlayer.skipToPrevious().catch(() => {}));
+  TrackPlayer.addEventListener(Event.RemoteNext, () => switchToTrack(getNextIndex()));
+  TrackPlayer.addEventListener(Event.RemotePrevious, () => switchToTrack((getCurrentIndex() - 1 + TRACKS.length) % TRACKS.length));
   TrackPlayer.addEventListener(Event.RemoteStop, () => TrackPlayer.stop());
   TrackPlayer.addEventListener(Event.RemoteSeek, ({ position }) => TrackPlayer.seekTo(position));
 
-  // ─── 来电恢复（RemoteDuck）───
+  // ─── 来电恢复 ───
+  let wasPausedBeforeDuck = false;
   TrackPlayer.addEventListener(Event.RemoteDuck, async ({ paused, permanent }) => {
+    addLog('INFO', `RemoteDuck: paused=${paused} permanent=${permanent} wasPaused=${wasPausedBeforeDuck}`);
     if (permanent) { await TrackPlayer.stop(); return; }
-    if (paused) { await TrackPlayer.pause(); return; }
-    // 恢复播放：根据同步设置决定是否对齐
-    try {
-      const ps = loadPlayerState();
-      const pm = ps?.playMode || 'repeat-one';
-      if (shouldSeekAlign(pm)) {
-        const idx = await TrackPlayer.getActiveTrackIndex();
-        const queue = await TrackPlayer.getQueue();
-        if (idx != null && queue[idx]) {
-          const t = TRACKS.find(tr => tr.id === queue[idx].id);
-          if (t?.durationMs) {
-            setAlignSeekExpectedUntil(Date.now() + 3000);
-            await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
-          }
-        }
-      }
-    } catch {}
+    if (paused) {
+      const s = await TrackPlayer.getPlaybackState();
+      wasPausedBeforeDuck = s.state !== State.Playing;
+      await TrackPlayer.pause();
+      return;
+    }
+    if (wasPausedBeforeDuck) return;
+    try { await seekAlignedForResume(); } catch {}
     await TrackPlayer.play();
   });
 
-  // ─── 播放状态变化 ───
-  TrackPlayer.addEventListener(Event.PlaybackState, ({ state: playState }) => {
-    if (playState === State.Paused && wasPlaying) {
-      if (state === 'OFFICIAL_CYCLE') {
-        state = 'SYNC_PAUSED';
-        pauseStartAt = Date.now();
-      } else if (state === 'SYNC_PAUSED') {
-        // 已在暂停中再次暂停（不翻状态，只更新时间戳）
-        pauseStartAt = Date.now();
-      }
-    }
-
-    if (playState === State.Playing && !wasPlaying) {
-      if (state === 'SYNC_PAUSED') {
-        const pauseDur = (Date.now() - pauseStartAt) / 1000;
-        totalPauseTime += pauseDur;
-        if (pauseDur > SYNC_PAUSE_MAX_SINGLE || totalPauseTime > SYNC_PAUSE_MAX_TOTAL) {
-          abortCycle();
-        } else {
-          awaitResumeValidation = true;
-          // 暂时回到 OFFICIAL，等 progress 校验
-          state = 'OFFICIAL_CYCLE';
-        }
-      }
-      // 从非播放恢复，标记哨兵避免首个 delta 误判
-      lastPosition = -1;
-    }
-
-    if (playState === State.Stopped) {
-      completeCycle();
-      state = 'PRE_ZERO';
-      currentTrackId = null;
-      trackDuration = 0;
-      lastPosition = -1;
-      totalPauseTime = 0;
-      awaitResumeValidation = false;
-    }
-
-    wasPlaying = playState === State.Playing;
-  });
-
   // ─── 换歌 ───
-  TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async ({ track, lastTrack }) => {
-    // 结算上一首
-    if (lastTrack?.id && isNearEnd(lastPosition)) {
-      completeCycle();
-    }
-
-    // 重置
-    currentTrackId = track?.id || null;
-    trackDuration = 0;
-    totalPauseTime = 0;
-    awaitResumeValidation = false;
-    lastPosition = -1;
-    sessionCount = 0;
+  TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async ({ track }) => {
+    if (!track) return;
+    addLog('INFO', `ActiveTrackChanged: ${track.id}, sync=${shouldSeekAlign('')}`);
+    currentTrackId = track.id;
     saveSessionCount(0);
-
-    if (track) {
+    if (shouldSeekAlign('')) {
       const t = TRACKS.find(tr => tr.id === track.id);
       if (t?.durationMs) {
-        trackDuration = t.durationMs / 1000;
-        const ps = loadPlayerState();
-        const pm = ps?.playMode || 'repeat-one';
-        if (shouldSeekAlign(pm)) {
-          const alignedSec = msToSeconds(calculateAlignedPosition(t.durationMs));
-          state = alignedSec <= ZERO_EPS ? 'OFFICIAL_CYCLE' : 'PRE_ZERO';
-          lastPosition = alignedSec;
-          await TrackPlayer.seekTo(alignedSec);
-        } else {
-          state = 'OFFICIAL_CYCLE'; // 从 0 开始，直接进入官方周期
-          lastPosition = 0;
-        }
+        setAlignSeekExpectedUntil(Date.now() + 3000);
+        const pos = msToSeconds(calculateAlignedPosition(t.durationMs));
+        await TrackPlayer.seekTo(pos);
+        saveStartedFromZero(pos <= 1.5);
       } else {
-        state = 'PRE_ZERO';
+        saveStartedFromZero(true);
       }
+    } else {
+      saveStartedFromZero(true);
     }
   });
 
   // ─── 队列结束 ───
-  TrackPlayer.addEventListener(Event.PlaybackQueueEnded, () => {
-    if (isNearEnd(lastPosition)) {
-      completeCycle();
-    }
-    state = 'PRE_ZERO';
-    totalPauseTime = 0;
-    awaitResumeValidation = false;
-  });
+  TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async () => {
+    const pm = loadPlayerState()?.playMode || 'repeat-one';
+    const { repeatCount } = getSettings();
+    addLog('INFO', `QueueEnded: track=${currentTrackId} mode=${pm} session=${loadSessionCount()} repeat=${repeatCount}`);
+    completeCycle();
 
-  // ─── 进度更新（核心） ───
-  TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, async ({ position, duration }) => {
-    if (!currentTrackId || !duration) return;
-    trackDuration = duration;
+    const count = loadSessionCount();
 
-    // 哨兵：刚恢复播放，只记录位置
-    if (lastPosition < 0) {
-      lastPosition = position;
+    if (count < repeatCount) {
+      const pos = await seekAligned();
+      saveStartedFromZero(true);
+      await TrackPlayer.play();
       return;
     }
 
-    const delta = position - lastPosition;
-
-    // ── 恢复后首个 progress：同步暂停校验 ──
-    if (awaitResumeValidation) {
-      awaitResumeValidation = false;
-      if (state === 'OFFICIAL_CYCLE') {
-        const t = TRACKS.find(tr => tr.id === currentTrackId);
-        if (t?.durationMs) {
-          const alignedNow = msToSeconds(calculateAlignedPosition(t.durationMs));
-          const diff = circularDiff(position, alignedNow, duration);
-          if (diff > ALIGN_EPS) {
-            abortCycle();
-            lastPosition = position;
-            return;
-          }
+    switch (pm) {
+      case 'repeat-one':
+        saveSessionCount(0);
+        const pos = await seekAligned();
+        saveStartedFromZero(pos <= 1.5);
+        await TrackPlayer.play();
+        break;
+      case 'play-one':
+        saveStartedFromZero(false);
+        break;
+      case 'repeat-all':
+        await switchToTrack(getNextIndex());
+        break;
+      case 'play-all':
+        if (isLastTrack()) {
+          saveStartedFromZero(false);
+        } else {
+          await switchToTrack(getNextIndex());
         }
-      }
-      lastPosition = position;
-      return;
+        break;
     }
-
-    // ── 回绕检测（尾→头） ──
-    // 方式1: delta 大幅负值
-    // 方式2: lastPosition 接近尾部且 position 接近头部（覆盖哨兵重置后的情况）
-    const isWrapAround = delta < -duration * 0.5 ||
-      (isNearEnd(lastPosition) && position <= ZERO_EPS + MAX_NORMAL_DELTA);
-
-    if (isWrapAround) {
-      const reachedEnd = isNearEnd(lastPosition);
-
-      if (state === 'OFFICIAL_CYCLE' && reachedEnd) {
-        completeCycle();
-        await onCycleComplete();
-      }
-
-      // 回绕后根据同步设置决定是否对齐
-      const ps = loadPlayerState();
-      const pm = ps?.playMode || 'repeat-one';
-      if (shouldSeekAlign(pm) && currentTrackId) {
-        const t = TRACKS.find(tr => tr.id === currentTrackId);
-        if (t?.durationMs) {
-          setAlignSeekExpectedUntil(Date.now() + 3000);
-          TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
-        }
-      }
-
-      resetCycle(position);
-      return;
-    }
-
-    // ── 跳变检测 ──
-    if (Math.abs(delta) > MAX_NORMAL_DELTA) {
-      // 检查 align token 白名单
-      if (consumeAlignSeekExpected(Date.now())) {
-        lastPosition = position;
-        return;
-      }
-      // 非法跳变
-      if (state === 'OFFICIAL_CYCLE' || state === 'SYNC_PAUSED') {
-        abortCycle();
-      }
-      lastPosition = position;
-      return;
-    }
-
-    // ── PRE_ZERO / ABORTED：检测是否回到 0 ──
-    if ((state === 'PRE_ZERO' || state === 'ABORTED_WAIT_ZERO') && isNearZero(position)) {
-      resetCycle(position);
-    }
-
-    lastPosition = position;
   });
 }

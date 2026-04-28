@@ -30,7 +30,7 @@ export const TRACKS: Track[] = [
     id: 'a05', code: 'A05', title: '大悲咒（共修版）', subtitle: '', section: 'A', 
     imageUrl: '/assets/images/cover.png', 
     audioUrl: 'A05 大悲咒（共修版）.mp3',
-    durationMs: 70134
+    durationMs: 70684
   },
 
   // B: 仪轨回向
