@@ -2,6 +2,7 @@ import TrackPlayer from 'react-native-track-player';
 import { TRACKS } from '../constants/tracks';
 import { msToSeconds } from './syncUtils';
 import { getLocalAudioUrl } from './getLocalAudioUrl';
+import { saveLastTrackId } from './storage';
 
 // 逻辑列表索引（在 TRACKS 数组中的位置）
 let currentIndex = 0;
@@ -30,6 +31,8 @@ export function isLastTrack(): boolean {
 export async function loadTrack(idx: number) {
   setCurrentIndex(idx);
   const t = TRACKS[currentIndex];
+  // 先持久化 lastTrackId，确保 ActiveTrackChanged 能识别"这是显式换歌"
+  saveLastTrackId(t.id);
   await TrackPlayer.reset();
   await TrackPlayer.add({
     id: t.id,

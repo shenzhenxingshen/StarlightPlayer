@@ -84,6 +84,17 @@ export function loadStartedFromZero(): boolean {
   try { return storage.getBoolean(STARTED_FROM_ZERO_KEY) ?? false; } catch { return false; }
 }
 
+// --- Last Track ID（跨运行时共享，用于在 ActiveTrackChanged 中识别"恢复同一首" vs "真换歌"） ---
+const LAST_TRACK_ID_KEY = 'last_track_id';
+
+export function saveLastTrackId(id: string): void {
+  storage.set(LAST_TRACK_ID_KEY, id);
+}
+
+export function loadLastTrackId(): string | null {
+  try { return storage.getString(LAST_TRACK_ID_KEY) ?? null; } catch { return null; }
+}
+
 // --- Playback Stats ---
 function todayKey(): string {
   const d = new Date();

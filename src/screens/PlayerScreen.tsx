@@ -28,7 +28,7 @@ const PlayerScreen: React.FC = () => {
   const sessionCnt = loadSessionCount();
   const currentRepeat = isStartedFromZero() ? sessionCnt + 1 : sessionCnt;
 
-  // 从持久化恢复 playMode
+  // 从持久化恢复 playMode（曲目本身已由 App.tsx 初始化时加载）
   const saved = useRef(loadPlayerState());
   const [playMode, setPlayMode] = useState<PlayMode>((saved.current?.playMode as PlayMode) || 'repeat-one');
   const [modeLabel, setModeLabel] = useState<string | null>(null);
@@ -38,15 +38,10 @@ const PlayerScreen: React.FC = () => {
     return () => { if (labelTimer.current) clearTimeout(labelTimer.current); };
   }, []);
 
-  // 恢复上次播放的歌曲
+  // 恢复完成标志：曲目由 App.tsx 一次性 loadTrack 完成，这里仅释放 restoring
   useEffect(() => {
-    (async () => {
-      if (saved.current?.trackIndex != null && saved.current.trackIndex >= 0) {
-        await loadTrack(saved.current.trackIndex);
-        saved.current = null;
-      }
-      restoring = false;
-    })();
+    saved.current = null;
+    restoring = false;
   }, []);
 
   // 切歌时保存状态（恢复期间不保存）

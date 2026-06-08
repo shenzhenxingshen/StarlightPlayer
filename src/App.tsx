@@ -11,6 +11,7 @@ import PlayerScreen from './screens/PlayerScreen';
 import PlaylistScreen from './screens/PlaylistScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import { loadTrack } from './utils/trackManager';
+import { loadPlayerState } from './utils/storage';
 import { useSettingsStore } from './store/settingsStore';
 
 const Tab = createBottomTabNavigator();
@@ -49,7 +50,11 @@ const App: React.FC = () => {
           compactCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToPrevious, Capability.SkipToNext],
           progressUpdateEventInterval: 1,
         });
-        await loadTrack(0);
+        // 优先恢复上次播放的曲目，避免冗余的 loadTrack(0) 触发 ActiveTrackChanged: a01
+        // 把累积的 session_count 清零（iOS 锁屏后被系统拉起场景）
+        const saved = loadPlayerState();
+        const initialIdx = (saved?.trackIndex != null && saved.trackIndex >= 0) ? saved.trackIndex : 0;
+        await loadTrack(initialIdx);
         // Android 13+ 通知权限
         if (Platform.OS === 'android' && Platform.Version >= 33) {
           PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(() => {});

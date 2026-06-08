@@ -5,6 +5,7 @@ import { useStatsStore } from '../store/statsStore';
 import {
   setAlignSeekExpectedUntil, shouldSeekAlign, loadPlayerState,
   saveSessionCount, loadSessionCount, saveStartedFromZero, loadStartedFromZero, getSettings,
+  saveLastTrackId, loadLastTrackId,
 } from '../utils/storage';
 import { loadTrack, getCurrentIndex, getNextIndex, isLastTrack } from '../utils/trackManager';
 import { addLog } from '../utils/logger';
@@ -111,8 +112,16 @@ export default async function PlaybackService() {
   // ─── 换歌 ───
   TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async ({ track }) => {
     if (!track) return;
-    addLog('INFO', `ActiveTrackChanged: ${track.id}, sync=${shouldSeekAlign('')}`);
+    const last = loadLastTrackId();
+    const isResume = track.id === last;
+    addLog('INFO', `ActiveTrackChanged: ${track.id}, sync=${shouldSeekAlign('')}, last=${last}, resume=${isResume}`);
     currentTrackId = track.id;
+
+    // 同一首被重新触发（iOS 后台恢复 / 队列重建）→ 保留 session 与 sfz，避免累积遍数被清零
+    if (isResume) return;
+
+    // 真正的换歌：写入新 lastTrackId、清零 session、按同步策略重置 sfz
+    saveLastTrackId(track.id);
     saveSessionCount(0);
     if (shouldSeekAlign('')) {
       const t = TRACKS.find(tr => tr.id === track.id);
