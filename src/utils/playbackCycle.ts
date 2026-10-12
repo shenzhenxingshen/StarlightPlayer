@@ -15,6 +15,7 @@ export const CYCLE_START_TOLERANCE_SECONDS = 1.5;
 export type SeekReason =
   | 'track-start'
   | 'cycle-restart'
+  | 'sync-cycle'
   | 'sync-join'
   | 'sync-resume'
   | 'user-seek'

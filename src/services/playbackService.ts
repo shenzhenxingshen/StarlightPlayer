@@ -66,23 +66,32 @@ function completeCycle(trackId: string | null, endedNearDuration: boolean) {
 }
 
 async function restartCurrentCycleInCommand(
-  reason: 'cycle-restart' | 'sync-resume',
+  reason: 'cycle-restart' | 'sync-cycle' | 'sync-resume',
 ): Promise<void> {
   const track = await ensureCurrentTrackLoadedInCommand(`restart:${reason}`);
 
   const duration = msToSeconds(track.durationMs || 0);
-  if (reason === 'sync-resume' && !getSettings().isSyncMode) {
+  const syncMode = getSettings().isSyncMode;
+  if (reason === 'sync-resume' && !syncMode) {
     await ensurePlayableAndPlayInCommand(`restart:${track.id}`);
     addLog('INFO', `restartCycle: ${track.id} sync resume cancelled because sync mode changed`);
     return;
   }
+  const effectiveReason = reason === 'sync-cycle' && !syncMode ? 'cycle-restart' : reason;
+  const shouldAlign = effectiveReason === 'sync-cycle' || effectiveReason === 'sync-resume';
   const position =
-    reason === 'sync-resume' && track.durationMs
-      ? msToSeconds(calculateAlignedPosition(track.durationMs))
-      : 0;
-  await seekWithReasonInCommand(position, reason, duration);
+    shouldAlign && track.durationMs ? msToSeconds(calculateAlignedPosition(track.durationMs)) : 0;
+  await seekWithReasonInCommand(position, effectiveReason, duration);
   await ensurePlayableAndPlayInCommand(`restart:${track.id}`, { restartTerminal: false });
-  addLog('INFO', `restartCycle: ${track.id} → ${position.toFixed(2)}s/${duration.toFixed(2)}s`);
+  addLog(
+    'INFO',
+    `restartCycle: ${track.id} reason=${effectiveReason} → ${position.toFixed(2)}s/${duration.toFixed(2)}s`,
+  );
+}
+
+async function restartCompletedCycleInCommand(): Promise<void> {
+  const reason = getSettings().isSyncMode ? 'sync-cycle' : 'cycle-restart';
+  await restartCurrentCycleInCommand(reason);
 }
 
 async function runEventCommand(label: string, operation: () => Promise<void>): Promise<void> {
@@ -388,11 +397,11 @@ export default async function PlaybackService() {
         await retryQueueAction(`QueueEnded action ${action}`, async () => {
           switch (action) {
             case 'restart-current':
-              await restartCurrentCycleInCommand('cycle-restart');
+              await restartCompletedCycleInCommand();
               break;
             case 'restart-current-reset-count':
               saveSessionCount(0);
-              await restartCurrentCycleInCommand('cycle-restart');
+              await restartCompletedCycleInCommand();
               break;
             case 'stop':
               saveExpectedPlaying(false);

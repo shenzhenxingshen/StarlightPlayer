@@ -20,6 +20,7 @@ import {
   setSettings,
 } from '@/utils/storage';
 import { setCurrentIndex } from '@/utils/trackManager';
+import * as syncUtils from '@/utils/syncUtils';
 
 const mockedTrackPlayer = TrackPlayer as jest.Mocked<typeof TrackPlayer> & {
   __emit(event: string, payload?: unknown): Promise<void> | undefined;
@@ -166,7 +167,7 @@ describe('PlaybackService · 停止后的恢复', () => {
     expect(loadCycleEligible()).toBe(false);
   });
 
-  it('未达 N 遍时，QueueEnded 在任何模式下都从 0 重播当前曲', async () => {
+  it('普通模式未达 N 遍时，QueueEnded 从 0 重播当前曲', async () => {
     savePlayerState({ trackIndex: 0, playMode: 'play-all' });
     saveSessionCount(2);
     saveCycleEligible(true);
@@ -183,6 +184,31 @@ describe('PlaybackService · 停止后的恢复', () => {
     expect(getPlaybackStats()[TRACKS[0].id]).toBe(1);
   });
 
+  it('同步模式未达 N 遍时，QueueEnded 按当前墙钟重新对齐', async () => {
+    const alignedPositionMs = 250;
+    const alignedSpy = jest
+      .spyOn(syncUtils, 'calculateAlignedPosition')
+      .mockReturnValue(alignedPositionMs);
+    try {
+      setSettings({ isCareMode: false, isSyncMode: true, repeatCount: 7 });
+      savePlayerState({ trackIndex: 0, playMode: 'play-all' });
+      saveSessionCount(2);
+      saveCycleEligible(true);
+
+      await mockedTrackPlayer.__emit(Event.PlaybackQueueEnded, {
+        position: TRACKS[0].durationMs! / 1000,
+      });
+
+      expect(loadSessionCount()).toBe(3);
+      expect(loadCurrentTrack()?.id).toBe(TRACKS[0].id);
+      expect(mockedTrackPlayer.seekTo).toHaveBeenCalledWith(alignedPositionMs / 1000);
+      expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(1);
+      expect(loadCycleEligible()).toBe(true);
+    } finally {
+      alignedSpy.mockRestore();
+    }
+  });
+
   it('repeat-one 达 N 遍后清零并继续当前曲', async () => {
     savePlayerState({ trackIndex: 0, playMode: 'repeat-one' });
     saveSessionCount(6);
@@ -195,6 +221,30 @@ describe('PlaybackService · 停止后的恢复', () => {
     expect(loadSessionCount()).toBe(0);
     expect(loadCurrentTrack()?.id).toBe(TRACKS[0].id);
     expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('同步 repeat-one 达 N 遍后清零并按当前墙钟重新对齐', async () => {
+    const alignedPositionMs = 300;
+    const alignedSpy = jest
+      .spyOn(syncUtils, 'calculateAlignedPosition')
+      .mockReturnValue(alignedPositionMs);
+    try {
+      setSettings({ isCareMode: false, isSyncMode: true, repeatCount: 7 });
+      savePlayerState({ trackIndex: 0, playMode: 'repeat-one' });
+      saveSessionCount(6);
+      saveCycleEligible(true);
+
+      await mockedTrackPlayer.__emit(Event.PlaybackQueueEnded, {
+        position: TRACKS[0].durationMs! / 1000,
+      });
+
+      expect(loadSessionCount()).toBe(0);
+      expect(mockedTrackPlayer.seekTo).toHaveBeenCalledWith(alignedPositionMs / 1000);
+      expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(1);
+      expect(loadCycleEligible()).toBe(true);
+    } finally {
+      alignedSpy.mockRestore();
+    }
   });
 
   it('play-one 达 N 遍后停止，不再自动重播', async () => {
