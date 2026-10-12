@@ -27,14 +27,15 @@
         </intent-filter>
       </activity>
       
-      <!-- react-native-track-player Service -->
-      <service android:name="com.guichaguri.trackplayer.service.PlayerService" 
-               android:exported="false" 
-               android:foregroundServiceType="mediaPlayback">
-        <intent-filter>
-            <action android:name="android.media.browse.MediaBrowserService" />
-        </intent-filter>
-      </service>
+      <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.diagnostics.fileprovider"
+        android:exported="false"
+        android:grantUriPermissions="true">
+        <meta-data
+          android:name="android.support.FILE_PROVIDER_PATHS"
+          android:resource="@xml/diagnostic_file_paths" />
+      </provider>
       
     </application>
 

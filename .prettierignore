@@ -1,0 +1,7 @@
+node_modules/
+android/
+ios/
+patches/
+__tests__/mocks/
+*.lock
+package-lock.json

@@ -3,177 +3,435 @@ import { TRACKS } from '../constants/tracks';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { useStatsStore } from '../store/statsStore';
 import {
-  setAlignSeekExpectedUntil, shouldSeekAlign, loadPlayerState,
-  saveSessionCount, loadSessionCount, saveStartedFromZero, loadStartedFromZero, getSettings,
-  saveLastTrackId, loadLastTrackId,
+  clearPlaybackPausedAt,
+  getSettings,
+  loadCurrentTrack,
+  loadCycleEligible,
+  loadExpectedPlaying,
+  loadPendingTrackChange,
+  loadPlayerState,
+  loadSessionCount,
+  loadTrackGeneration,
+  saveCurrentTrack,
+  saveCycleEligible,
+  saveExpectedPlaying,
+  savePlaybackPausedAt,
+  saveSessionCount,
 } from '../utils/storage';
-import { loadTrack, getCurrentIndex, getNextIndex, isLastTrack } from '../utils/trackManager';
+import {
+  ensureCurrentTrackLoadedInCommand,
+  ensurePlayableAndPlayInCommand,
+  getNextIndex,
+  getPrevIndex,
+  isLastTrack,
+  playWithRetryInCommand,
+  replaceTrackInCommand,
+} from '../utils/trackManager';
 import { addLog } from '../utils/logger';
+import { enqueuePlayerCommand } from '../utils/playerCommandQueue';
+import { resetCycleIfCompleted, seekWithReasonInCommand } from '../utils/playbackCycle';
+import { decidePostCycleAction, isValidQueueEndPosition } from '../utils/playbackDecision';
 
-// currentTrackId 仅 Service 端使用，不需要跨运行时
-let currentTrackId: string | null = null;
+let serviceInitialized = false;
+let queueEndedInFlight = false;
+let lastQueueEndedKey = '';
+let lastQueueEndedAt = 0;
+let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
 
-// UI 端读取用 loadStartedFromZero()
-export function isStartedFromZero() { return loadStartedFromZero(); }
-
-// 手动播放前调用：如果上一轮已结束，重置遍数开启新一轮。返回是否重置。
-export function resetCycleIfCompleted(): boolean {
-  const { repeatCount } = getSettings();
-  const count = loadSessionCount();
-  if (count >= repeatCount) {
-    saveSessionCount(0);
-    saveStartedFromZero(!shouldSeekAlign(''));
-    addLog('INFO', `resetCycle: ${count}>=${repeatCount} → reset`);
-    return true;
-  }
-  return false;
+export function isStartedFromZero() {
+  return loadCycleEligible();
 }
+export { resetCycleIfCompleted };
 
 const increment = (id: string) => useStatsStore.getState().increment(id);
 
-async function seekAligned() {
-  if (shouldSeekAlign('') && currentTrackId) {
-    const t = TRACKS.find(tr => tr.id === currentTrackId);
-    if (t?.durationMs) {
-      setAlignSeekExpectedUntil(Date.now() + 3000);
-      const pos = msToSeconds(calculateAlignedPosition(t.durationMs));
-      await TrackPlayer.seekTo(pos);
-      addLog('INFO', `seekAligned: ${currentTrackId} → ${pos.toFixed(1)}s/${msToSeconds(t.durationMs).toFixed(1)}s`);
-      return pos;
-    }
-  }
-  await TrackPlayer.seekTo(0);
-  return 0;
+function currentTrackId(): string | null {
+  return loadCurrentTrack()?.id ?? null;
 }
 
-function completeCycle() {
-  const sfz = loadStartedFromZero();
-  if (currentTrackId && sfz) {
-    increment(currentTrackId);
+function completeCycle(trackId: string | null, endedNearDuration: boolean) {
+  const eligible = loadCycleEligible() && endedNearDuration;
+  if (trackId && eligible) {
+    increment(trackId);
     const next = loadSessionCount() + 1;
     saveSessionCount(next);
-    addLog('INFO', `completeCycle: ${currentTrackId} counted, session=${next}`);
+    addLog('INFO', `completeCycle: ${trackId} counted, session=${next}`);
   } else {
-    addLog('INFO', `completeCycle: ${currentTrackId} skipped(sfz=${sfz})`);
+    addLog(
+      'INFO',
+      `completeCycle: ${trackId} skipped(eligible=${loadCycleEligible()}, nearEnd=${endedNearDuration})`,
+    );
   }
-  saveStartedFromZero(true);
+  saveCycleEligible(false);
 }
 
-async function switchToTrack(idx: number) {
-  addLog('INFO', `switchToTrack: idx=${getCurrentIndex()}→${idx}, track=${TRACKS[idx]?.id}`);
-  await loadTrack(idx);
-  await TrackPlayer.play();
+async function restartCurrentCycleInCommand(
+  reason: 'cycle-restart' | 'sync-resume',
+): Promise<void> {
+  const track = await ensureCurrentTrackLoadedInCommand(`restart:${reason}`);
+
+  const duration = msToSeconds(track.durationMs || 0);
+  if (reason === 'sync-resume' && !getSettings().isSyncMode) {
+    await ensurePlayableAndPlayInCommand(`restart:${track.id}`);
+    addLog('INFO', `restartCycle: ${track.id} sync resume cancelled because sync mode changed`);
+    return;
+  }
+  const position =
+    reason === 'sync-resume' && track.durationMs
+      ? msToSeconds(calculateAlignedPosition(track.durationMs))
+      : 0;
+  await seekWithReasonInCommand(position, reason, duration);
+  await ensurePlayableAndPlayInCommand(`restart:${track.id}`, { restartTerminal: false });
+  addLog('INFO', `restartCycle: ${track.id} → ${position.toFixed(2)}s/${duration.toFixed(2)}s`);
 }
 
-async function seekAlignedForResume() {
-  if (shouldSeekAlign('')) {
-    const t = TRACKS.find(tr => tr.id === currentTrackId);
-    if (t?.durationMs) {
-      setAlignSeekExpectedUntil(Date.now() + 3000);
-      await TrackPlayer.seekTo(msToSeconds(calculateAlignedPosition(t.durationMs)));
+async function runEventCommand(label: string, operation: () => Promise<void>): Promise<void> {
+  try {
+    await enqueuePlayerCommand(label, operation);
+  } catch (error) {
+    // 事件回调不向 RNTP 抛出 rejected Promise，避免二次全局崩溃。
+    addLog('ERROR', `${label} event failed`, error);
+    if (loadExpectedPlaying()) scheduleUnexpectedStopRecovery(`${label}-error`);
+  }
+}
+
+async function retryQueueAction(label: string, operation: () => Promise<void>): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await operation();
+      if (attempt > 1) addLog('INFO', `${label} recovered on attempt ${attempt}`);
+      return;
+    } catch (error) {
+      lastError = error;
+      addLog('ERROR', `${label} attempt ${attempt} failed`, error);
     }
   }
+  throw lastError;
+}
+
+async function switchToTrackInCommand(idx: number, reason: 'auto-next' | 'remote') {
+  const track = await replaceTrackInCommand(idx, reason);
+  if (!track) return;
+  await playWithRetryInCommand(`switchToTrack:${track.id}`);
+}
+
+function isPlaybackStartingOrRunning(state: State): boolean {
+  return state === State.Playing || state === State.Buffering || state === State.Loading;
+}
+
+function scheduleUnexpectedStopRecovery(source: string, attempt = 1) {
+  if (recoveryTimer) return;
+  const delay = [1500, 3000, 6000][Math.min(attempt - 1, 2)];
+  recoveryTimer = setTimeout(async () => {
+    recoveryTimer = null;
+    if (!loadExpectedPlaying()) return;
+    let recovered = false;
+    try {
+      await enqueuePlayerCommand(`watchdog:${source}:${attempt}`, async () => {
+        const state = (await TrackPlayer.getPlaybackState()).state;
+        const activeTrack = await TrackPlayer.getActiveTrack();
+        if (isPlaybackStartingOrRunning(state) && activeTrack) {
+          recovered = true;
+          return;
+        }
+        addLog(
+          'WARN',
+          `Playback watchdog recovery: source=${source} attempt=${attempt} state=${state} active=${String(activeTrack?.id ?? 'none')}`,
+        );
+        await ensurePlayableAndPlayInCommand(`watchdog:${source}:${attempt}`);
+        recovered = true;
+      });
+    } catch (error) {
+      addLog('ERROR', `watchdog:${source} attempt ${attempt} failed`, error);
+    }
+
+    if (!recovered && loadExpectedPlaying()) {
+      if (attempt < 3) {
+        scheduleUnexpectedStopRecovery(source, attempt + 1);
+      } else {
+        saveExpectedPlaying(false);
+        addLog('ERROR', `Playback watchdog exhausted: source=${source}`);
+      }
+    }
+  }, delay);
+}
+
+async function reconcileActiveTrackInCommand(track: { id: string }, observedGeneration: number) {
+  if (observedGeneration !== loadTrackGeneration()) {
+    addLog('WARN', `ActiveTrackChanged stale generation ignored: ${track.id}`);
+    return;
+  }
+  const nativeTrack = await TrackPlayer.getActiveTrack();
+  if (String(nativeTrack?.id ?? '') !== track.id) {
+    addLog(
+      'WARN',
+      `ActiveTrackChanged stale native track ignored: event=${track.id} native=${String(nativeTrack?.id ?? 'none')}`,
+    );
+    return;
+  }
+  const index = TRACKS.findIndex(item => item.id === track.id);
+  if (index < 0) {
+    addLog('ERROR', `ActiveTrackChanged unknown track: ${track.id}`);
+    return;
+  }
+
+  const previous = loadCurrentTrack();
+  const pending = loadPendingTrackChange();
+
+  if (pending?.trackId === track.id && pending.generation === observedGeneration) {
+    saveCurrentTrack({ id: track.id, index });
+    addLog('INFO', `ActiveTrackChanged expected: ${track.id} reason=${pending.reason}`);
+    return;
+  }
+  if (previous?.id === track.id) {
+    addLog('INFO', `ActiveTrackChanged restored: ${track.id}`);
+    return;
+  }
+
+  addLog('WARN', `ActiveTrackChanged unexpected: ${previous?.id ?? 'none'}→${track.id}`);
+  saveCurrentTrack({ id: track.id, index });
+  saveSessionCount(0);
+  const metadata = TRACKS[index];
+  const position =
+    getSettings().isSyncMode && metadata.durationMs
+      ? msToSeconds(calculateAlignedPosition(metadata.durationMs))
+      : 0;
+  await seekWithReasonInCommand(position, 'track-start', msToSeconds(metadata.durationMs || 0));
 }
 
 export default async function PlaybackService() {
+  if (serviceInitialized) return;
+  serviceInitialized = true;
+
   // ─── 远程控制 ───
   TrackPlayer.addEventListener(Event.RemotePlay, async () => {
     addLog('INFO', 'RemotePlay');
-    const didReset = resetCycleIfCompleted();
-    if (shouldSeekAlign('')) {
-      try { await seekAlignedForResume(); } catch {}
-    } else if (didReset) {
-      await TrackPlayer.seekTo(0);
-    }
-    await TrackPlayer.play();
+    await runEventCommand('RemotePlay', async () => {
+      const didReset = resetCycleIfCompleted();
+      const track = await ensureCurrentTrackLoadedInCommand('RemotePlay');
+      const syncMode = getSettings().isSyncMode;
+      if (syncMode && track.durationMs) {
+        await seekWithReasonInCommand(
+          msToSeconds(calculateAlignedPosition(track.durationMs)),
+          'sync-resume',
+          msToSeconds(track.durationMs),
+        );
+      } else {
+        if (didReset) {
+          await seekWithReasonInCommand(0, 'cycle-restart', msToSeconds(track.durationMs || 0));
+        }
+      }
+      await ensurePlayableAndPlayInCommand('RemotePlay', { restartTerminal: !syncMode });
+    });
   });
-  TrackPlayer.addEventListener(Event.RemotePause, () => TrackPlayer.pause());
-  TrackPlayer.addEventListener(Event.RemoteNext, () => switchToTrack(getNextIndex()));
-  TrackPlayer.addEventListener(Event.RemotePrevious, () => switchToTrack((getCurrentIndex() - 1 + TRACKS.length) % TRACKS.length));
-  TrackPlayer.addEventListener(Event.RemoteStop, () => TrackPlayer.stop());
-  TrackPlayer.addEventListener(Event.RemoteSeek, ({ position }) => TrackPlayer.seekTo(position));
+  TrackPlayer.addEventListener(Event.RemotePause, async () => {
+    addLog('INFO', 'RemotePause');
+    await runEventCommand('RemotePause', async () => {
+      saveExpectedPlaying(false);
+      savePlaybackPausedAt();
+      await TrackPlayer.pause();
+    });
+  });
+  TrackPlayer.addEventListener(Event.RemoteNext, async () => {
+    addLog('INFO', 'RemoteNext');
+    await runEventCommand('RemoteNext', () =>
+      switchToTrackInCommand(getNextIndex(currentTrackId()), 'remote'),
+    );
+  });
+  TrackPlayer.addEventListener(Event.RemotePrevious, async () => {
+    addLog('INFO', 'RemotePrevious');
+    await runEventCommand('RemotePrevious', () =>
+      switchToTrackInCommand(getPrevIndex(currentTrackId()), 'remote'),
+    );
+  });
+  TrackPlayer.addEventListener(Event.RemoteStop, async () => {
+    addLog('INFO', 'RemoteStop');
+    await runEventCommand('RemoteStop', async () => {
+      saveExpectedPlaying(false);
+      saveCycleEligible(false);
+      clearPlaybackPausedAt();
+      await TrackPlayer.stop();
+    });
+  });
+  TrackPlayer.addEventListener(Event.RemoteSeek, async ({ position }) => {
+    addLog('INFO', `RemoteSeek: ${position.toFixed(2)}s sync=${getSettings().isSyncMode}`);
+    await runEventCommand('RemoteSeek', async () => {
+      const id = currentTrackId();
+      const track = TRACKS.find(item => item.id === id);
+      if (getSettings().isSyncMode && track?.durationMs) {
+        const aligned = msToSeconds(calculateAlignedPosition(track.durationMs));
+        await seekWithReasonInCommand(aligned, 'sync-resume', msToSeconds(track.durationMs));
+        return;
+      }
+      await seekWithReasonInCommand(position, 'remote-seek', msToSeconds(track?.durationMs || 0));
+    });
+  });
 
   // ─── 来电恢复 ───
-  let wasPausedBeforeDuck = false;
+  let shouldResumeAfterDuck = false;
   TrackPlayer.addEventListener(Event.RemoteDuck, async ({ paused, permanent }) => {
-    addLog('INFO', `RemoteDuck: paused=${paused} permanent=${permanent} wasPaused=${wasPausedBeforeDuck}`);
-    if (permanent) { await TrackPlayer.stop(); return; }
-    if (paused) {
-      const s = await TrackPlayer.getPlaybackState();
-      wasPausedBeforeDuck = s.state !== State.Playing;
-      await TrackPlayer.pause();
+    addLog(
+      'INFO',
+      `RemoteDuck: paused=${paused} permanent=${permanent} resume=${shouldResumeAfterDuck}`,
+    );
+    if (permanent) {
+      shouldResumeAfterDuck = false;
+      await runEventCommand('RemoteDuck:permanent', async () => {
+        saveExpectedPlaying(false);
+        saveCycleEligible(false);
+        clearPlaybackPausedAt();
+        await TrackPlayer.stop();
+      });
       return;
     }
-    if (wasPausedBeforeDuck) return;
-    try { await seekAlignedForResume(); } catch {}
-    await TrackPlayer.play();
+    if (paused) {
+      await runEventCommand('RemoteDuck:pause', async () => {
+        const wasExpectedPlaying = loadExpectedPlaying();
+        shouldResumeAfterDuck = wasExpectedPlaying;
+        if (wasExpectedPlaying) savePlaybackPausedAt();
+        await TrackPlayer.pause();
+      });
+      return;
+    }
+    if (!shouldResumeAfterDuck || !loadExpectedPlaying()) {
+      shouldResumeAfterDuck = false;
+      return;
+    }
+    shouldResumeAfterDuck = false;
+    await runEventCommand('RemoteDuck:resume', async () => {
+      if (getSettings().isSyncMode) await restartCurrentCycleInCommand('sync-resume');
+      else await ensurePlayableAndPlayInCommand('RemoteDuck:resume');
+    });
   });
 
   // ─── 换歌 ───
   TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, async ({ track }) => {
     if (!track) return;
-    const last = loadLastTrackId();
-    const isResume = track.id === last;
-    addLog('INFO', `ActiveTrackChanged: ${track.id}, sync=${shouldSeekAlign('')}, last=${last}, resume=${isResume}`);
-    currentTrackId = track.id;
-
-    // 同一首被重新触发（iOS 后台恢复 / 队列重建）→ 保留 session 与 sfz，避免累积遍数被清零
-    if (isResume) return;
-
-    // 真正的换歌：写入新 lastTrackId、清零 session、按同步策略重置 sfz
-    saveLastTrackId(track.id);
-    saveSessionCount(0);
-    if (shouldSeekAlign('')) {
-      const t = TRACKS.find(tr => tr.id === track.id);
-      if (t?.durationMs) {
-        setAlignSeekExpectedUntil(Date.now() + 3000);
-        const pos = msToSeconds(calculateAlignedPosition(t.durationMs));
-        await TrackPlayer.seekTo(pos);
-        saveStartedFromZero(pos <= 1.5);
-      } else {
-        saveStartedFromZero(true);
-      }
-    } else {
-      saveStartedFromZero(true);
-    }
+    const observedGeneration = loadTrackGeneration();
+    await runEventCommand(`ActiveTrackChanged:${String(track.id)}`, () =>
+      reconcileActiveTrackInCommand({ id: String(track.id) }, observedGeneration),
+    );
   });
 
   // ─── 队列结束 ───
-  TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async () => {
-    const pm = loadPlayerState()?.playMode || 'repeat-one';
-    const { repeatCount } = getSettings();
-    addLog('INFO', `QueueEnded: track=${currentTrackId} mode=${pm} session=${loadSessionCount()} repeat=${repeatCount}`);
-    completeCycle();
-
-    const count = loadSessionCount();
-
-    if (count < repeatCount) {
-      const pos = await seekAligned();
-      saveStartedFromZero(true);
-      await TrackPlayer.play();
+  TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async ({ position }) => {
+    const id = currentTrackId();
+    const generation = loadTrackGeneration();
+    const key = `${id ?? 'none'}:${generation}`;
+    const now = Date.now();
+    const sinceLastQueueEnd = now - lastQueueEndedAt;
+    if (
+      queueEndedInFlight ||
+      (key === lastQueueEndedKey && sinceLastQueueEnd >= 0 && sinceLastQueueEnd < 5000)
+    ) {
+      addLog('WARN', `QueueEnded duplicate ignored: ${key}`);
       return;
     }
+    queueEndedInFlight = true;
+    lastQueueEndedKey = key;
+    lastQueueEndedAt = now;
 
-    switch (pm) {
-      case 'repeat-one':
-        saveSessionCount(0);
-        const pos = await seekAligned();
-        saveStartedFromZero(pos <= 1.5);
-        await TrackPlayer.play();
-        break;
-      case 'play-one':
-        saveStartedFromZero(false);
-        break;
-      case 'repeat-all':
-        await switchToTrack(getNextIndex());
-        break;
-      case 'play-all':
-        if (isLastTrack()) {
-          saveStartedFromZero(false);
-        } else {
-          await switchToTrack(getNextIndex());
+    try {
+      await enqueuePlayerCommand(`QueueEnded:${key}`, async () => {
+        if (generation !== loadTrackGeneration() || id !== currentTrackId()) {
+          addLog(
+            'WARN',
+            `QueueEnded stale generation ignored: event=${key} current=${currentTrackId() ?? 'none'}:${loadTrackGeneration()}`,
+          );
+          return;
         }
-        break;
+        const nativeTrack = await TrackPlayer.getActiveTrack();
+        const nativeTrackId = nativeTrack?.id == null ? null : String(nativeTrack.id);
+        const nativeGeneration = Number(nativeTrack?.starlightGeneration);
+        if (Number.isInteger(nativeGeneration) && nativeGeneration !== generation) {
+          addLog(
+            'WARN',
+            `QueueEnded stale native generation ignored: event=${generation} native=${nativeGeneration}`,
+          );
+          return;
+        }
+        if (id && nativeTrackId && nativeTrackId !== id) {
+          addLog('WARN', `QueueEnded stale event ignored: persisted=${id} native=${nativeTrackId}`);
+          return;
+        }
+
+        const sourceId = id ?? nativeTrackId;
+        const sourceIndex = TRACKS.findIndex(item => item.id === sourceId);
+        if (!sourceId || sourceIndex < 0) {
+          addLog(
+            'ERROR',
+            `QueueEnded cannot resolve active track: persisted=${id} native=${nativeTrackId}`,
+          );
+          return;
+        }
+        if (!id) saveCurrentTrack({ id: sourceId, index: sourceIndex });
+
+        const pm = loadPlayerState()?.playMode || 'repeat-one';
+        const { repeatCount } = getSettings();
+        const track = TRACKS[sourceIndex];
+        const duration = msToSeconds(track?.durationMs || 0);
+        const nativePosition = (await TrackPlayer.getProgress()).position;
+        const eventNearDuration = isValidQueueEndPosition(position, duration);
+        const nativeNearDuration = isValidQueueEndPosition(nativePosition, duration);
+        const endedNearDuration = eventNearDuration && nativeNearDuration;
+        addLog(
+          'INFO',
+          `QueueEnded: track=${sourceId} event=${position.toFixed(2)} native=${nativePosition.toFixed(2)}/${duration.toFixed(2)} nearEnd=${endedNearDuration} mode=${pm} session=${loadSessionCount()} repeat=${repeatCount}`,
+        );
+
+        completeCycle(sourceId, endedNearDuration);
+        const count = loadSessionCount();
+        const action = decidePostCycleAction(pm, count, repeatCount, isLastTrack(sourceId));
+
+        // completeCycle 只在重试外执行一次，保证重启/换曲失败时不会重复计数。
+        await retryQueueAction(`QueueEnded action ${action}`, async () => {
+          switch (action) {
+            case 'restart-current':
+              await restartCurrentCycleInCommand('cycle-restart');
+              break;
+            case 'restart-current-reset-count':
+              saveSessionCount(0);
+              await restartCurrentCycleInCommand('cycle-restart');
+              break;
+            case 'stop':
+              saveExpectedPlaying(false);
+              saveCycleEligible(false);
+              break;
+            case 'next-track':
+              await switchToTrackInCommand(getNextIndex(sourceId), 'auto-next');
+              break;
+          }
+        });
+      });
+    } catch (error) {
+      addLog('ERROR', `QueueEnded handler failed: ${key}`, error);
+      scheduleUnexpectedStopRecovery('queue-ended-error');
+    } finally {
+      queueEndedInFlight = false;
+    }
+  });
+
+  TrackPlayer.addEventListener(Event.PlaybackError, ({ code, message }) => {
+    addLog('ERROR', `PlaybackError: ${code} ${message}`);
+    if (loadExpectedPlaying()) scheduleUnexpectedStopRecovery('playback-error');
+  });
+
+  TrackPlayer.addEventListener(Event.PlayerError, ({ code, message }) => {
+    addLog('ERROR', `PlayerError: ${code} ${message}`);
+    if (loadExpectedPlaying()) scheduleUnexpectedStopRecovery('player-error');
+  });
+
+  TrackPlayer.addEventListener(Event.PlaybackState, ({ state }) => {
+    addLog('INFO', `PlaybackState: ${state} expected=${loadExpectedPlaying()}`);
+    if (
+      loadExpectedPlaying() &&
+      (state === State.Ended ||
+        state === State.Error ||
+        state === State.Stopped ||
+        state === State.None)
+    ) {
+      scheduleUnexpectedStopRecovery(`state-${state}`);
     }
   });
 }
