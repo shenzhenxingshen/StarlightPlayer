@@ -138,6 +138,12 @@ function scheduleUnexpectedStopRecovery(source: string, attempt = 1) {
     let recovered = false;
     try {
       await enqueuePlayerCommand(`watchdog:${source}:${attempt}`, async () => {
+        // 定时器决定恢复后可能仍在等待命令锁；用户的暂停/停止意图必须最终优先。
+        if (!loadExpectedPlaying()) {
+          recovered = true;
+          addLog('INFO', `Playback watchdog cancelled by user intent: source=${source}`);
+          return;
+        }
         const state = (await TrackPlayer.getPlaybackState()).state;
         const activeTrack = await TrackPlayer.getActiveTrack();
         if (isPlaybackStartingOrRunning(state) && activeTrack) {
@@ -148,7 +154,11 @@ function scheduleUnexpectedStopRecovery(source: string, attempt = 1) {
           'WARN',
           `Playback watchdog recovery: source=${source} attempt=${attempt} state=${state} active=${String(activeTrack?.id ?? 'none')}`,
         );
-        await ensurePlayableAndPlayInCommand(`watchdog:${source}:${attempt}`);
+        const syncMode = getSettings().isSyncMode;
+        await ensurePlayableAndPlayInCommand(`watchdog:${source}:${attempt}`, {
+          restartTerminal: !syncMode,
+          alignToClock: syncMode,
+        });
         recovered = true;
       });
     } catch (error) {

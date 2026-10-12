@@ -20,6 +20,7 @@ import {
   setSettings,
 } from '@/utils/storage';
 import { setCurrentIndex } from '@/utils/trackManager';
+import { enqueuePlayerCommand } from '@/utils/playerCommandQueue';
 import * as syncUtils from '@/utils/syncUtils';
 
 const mockedTrackPlayer = TrackPlayer as jest.Mocked<typeof TrackPlayer> & {
@@ -436,6 +437,62 @@ describe('PlaybackService · 停止后的恢复', () => {
       expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(1);
       expect(loadExpectedPlaying()).toBe(true);
     } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('同步模式 watchdog 按墙钟恢复，而不是固定回到 0', async () => {
+    jest.useFakeTimers({ doNotFake: ['Date'] });
+    const alignedSpy = jest.spyOn(syncUtils, 'calculateAlignedPosition').mockReturnValue(10_000);
+    try {
+      setSettings({ isCareMode: false, isSyncMode: true, repeatCount: 7 });
+      saveExpectedPlaying(true);
+      saveCycleEligible(true);
+      mockedTrackPlayer.getPlaybackState
+        .mockResolvedValueOnce({ state: State.Stopped })
+        .mockResolvedValueOnce({ state: State.Stopped })
+        .mockResolvedValue({ state: State.Playing });
+
+      mockedTrackPlayer.__emit(Event.PlaybackState, { state: State.Stopped });
+      await jest.advanceTimersByTimeAsync(1500);
+
+      expect(mockedTrackPlayer.seekTo).toHaveBeenCalledWith(10);
+      expect(mockedTrackPlayer.seekTo).not.toHaveBeenCalledWith(0);
+      expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(1);
+      expect(loadCycleEligible()).toBe(false);
+    } finally {
+      alignedSpy.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
+  it('watchdog 等待命令锁时收到停止意图，不会重新播放', async () => {
+    jest.useFakeTimers({ doNotFake: ['Date'] });
+    let releaseBlocker!: () => void;
+    const blockerGate = new Promise<void>(resolve => {
+      releaseBlocker = resolve;
+    });
+    try {
+      const blocker = enqueuePlayerCommand('test:watchdog-blocker', () => blockerGate);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      saveExpectedPlaying(true);
+      mockedTrackPlayer.getPlaybackState.mockResolvedValue({ state: State.Stopped });
+      mockedTrackPlayer.__emit(Event.PlaybackState, { state: State.Stopped });
+      jest.advanceTimersByTime(1500);
+      await Promise.resolve();
+
+      // 模拟另一 ReactContext 在 watchdog 取得原生锁前提交用户意图。
+      saveExpectedPlaying(false);
+      releaseBlocker();
+      await blocker;
+      await enqueuePlayerCommand('test:watchdog-drain', async () => {});
+
+      expect(mockedTrackPlayer.play).not.toHaveBeenCalled();
+      expect(loadExpectedPlaying()).toBe(false);
+    } finally {
+      releaseBlocker();
       jest.useRealTimers();
     }
   });

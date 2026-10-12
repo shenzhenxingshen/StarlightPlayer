@@ -17,6 +17,7 @@ export type SeekReason =
   | 'cycle-restart'
   | 'sync-cycle'
   | 'sync-join'
+  | 'sync-recovery'
   | 'sync-resume'
   | 'user-seek'
   | 'remote-seek';

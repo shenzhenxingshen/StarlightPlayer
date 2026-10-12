@@ -128,9 +128,10 @@ export async function ensureCurrentTrackLoadedInCommand(context: string): Promis
 
 export async function ensurePlayableAndPlayInCommand(
   context: string,
-  options: { restartTerminal?: boolean } = {},
+  options: { restartTerminal?: boolean; alignToClock?: boolean } = {},
 ): Promise<void> {
   const restartTerminal = options.restartTerminal ?? true;
+  const alignToClock = options.alignToClock ?? false;
   let track = await ensureCurrentTrackLoadedInCommand(context);
   let state = (await TrackPlayer.getPlaybackState()).state;
 
@@ -141,7 +142,13 @@ export async function ensurePlayableAndPlayInCommand(
     state = (await TrackPlayer.getPlaybackState()).state;
   }
 
-  if (
+  if (alignToClock && track.durationMs) {
+    await seekWithReasonInCommand(
+      msToSeconds(calculateAlignedPosition(track.durationMs)),
+      'sync-recovery',
+      msToSeconds(track.durationMs),
+    );
+  } else if (
     restartTerminal &&
     (state === State.Ended || state === State.Stopped || state === State.Error)
   ) {
