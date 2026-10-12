@@ -1,6 +1,6 @@
 # 星光播放器 隐私政策
 
-**最后更新日期：2026年3月27日**
+**最后更新日期：2026年10月12日**
 
 ## 概述
 
@@ -20,8 +20,9 @@
 
 本应用在您的设备本地存储以下数据，这些数据**仅保存在您的设备上**，不会上传到任何服务器：
 
-- **播放设置**：大字模式开关状态
+- **播放设置**：关怀模式、同步播放和每首重复遍数
 - **播放统计**：今日播放的曲目和次数
+- **诊断日志**：播放状态、错误和设备基本型号信息。只有当您在“诊断信息”中主动导出并选择分享目标时，文件才会离开设备
 
 您可以随时通过卸载应用来删除这些本地数据。
 
@@ -51,7 +52,7 @@
 
 # StarlightPlayer Privacy Policy
 
-**Last Updated: March 27, 2026**
+**Last Updated: October 12, 2026**
 
 ## Overview
 
@@ -71,8 +72,9 @@ This app **does not collect any personal data**, including but not limited to:
 
 The following data is stored locally on your device only and is **never uploaded to any server**:
 
-- **Settings**: Large text mode preference
+- **Settings**: Care mode, synchronized playback, and per-track repeat count
 - **Playback statistics**: Today's play counts per track
+- **Diagnostic logs**: Playback states, errors, and basic device model information. A diagnostic file leaves the device only when you explicitly export it and choose a share destination
 
 You can delete all local data by uninstalling the app.
 
