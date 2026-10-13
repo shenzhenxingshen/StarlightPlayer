@@ -1,29 +1,56 @@
 import './utils/logger'; // 最先加载，拦截全局错误
 import { GOLD, GOLD_DIM, BG_GROUND, BG_SURFACE, BORDER_STRONG, TEXT_TER } from './constants/colors';
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, View, Text, StyleSheet, Platform, PermissionsAndroid } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import TrackPlayer, { Capability } from 'react-native-track-player';
+import TrackPlayer, { RepeatMode, State } from 'react-native-track-player';
 import PlayerScreen from './screens/PlayerScreen';
 import PlaylistScreen from './screens/PlaylistScreen';
 import ProfileScreen from './screens/ProfileScreen';
-import { loadTrack } from './utils/trackManager';
+import { replaceTrackInCommand } from './utils/trackManager';
+import {
+  getSettings,
+  discardPendingTrackChange,
+  loadCurrentTrack,
+  loadPlayerState,
+  saveCurrentTrack,
+  saveCycleEligible,
+  saveExpectedPlaying,
+  savePlayerState,
+  saveSessionCount,
+} from './utils/storage';
 import { useSettingsStore } from './store/settingsStore';
+import { enqueuePlayerCommand } from './utils/playerCommandQueue';
+import { buildPlayerOptions } from './utils/playerOptions';
+import { TRACKS } from './constants/tracks';
+import { addLog } from './utils/logger';
+import { isNearCycleStart } from './utils/playbackCycle';
 
 const Tab = createBottomTabNavigator();
 
 let _initialized = false;
 let _initializing = false;
 
+function isAlreadyInitialized(error: unknown): boolean {
+  const candidate = error as { code?: string; message?: string };
+  return (
+    candidate?.code === 'player_already_initialized' ||
+    candidate?.message?.includes('already been initialized') === true
+  );
+}
+
 const App: React.FC = () => {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (_initialized) { setReady(true); return; }
+    if (_initialized) {
+      setReady(true);
+      return;
+    }
     if (_initializing) return;
     _initializing = true;
     const startTime = Date.now();
@@ -33,26 +60,72 @@ const App: React.FC = () => {
         // Android 需要 APP 在前台才能 setupPlayer，加重试
         for (let i = 0; i < 5; i++) {
           try {
-            await TrackPlayer.setupPlayer({ minBuffer: 5, maxBuffer: 50, autoHandleInterruptions: false });
+            await enqueuePlayerCommand('App:setupPlayer', () =>
+              TrackPlayer.setupPlayer({
+                minBuffer: 5,
+                maxBuffer: 50,
+                autoHandleInterruptions: false,
+              }),
+            );
             break;
           } catch (e) {
+            if (isAlreadyInitialized(e)) {
+              addLog('INFO', 'setupPlayer: reusing existing native player');
+              break;
+            }
             if (i === 4) throw e;
             await new Promise(r => setTimeout(r, 500));
           }
         }
-        await TrackPlayer.updateOptions({
-          capabilities: [
-            Capability.Play, Capability.Pause,
-            Capability.SkipToNext, Capability.SkipToPrevious,
-            Capability.SeekTo, Capability.Stop,
-          ],
-          compactCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToPrevious, Capability.SkipToNext],
-          progressUpdateEventInterval: 1,
+        const saved = loadPlayerState();
+        const persistedTrackIndex = TRACKS.findIndex(track => track.id === loadCurrentTrack()?.id);
+        const initialIdx =
+          persistedTrackIndex >= 0
+            ? persistedTrackIndex
+            : saved?.trackIndex != null && saved.trackIndex >= 0
+              ? saved.trackIndex
+              : 0;
+        await enqueuePlayerCommand('App:initializePlayer', async () => {
+          const settings = getSettings();
+          await TrackPlayer.updateOptions(buildPlayerOptions(settings));
+          await TrackPlayer.setRepeatMode(RepeatMode.Off);
+          discardPendingTrackChange();
+
+          // Android 杀 UI 后 Service 可继续播放；重进 App 时优先接管原生队列，不 reset。
+          const activeTrack = await TrackPlayer.getActiveTrack();
+          const activeIndex = TRACKS.findIndex(track => track.id === String(activeTrack?.id));
+          if (activeIndex >= 0) {
+            const persistedTrack = loadCurrentTrack();
+            if (persistedTrack?.id !== TRACKS[activeIndex].id) {
+              const progress = await TrackPlayer.getProgress();
+              saveSessionCount(0);
+              saveCycleEligible(isNearCycleStart(progress.position));
+              addLog(
+                'WARN',
+                `initializePlayer: native track differs from persisted ${persistedTrack?.id ?? 'none'}→${TRACKS[activeIndex].id}`,
+              );
+            }
+            saveCurrentTrack({ id: TRACKS[activeIndex].id, index: activeIndex });
+            savePlayerState({
+              trackIndex: activeIndex,
+              playMode: saved?.playMode ?? 'repeat-one',
+            });
+          } else {
+            await replaceTrackInCommand(initialIdx, 'restore');
+          }
+
+          const playback = await TrackPlayer.getPlaybackState();
+          saveExpectedPlaying(
+            playback.state === State.Playing ||
+              playback.state === State.Buffering ||
+              playback.state === State.Loading,
+          );
         });
-        await loadTrack(0);
         // Android 13+ 通知权限
         if (Platform.OS === 'android' && Platform.Version >= 33) {
-          PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(() => {});
+          PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(
+            () => {},
+          );
         }
         const elapsed = Date.now() - startTime;
         const minSplash = 500;
@@ -61,6 +134,7 @@ const App: React.FC = () => {
         }
         setReady(true);
         _initialized = true;
+        _initializing = false;
       } catch (e) {
         _initializing = false;
         setError(String(e));
@@ -80,7 +154,9 @@ const App: React.FC = () => {
     return (
       <View style={st.center}>
         {['当勤精进', '慎勿放逸', '都摄六根', '净念相继'].map(line => (
-          <Text key={line} style={st.verse}>{line}</Text>
+          <Text key={line} style={st.verse}>
+            {line}
+          </Text>
         ))}
       </View>
     );
@@ -90,7 +166,17 @@ const App: React.FC = () => {
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" backgroundColor={BG_GROUND} translucent={true} />
       <NavigationContainer
-        theme={{ dark: false, colors: { primary: GOLD, background: BG_GROUND, card: BG_SURFACE, text: '#2C2820', border: BORDER_STRONG, notification: GOLD } }}>
+        theme={{
+          dark: false,
+          colors: {
+            primary: GOLD,
+            background: BG_GROUND,
+            card: BG_SURFACE,
+            text: '#2C2820',
+            border: BORDER_STRONG,
+            notification: GOLD,
+          },
+        }}>
         <AppTabs />
       </NavigationContainer>
     </SafeAreaProvider>
@@ -100,43 +186,49 @@ const App: React.FC = () => {
 const AppTabs: React.FC = () => {
   const { isCareMode } = useSettingsStore();
   return (
-        <Tab.Navigator
-          initialRouteName="Player"
-          screenOptions={{
-            headerShown: false,
-            tabBarStyle: { backgroundColor: BG_SURFACE, borderTopColor: BORDER_STRONG, height: 72, paddingBottom: 10, paddingTop: 6 },
-            tabBarActiveTintColor: GOLD,
-            tabBarInactiveTintColor: TEXT_TER,
-            tabBarLabelStyle: { fontSize: 14 },
-            tabBarIconStyle: { marginBottom: -2 },
-          }}>
-          <Tab.Screen
-            name="Player"
-            component={PlayerScreen}
-            options={{
-              title: '播放',
-              tabBarIcon: ({ color }) => <Icon name="play-circle-outline" size={32} color={color} />,
-            }}
-          />
-          {!isCareMode && (
-            <Tab.Screen
-              name="Playlist"
-              component={PlaylistScreen}
-              options={{
-                title: '列表',
-                tabBarIcon: ({ color }) => <Icon name="queue-music" size={32} color={color} />,
-              }}
-            />
-          )}
-          <Tab.Screen
-            name="Profile"
-            component={ProfileScreen}
-            options={{
-              title: '我的',
-              tabBarIcon: ({ color }) => <Icon name="person" size={32} color={color} />,
-            }}
-          />
-        </Tab.Navigator>
+    <Tab.Navigator
+      initialRouteName="Player"
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: BG_SURFACE,
+          borderTopColor: BORDER_STRONG,
+          height: 72,
+          paddingBottom: 10,
+          paddingTop: 6,
+        },
+        tabBarActiveTintColor: GOLD,
+        tabBarInactiveTintColor: TEXT_TER,
+        tabBarLabelStyle: { fontSize: 14 },
+        tabBarIconStyle: { marginBottom: -2 },
+      }}>
+      <Tab.Screen
+        name="Player"
+        component={PlayerScreen}
+        options={{
+          title: '播放',
+          tabBarIcon: ({ color }) => <Icon name="play-circle-outline" size={32} color={color} />,
+        }}
+      />
+      {!isCareMode && (
+        <Tab.Screen
+          name="Playlist"
+          component={PlaylistScreen}
+          options={{
+            title: '列表',
+            tabBarIcon: ({ color }) => <Icon name="queue-music" size={32} color={color} />,
+          }}
+        />
+      )}
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          title: '我的',
+          tabBarIcon: ({ color }) => <Icon name="person" size={32} color={color} />,
+        }}
+      />
+    </Tab.Navigator>
   );
 };
 

@@ -26,7 +26,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   },
   setRepeatCount: (n: number) => {
     const s = get();
-    const val = Math.max(1, Math.round(n));
+    const val = Math.max(1, Math.min(9999, Math.round(n)));
     setSettings({ isCareMode: s.isCareMode, isSyncMode: s.isSyncMode, repeatCount: val });
     set({ repeatCount: val });
   },
