@@ -19,6 +19,7 @@ import {
   getSettings,
   loadPlayerState,
   loadSessionCount,
+  loadTaskCompletedCount,
   loadTrackGeneration,
   savePlaybackPausedAt,
   saveExpectedPlaying,
@@ -38,6 +39,7 @@ import { BG_GROUND } from '../constants/colors';
 import { enqueuePlayerCommand } from '../utils/playerCommandQueue';
 import { resetCycleIfCompleted, seekWithReasonInCommand } from '../utils/playbackCycle';
 import { buildPlayerOptions } from '../utils/playerOptions';
+import { getRepeatDisplayVisibility } from '../utils/repeatDisplay';
 
 // 标志：是否正在恢复上次状态，期间不保存
 let restoring = true;
@@ -52,14 +54,24 @@ const PlayerScreen: React.FC = () => {
     playbackState.state === State.Loading;
   const { isCareMode, repeatCount, isSyncMode, toggleSyncMode } = useSettingsStore();
 
-  // 读取当前遍数（随 progress 刷新）
-  const sessionCnt = loadSessionCount();
-  const currentRepeat = loadCycleEligible() ? sessionCnt + 1 : sessionCnt;
+  // 读取当前播放任务的累计遍数（随 progress 刷新）。
+  // session_count 只用于决定何时执行四种播放模式，不能用于单曲循环的累计展示。
+  const activeTrackId = activeTrack?.id == null ? null : String(activeTrack.id);
+  const taskCompletedCount = loadTaskCompletedCount(activeTrackId);
+  const currentRepeat = Math.min(
+    Number.MAX_SAFE_INTEGER,
+    taskCompletedCount + (loadCycleEligible() ? 1 : 0),
+  );
 
   // 从持久化恢复 playMode（曲目本身已由 App.tsx 初始化时加载）
   const saved = useRef(loadPlayerState());
   const [playMode, setPlayMode] = useState<PlayMode>(
     (saved.current?.playMode as PlayMode) || 'repeat-one',
+  );
+  const { showCurrentRepeat, showTotalRepeat } = getRepeatDisplayVisibility(
+    repeatCount,
+    playMode,
+    isCareMode,
   );
   const playModeRef = useRef(playMode);
   playModeRef.current = playMode;
@@ -236,8 +248,8 @@ const PlayerScreen: React.FC = () => {
           onSeek={handleSeek}
           seekable={!isSyncMode && !isCareMode}
           isCareMode={isCareMode}
-          currentRepeat={currentRepeat}
-          totalRepeat={repeatCount}
+          currentRepeat={showCurrentRepeat ? currentRepeat : undefined}
+          totalRepeat={showTotalRepeat ? repeatCount : undefined}
         />
       </View>
       <View style={styles.controlArea}>

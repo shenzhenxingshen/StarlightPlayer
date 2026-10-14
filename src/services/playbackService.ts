@@ -4,7 +4,9 @@ import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { useStatsStore } from '../store/statsStore';
 import {
   clearPlaybackPausedAt,
+  ensurePlaybackTask,
   getSettings,
+  incrementTaskCompletedCount,
   loadCurrentTrack,
   loadCycleEligible,
   loadExpectedPlaying,
@@ -17,6 +19,7 @@ import {
   saveExpectedPlaying,
   savePlaybackPausedAt,
   saveSessionCount,
+  resetPlaybackTask,
 } from '../utils/storage';
 import {
   ensureCurrentTrackLoadedInCommand,
@@ -53,9 +56,11 @@ function completeCycle(trackId: string | null, endedNearDuration: boolean) {
   const eligible = loadCycleEligible() && endedNearDuration;
   if (trackId && eligible) {
     increment(trackId);
-    const next = loadSessionCount() + 1;
+    const previous = loadSessionCount();
+    const taskCompleted = incrementTaskCompletedCount(trackId, previous);
+    const next = Math.min(Number.MAX_SAFE_INTEGER, previous + 1);
     saveSessionCount(next);
-    addLog('INFO', `completeCycle: ${trackId} counted, session=${next}`);
+    addLog('INFO', `completeCycle: ${trackId} counted, session=${next} task=${taskCompleted}`);
   } else {
     addLog(
       'INFO',
@@ -200,10 +205,12 @@ async function reconcileActiveTrackInCommand(track: { id: string }, observedGene
 
   if (pending?.trackId === track.id && pending.generation === observedGeneration) {
     saveCurrentTrack({ id: track.id, index });
+    if (pending.reason === 'restore') ensurePlaybackTask(track.id, loadSessionCount());
     addLog('INFO', `ActiveTrackChanged expected: ${track.id} reason=${pending.reason}`);
     return;
   }
   if (previous?.id === track.id) {
+    ensurePlaybackTask(track.id, loadSessionCount());
     addLog('INFO', `ActiveTrackChanged restored: ${track.id}`);
     return;
   }
@@ -211,6 +218,7 @@ async function reconcileActiveTrackInCommand(track: { id: string }, observedGene
   addLog('WARN', `ActiveTrackChanged unexpected: ${previous?.id ?? 'none'}→${track.id}`);
   saveCurrentTrack({ id: track.id, index });
   saveSessionCount(0);
+  resetPlaybackTask(track.id);
   const metadata = TRACKS[index];
   const position =
     getSettings().isSyncMode && metadata.durationMs

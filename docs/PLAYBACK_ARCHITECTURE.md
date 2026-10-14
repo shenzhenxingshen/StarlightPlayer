@@ -9,7 +9,7 @@
 1. 同步模式是产品核心能力：相同曲目按共同时间基准对齐，不能被任意 seek 破坏。
 2. `repeatCount` 始终先于四种 `playMode`；同步对齐不改变这个优先级。
 3. 只有 `cycleEligible=true`，且 QueueEnded 事件位置和播放器实时位置都接近元数据时长，才计一遍。
-4. 真换曲必须清零 `session_count`；后台恢复同一首必须保留它。
+4. 真换曲或用户手动重选当前曲必须同时清零模式计数和累计任务计数；后台恢复同一首必须保留两者。
 5. RNTP `RepeatMode` 固定为 Off；所有重播和列表行为由 JS 状态机决定。
 6. TrackPlayer 命令必须进入 `enqueuePlayerCommand`；JS Promise 链保证正常 ReactContext 内串行，原生 `PlayerCommandLock` 防御额外 ReactContext 或桥接重入。
 7. 用户明确暂停/停止时 `expected_playing=false`；只有意外 Ended/Error/Stopped/None 才自动恢复。
@@ -25,6 +25,13 @@
 | 达 N 遍 + `play-all` | 非末尾换下一首；末尾停止 |
 
 这个决策是纯函数 `decidePostCycleAction`，并有针对四种模式的单元测试。
+
+计数分为两个用途，不能合并：
+
+- `session_count`：只决定“何时达到 N 遍并执行播放模式”；单曲循环达到 N 后会清零。
+- `playback_task_progress.completedCount`：当前播放任务累计完成的有效遍数；单曲循环达到 N 后不清零，用于 UI 连续显示第 N+1、N+2 遍，并在 App 重启后恢复。
+
+用户手动重选曲目，或单曲播放完成后再次按播放，代表新播放任务，两项计数同时清零。仅关闭并重开 App 不创建新任务。
 
 ## 4. `cycleEligible` 语义
 
@@ -70,7 +77,8 @@ MMKV 持久化协议：
 | `current_track` | Service/UI 共享的当前曲目 ID + index |
 | `pending_track_change` | 换曲 token、目标和原因，防止过期 reset/add 提交 |
 | `track_generation` | 每次逻辑换曲递增，识别迟到的 ActiveTrackChanged/QueueEnded |
-| `session_count` | 当前曲已完成的有效遍数 |
+| `session_count` | 当前曲本轮已完成的有效遍数，仅供 N 遍播放模式决策 |
+| `playback_task_progress` | 当前播放任务的曲目 ID 和跨重启累计完成遍数 |
 | `cycle_eligible` | 当前这一遍的计数资格 |
 | `expected_playing` | 用户是否期望持续播放，供 watchdog 判断 |
 | `playback_paused_at` | 同步暂停/中断时间，用于判断当前遍是否仍连续 |
@@ -83,14 +91,14 @@ MMKV 持久化协议：
 2. 写入 `pending_track_change`，再执行 reset 和 add。
 3. 同时递增 `track_generation`，并把 generation 写入 RNTP track 的 `starlightGeneration` 元数据。
 4. reset/add 后都检查 token；已被新操作取代则立即放弃提交。
-5. add 成功后写 `current_track`。真换曲清零 session，restore 保留 session。
+5. add 成功后写 `current_track`。真换曲或用户重选同时清零 session 和累计任务；restore 保留两者。
 6. `PlaybackActiveTrackChanged` 校验 generation 和当前原生曲目；仍是同一 ID 时当作恢复，只有未预期的真换曲才补做清零和 seek。接管已存在的原生曲目不会再次递增 generation，避免原生 metadata 与 MMKV 脱节。
 
 ## 8. QueueEnded 幂等、重试和恢复
 
 - 同一曲 5 秒内的重复 QueueEnded 被忽略；正常曲目最短约 60 秒，不会误伤下一个自然结尾。
 - 处理前同时比对 generation、原生 active track 与持久化 ID，并复核原生实时进度，忽略用户刚换曲或新一遍开始后迟到的旧事件。
-- `completeCycle` 每个事件最多执行一次。重启/换曲动作可重试，但不再加 session/stats。
+- `completeCycle` 每个事件最多执行一次，同时增加 session、累计任务和 stats。重启/换曲动作可重试，但不重复计数。
 - `play()` 失败时会先调 `retry()` 再尝试一次。
 - PlaybackState 进入 Ended/Error/Stopped/None 且 `expected_playing=true` 时，1.5 秒后二次确认；状态仍异常才重建空队列并验证实际启动。普通模式从 0 恢复，同步模式按墙钟恢复并重新判定当前遍资格；执行恢复前还会再次检查用户是否已经暂停/停止。失败后按 1.5/3/6 秒最多恢复三轮，耗尽后清除 `expected_playing`，避免无限重试。
 
@@ -105,10 +113,10 @@ MMKV 持久化协议：
 | 维度 | 值 |
 |---|---|
 | 模式 | repeat-one / play-one / repeat-all / play-all |
-| 遍数 | 1 / 7 |
+| 遍数 | 1 / 108 / 5000000（大数重点验证保存和显示） |
 | 同步 | 开 / 关 |
 | 控制源 | App / 锁屏 / 耳机 / 通知栏 |
 | 生命周期 | 前台 / 锁屏 / 切后台 / 划掉 UI / Service 重建 |
 | 中断 | 来电、音频焦点、长时暂停、手动 seek、连续点按上下首 |
 
-验收时必须同时检查声音、UI 当前曲、`session_count`、每日 stats 和导出日志，不能只听“是否还在播”。
+验收时必须同时检查声音、UI 当前曲、`session_count`、`playback_task_progress`、每日 stats 和导出日志，不能只听“是否还在播”。

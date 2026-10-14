@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, render } from '@testing-library/react-native';
+import { Text } from 'react-native';
 import ProgressBar from '@/components/ProgressBar';
 
 const responderEvent = (locationX: number) => ({
@@ -28,8 +29,8 @@ describe('<ProgressBar />', () => {
     expect(getByText('3:00')).toBeTruthy();
   });
 
-  it('totalRepeat > 1 时显示遍数', () => {
-    const { getByText } = render(
+  it('当前遍数在时间信息之前，总遍数在时间信息之后', () => {
+    const { getByText, UNSAFE_getAllByType } = render(
       <ProgressBar
         position={0}
         duration={60}
@@ -38,7 +39,33 @@ describe('<ProgressBar />', () => {
         totalRepeat={7}
       />,
     );
-    expect(getByText('2/7')).toBeTruthy();
+    expect(getByText('当前遍数：2')).toBeTruthy();
+    expect(getByText('每首重复遍数：7')).toBeTruthy();
+    const labels = UNSAFE_getAllByType(Text).map(node => node.props.children);
+    expect(labels[0]).toEqual(['当前遍数：', 2]);
+    expect(labels[labels.length - 1]).toEqual(['每首重复遍数：', 7]);
+  });
+
+  it('可只显示当前遍数，不显示每首重复遍数', () => {
+    const { getByText, queryByText } = render(
+      <ProgressBar position={0} duration={60} onSeek={() => {}} currentRepeat={12} />,
+    );
+    expect(getByText('当前遍数：12')).toBeTruthy();
+    expect(queryByText(/每首重复遍数/)).toBeNull();
+  });
+
+  it('大遍数完整渲染', () => {
+    const { getByText } = render(
+      <ProgressBar
+        position={0}
+        duration={60}
+        onSeek={() => {}}
+        currentRepeat={4_999_999}
+        totalRepeat={5_000_000}
+      />,
+    );
+    expect(getByText('当前遍数：4999999')).toBeTruthy();
+    expect(getByText('每首重复遍数：5000000')).toBeTruthy();
   });
 
   it('关怀模式不显示遍数', () => {
@@ -52,7 +79,8 @@ describe('<ProgressBar />', () => {
         isCareMode={true}
       />,
     );
-    expect(queryByText('2/7')).toBeNull();
+    expect(queryByText('当前遍数：2')).toBeNull();
+    expect(queryByText('每首重复遍数：7')).toBeNull();
   });
 
   it('duration 为 0 时位置文本依然渲染', () => {

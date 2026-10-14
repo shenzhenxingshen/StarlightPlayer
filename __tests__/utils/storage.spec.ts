@@ -14,6 +14,11 @@ import {
   loadPendingTrackChange,
   saveExpectedPlaying,
   loadExpectedPlaying,
+  ensurePlaybackTask,
+  incrementTaskCompletedCount,
+  loadPlaybackTaskProgress,
+  loadTaskCompletedCount,
+  resetPlaybackTask,
 } from '@/utils/storage';
 import { MMKV } from 'react-native-mmkv';
 
@@ -43,11 +48,22 @@ describe('storage · Settings', () => {
     expect(getSettings()).toEqual({ isCareMode: true, isSyncMode: false, repeatCount: 7 });
   });
 
-  it('非法遍数会回退或限幅', () => {
+  it('非法遍数回退为 1，但不再把大整数限幅到 9999', () => {
     setSettings({ isCareMode: false, isSyncMode: false, repeatCount: 0 });
     expect(getSettings().repeatCount).toBe(1);
     setSettings({ isCareMode: false, isSyncMode: false, repeatCount: 100000 });
-    expect(getSettings().repeatCount).toBe(9999);
+    expect(getSettings().repeatCount).toBe(100000);
+    setSettings({ isCareMode: false, isSyncMode: false, repeatCount: 5_000_000 });
+    expect(getSettings().repeatCount).toBe(5_000_000);
+  });
+
+  it('非安全整数不能作为重复遍数', () => {
+    setSettings({
+      isCareMode: false,
+      isSyncMode: false,
+      repeatCount: Number.MAX_SAFE_INTEGER + 1,
+    });
+    expect(getSettings().repeatCount).toBe(1);
   });
 });
 
@@ -72,6 +88,42 @@ describe('storage · CycleEligible', () => {
     expect(loadCycleEligible()).toBe(true);
     saveCycleEligible(false);
     expect(loadCycleEligible()).toBe(false);
+  });
+});
+
+describe('storage · 当前播放任务累计遍数', () => {
+  it('首次升级时用现有 session_count 初始化同一曲目的累计数', () => {
+    saveSessionCount(12);
+
+    expect(ensurePlaybackTask('a05')).toEqual({ trackId: 'a05', completedCount: 12 });
+    expect(loadTaskCompletedCount('a05')).toBe(12);
+  });
+
+  it('有效完成一遍后立即持久化，重新读取仍保留', () => {
+    resetPlaybackTask('a05');
+
+    expect(incrementTaskCompletedCount('a05')).toBe(1);
+    expect(incrementTaskCompletedCount('a05')).toBe(2);
+    expect(loadPlaybackTaskProgress()).toEqual({ trackId: 'a05', completedCount: 2 });
+  });
+
+  it('恢复同一曲目保留累计数，切换到其他曲目从 0 开始', () => {
+    resetPlaybackTask('a05');
+    incrementTaskCompletedCount('a05');
+
+    expect(ensurePlaybackTask('a05').completedCount).toBe(1);
+    expect(ensurePlaybackTask('a06')).toEqual({ trackId: 'a06', completedCount: 0 });
+    expect(loadTaskCompletedCount('a05')).toBe(0);
+    expect(loadTaskCompletedCount('a06')).toBe(0);
+  });
+
+  it('手动重选当前曲目时可显式清零', () => {
+    resetPlaybackTask('a05');
+    incrementTaskCompletedCount('a05');
+
+    resetPlaybackTask('a05');
+
+    expect(loadTaskCompletedCount('a05')).toBe(0);
   });
 });
 

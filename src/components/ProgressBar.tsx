@@ -84,6 +84,15 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 
   return (
     <View style={styles.container}>
+      {!isCareMode && currentRepeat != null && (
+        <Text
+          style={[styles.currentRepeatText, { fontSize: repeatSize }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}>
+          当前遍数：{currentRepeat}
+        </Text>
+      )}
       <View
         testID="progress-seek-area"
         style={styles.barWrap}
@@ -102,19 +111,29 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       </View>
       <View style={styles.timeRow}>
         <Text style={[styles.time, { fontSize: textSize }]}>{fmt(displayedPosition)}</Text>
-        {!isCareMode && totalRepeat != null && totalRepeat > 1 && currentRepeat != null && (
-          <Text style={[styles.repeatText, { fontSize: repeatSize }]}>
-            {currentRepeat}/{totalRepeat}
-          </Text>
-        )}
         <Text style={[styles.time, { fontSize: textSize }]}>{fmt(duration)}</Text>
       </View>
+      {!isCareMode && totalRepeat != null && (
+        <Text
+          style={[styles.totalRepeatText, { fontSize: textSize }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}>
+          每首重复遍数：{totalRepeat}
+        </Text>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { paddingHorizontal: 30, paddingVertical: 8 },
+  currentRepeatText: {
+    color: GOLD,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
   barWrap: { paddingVertical: 8 },
   track: {
     height: 3,
@@ -144,7 +163,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   time: { color: TEXT_SEC },
-  repeatText: { color: GOLD, fontWeight: 'bold' },
+  totalRepeatText: { color: GOLD, fontWeight: 'bold', textAlign: 'center', marginTop: 6 },
 });
 
 export default ProgressBar;

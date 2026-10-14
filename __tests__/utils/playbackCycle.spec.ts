@@ -1,7 +1,18 @@
 import TrackPlayer from 'react-native-track-player';
 import { MMKV } from 'react-native-mmkv';
-import { seekWithReasonInCommand } from '@/utils/playbackCycle';
-import { loadCycleEligible, saveCycleEligible, savePlaybackPausedAt } from '@/utils/storage';
+import { resetCycleIfCompleted, seekWithReasonInCommand } from '@/utils/playbackCycle';
+import {
+  incrementTaskCompletedCount,
+  loadCycleEligible,
+  loadSessionCount,
+  loadTaskCompletedCount,
+  resetPlaybackTask,
+  saveCurrentTrack,
+  saveCycleEligible,
+  savePlaybackPausedAt,
+  saveSessionCount,
+  setSettings,
+} from '@/utils/storage';
 
 const mockedTrackPlayer = TrackPlayer as jest.Mocked<typeof TrackPlayer>;
 
@@ -46,5 +57,32 @@ describe('playbackCycle · 同步恢复计数资格', () => {
     await seekWithReasonInCommand(10.2, 'sync-resume', 70);
 
     expect(loadCycleEligible()).toBe(false);
+  });
+});
+
+describe('playbackCycle · 已完成任务再次播放', () => {
+  beforeEach(() => {
+    (new MMKV() as any).clearAll();
+    setSettings({ isCareMode: false, isSyncMode: false, repeatCount: 7 });
+    saveCurrentTrack({ id: 'a05', index: 4 });
+    resetPlaybackTask('a05');
+    incrementTaskCompletedCount('a05');
+  });
+
+  it('达到 N 遍后再次播放会同时清零决策计数和累计任务', () => {
+    saveSessionCount(7);
+
+    expect(resetCycleIfCompleted()).toBe(true);
+    expect(loadSessionCount()).toBe(0);
+    expect(loadTaskCompletedCount('a05')).toBe(0);
+    expect(loadCycleEligible()).toBe(false);
+  });
+
+  it('尚未达到 N 遍时暂停恢复不会清零累计任务', () => {
+    saveSessionCount(6);
+
+    expect(resetCycleIfCompleted()).toBe(false);
+    expect(loadSessionCount()).toBe(6);
+    expect(loadTaskCompletedCount('a05')).toBe(1);
   });
 });

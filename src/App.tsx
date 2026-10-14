@@ -14,13 +14,16 @@ import { replaceTrackInCommand } from './utils/trackManager';
 import {
   getSettings,
   discardPendingTrackChange,
+  ensurePlaybackTask,
   loadCurrentTrack,
   loadPlayerState,
+  loadSessionCount,
   saveCurrentTrack,
   saveCycleEligible,
   saveExpectedPlaying,
   savePlayerState,
   saveSessionCount,
+  resetPlaybackTask,
 } from './utils/storage';
 import { useSettingsStore } from './store/settingsStore';
 import { enqueuePlayerCommand } from './utils/playerCommandQueue';
@@ -99,11 +102,14 @@ const App: React.FC = () => {
             if (persistedTrack?.id !== TRACKS[activeIndex].id) {
               const progress = await TrackPlayer.getProgress();
               saveSessionCount(0);
+              resetPlaybackTask(TRACKS[activeIndex].id);
               saveCycleEligible(isNearCycleStart(progress.position));
               addLog(
                 'WARN',
                 `initializePlayer: native track differs from persisted ${persistedTrack?.id ?? 'none'}→${TRACKS[activeIndex].id}`,
               );
+            } else {
+              ensurePlaybackTask(TRACKS[activeIndex].id, loadSessionCount());
             }
             saveCurrentTrack({ id: TRACKS[activeIndex].id, index: activeIndex });
             savePlayerState({

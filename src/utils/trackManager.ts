@@ -10,10 +10,13 @@ import {
   beginPendingTrackChange,
   clearPlaybackPausedAt,
   clearPendingTrackChange,
+  ensurePlaybackTask,
   getSettings,
   isPendingTrackChange,
   loadCurrentTrack,
   loadPlayerState,
+  loadSessionCount,
+  resetPlaybackTask,
   saveCurrentTrack,
   saveExpectedPlaying,
   saveSessionCount,
@@ -109,13 +112,17 @@ export async function ensureCurrentTrackLoadedInCommand(context: string): Promis
 
   if (!persisted && activeIndex >= 0) {
     saveCurrentTrack({ id: TRACKS[activeIndex].id, index: activeIndex });
+    ensurePlaybackTask(TRACKS[activeIndex].id, loadSessionCount());
     return TRACKS[activeIndex];
   }
 
   const expectedIndex = persisted ? indexFromTrackId(persisted.id) : getCurrentIndex();
   const index = expectedIndex >= 0 ? expectedIndex : getCurrentIndex();
   const expected = TRACKS[index];
-  if (activeId === expected.id) return expected;
+  if (activeId === expected.id) {
+    ensurePlaybackTask(expected.id, loadSessionCount());
+    return expected;
+  }
 
   addLog(
     'WARN',
@@ -194,6 +201,7 @@ export async function replaceTrackInCommand(
 
     if (reason !== 'restore') {
       saveSessionCount(0);
+      resetPlaybackTask(track.id);
       const position =
         getSettings().isSyncMode && track.durationMs
           ? msToSeconds(calculateAlignedPosition(track.durationMs))
@@ -202,6 +210,7 @@ export async function replaceTrackInCommand(
     } else {
       // 只有本地队列丢失时才会走到这里；新队列从 0 开始，
       // 保留已完成遍数，但当前这一遍可重新获得计数资格。
+      ensurePlaybackTask(track.id, loadSessionCount());
       await seekWithReasonInCommand(0, 'track-start', msToSeconds(track.durationMs || 0));
     }
 

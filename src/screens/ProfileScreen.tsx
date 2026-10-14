@@ -25,6 +25,8 @@ import { useSettingsStore } from '../store/settingsStore';
 import { getLogs } from '../utils/logger';
 import { exportDiagnosticFile } from '../utils/diagnosticExporter';
 
+const REPEAT_PRESETS: readonly number[] = [1, 108, 1000, 10000];
+
 const getDeviceInfo = (): string => {
   const c = Platform.constants as any;
   const lines = [`平台: ${Platform.OS}`, `系统版本: ${Platform.Version}`];
@@ -52,6 +54,21 @@ const ProfileScreen: React.FC = () => {
   const { isCareMode, toggleCareMode, repeatCount, setRepeatCount } = useSettingsStore();
   const t = (base: number) => (isCareMode ? base + 6 : base);
   const deviceInfo = getDeviceInfo();
+
+  const applyCustomRepeat = useCallback(() => {
+    const text = customRepeatText.trim();
+    if (!/^[1-9]\d*$/.test(text)) {
+      Alert.alert('输入无效', '请输入大于 0 的整数');
+      return;
+    }
+    const count = Number(text);
+    if (!Number.isSafeInteger(count)) {
+      Alert.alert('输入无效', '输入的遍数过大，请输入较小的整数');
+      return;
+    }
+    setRepeatCount(count);
+    setShowCustomInput(false);
+  }, [customRepeatText, setRepeatCount]);
 
   const exportLogs = useCallback(async () => {
     const logLines = getLogs();
@@ -111,7 +128,7 @@ const ProfileScreen: React.FC = () => {
               </View>
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, gap: 8 }}>
-              {[1, 7, 21, 49, 108].map(n => (
+              {REPEAT_PRESETS.map(n => (
                 <Pressable
                   key={n}
                   onPress={() => setRepeatCount(n)}
@@ -137,14 +154,14 @@ const ProfileScreen: React.FC = () => {
                   setCustomRepeatText(String(repeatCount));
                 }}
                 style={{
-                  backgroundColor: ![1, 7, 21, 49, 108].includes(repeatCount) ? GOLD : BG_RECESS,
+                  backgroundColor: !REPEAT_PRESETS.includes(repeatCount) ? GOLD : BG_RECESS,
                   paddingHorizontal: 16,
                   paddingVertical: 8,
                   borderRadius: 8,
                 }}>
                 <Text
                   style={{
-                    color: ![1, 7, 21, 49, 108].includes(repeatCount) ? '#fff' : INK,
+                    color: !REPEAT_PRESETS.includes(repeatCount) ? '#fff' : INK,
                     fontSize: t(14),
                   }}>
                   自定义
@@ -157,7 +174,6 @@ const ProfileScreen: React.FC = () => {
                   value={customRepeatText}
                   onChangeText={setCustomRepeatText}
                   keyboardType="number-pad"
-                  maxLength={4}
                   style={{
                     flex: 1,
                     backgroundColor: BG_RECESS,
@@ -171,13 +187,7 @@ const ProfileScreen: React.FC = () => {
                   placeholderTextColor={TEXT_TER}
                 />
                 <Pressable
-                  onPress={() => {
-                    const n = parseInt(customRepeatText, 10);
-                    if (n >= 1) {
-                      setRepeatCount(n);
-                      setShowCustomInput(false);
-                    }
-                  }}
+                  onPress={applyCustomRepeat}
                   style={{
                     backgroundColor: GOLD,
                     paddingHorizontal: 16,
