@@ -1,6 +1,7 @@
 import { GOLD, GOLD_DIM, GOLD_GLOW, BG_RECESS, TEXT_SEC } from '../constants/colors';
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, PanResponder, LayoutChangeEvent } from 'react-native';
+import { formatRepeatCount } from '../utils/numberFormat';
 
 interface ProgressBarProps {
   position: number;
@@ -90,7 +91,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.6}>
-          当前遍数：{currentRepeat}
+          当前遍数：{formatRepeatCount(currentRepeat)}
         </Text>
       )}
       <View
@@ -119,7 +120,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.6}>
-          每首重复遍数：{totalRepeat}
+          每首重复遍数：{formatRepeatCount(totalRepeat)}
         </Text>
       )}
     </View>

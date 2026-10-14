@@ -24,6 +24,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSettingsStore } from '../store/settingsStore';
 import { getLogs } from '../utils/logger';
 import { exportDiagnosticFile } from '../utils/diagnosticExporter';
+import { formatRepeatCount, unformatRepeatCount } from '../utils/numberFormat';
 
 const REPEAT_PRESETS: readonly number[] = [1, 108, 1000, 10000];
 
@@ -56,7 +57,7 @@ const ProfileScreen: React.FC = () => {
   const deviceInfo = getDeviceInfo();
 
   const applyCustomRepeat = useCallback(() => {
-    const text = customRepeatText.trim();
+    const text = unformatRepeatCount(customRepeatText).trim();
     if (!/^[1-9]\d*$/.test(text)) {
       Alert.alert('输入无效', '请输入大于 0 的整数');
       return;
@@ -69,6 +70,13 @@ const ProfileScreen: React.FC = () => {
     setRepeatCount(count);
     setShowCustomInput(false);
   }, [customRepeatText, setRepeatCount]);
+
+  const formatCustomRepeatInput = useCallback(() => {
+    const text = unformatRepeatCount(customRepeatText).trim();
+    if (!/^[1-9]\d*$/.test(text)) return;
+    const count = Number(text);
+    if (Number.isSafeInteger(count)) setCustomRepeatText(formatRepeatCount(count));
+  }, [customRepeatText]);
 
   const exportLogs = useCallback(async () => {
     const logLines = getLogs();
@@ -124,7 +132,9 @@ const ProfileScreen: React.FC = () => {
               <Icon name="repeat" size={t(22)} color={GOLD} />
               <View style={styles.cardInfo}>
                 <Text style={[styles.cardLabel, { fontSize: t(16) }]}>每首重复遍数</Text>
-                <Text style={[styles.cardDesc, { fontSize: t(12) }]}>当前：{repeatCount} 遍</Text>
+                <Text style={[styles.cardDesc, { fontSize: t(12) }]}>
+                  当前：{formatRepeatCount(repeatCount)} 遍
+                </Text>
               </View>
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, gap: 8 }}>
@@ -144,14 +154,14 @@ const ProfileScreen: React.FC = () => {
                       fontSize: t(14),
                       fontWeight: repeatCount === n ? '700' : '400',
                     }}>
-                    {n}
+                    {formatRepeatCount(n)}
                   </Text>
                 </Pressable>
               ))}
               <Pressable
                 onPress={() => {
                   setShowCustomInput(true);
-                  setCustomRepeatText(String(repeatCount));
+                  setCustomRepeatText(formatRepeatCount(repeatCount));
                 }}
                 style={{
                   backgroundColor: !REPEAT_PRESETS.includes(repeatCount) ? GOLD : BG_RECESS,
@@ -172,7 +182,9 @@ const ProfileScreen: React.FC = () => {
               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
                 <TextInput
                   value={customRepeatText}
-                  onChangeText={setCustomRepeatText}
+                  onChangeText={text => setCustomRepeatText(unformatRepeatCount(text))}
+                  onFocus={() => setCustomRepeatText(text => unformatRepeatCount(text))}
+                  onBlur={formatCustomRepeatInput}
                   keyboardType="number-pad"
                   style={{
                     flex: 1,

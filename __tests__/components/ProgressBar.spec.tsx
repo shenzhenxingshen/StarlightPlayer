@@ -42,8 +42,8 @@ describe('<ProgressBar />', () => {
     expect(getByText('当前遍数：2')).toBeTruthy();
     expect(getByText('每首重复遍数：7')).toBeTruthy();
     const labels = UNSAFE_getAllByType(Text).map(node => node.props.children);
-    expect(labels[0]).toEqual(['当前遍数：', 2]);
-    expect(labels[labels.length - 1]).toEqual(['每首重复遍数：', 7]);
+    expect(labels[0]).toEqual(['当前遍数：', '2']);
+    expect(labels[labels.length - 1]).toEqual(['每首重复遍数：', '7']);
   });
 
   it('可只显示当前遍数，不显示每首重复遍数', () => {
@@ -64,8 +64,8 @@ describe('<ProgressBar />', () => {
         totalRepeat={5_000_000}
       />,
     );
-    expect(getByText('当前遍数：4999999')).toBeTruthy();
-    expect(getByText('每首重复遍数：5000000')).toBeTruthy();
+    expect(getByText('当前遍数：4,999,999')).toBeTruthy();
+    expect(getByText('每首重复遍数：5,000,000')).toBeTruthy();
   });
 
   it('关怀模式不显示遍数', () => {
