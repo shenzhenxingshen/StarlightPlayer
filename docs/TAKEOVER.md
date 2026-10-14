@@ -9,7 +9,7 @@
 - React Navigation 6 底部 Tab；Zustand 管 UI 状态；MMKV 管本地持久化和 UI/PlaybackService 通信。
 - MaterialIcons、Safe Area、Gesture Handler 负责 UI 基础能力。
 - Android 旧架构（`newArchEnabled=false`）+ Hermes，minSdk 23，target/compileSdk 35。
-- iOS 13.4+，CocoaPods，Objective-C++ 原生入口。
+- iOS 15.0+，CocoaPods，Objective-C++ AppDelegate/SceneDelegate 原生入口。
 
 ## 2. 目录结构
 
@@ -46,23 +46,23 @@ StarlightPlayer/
 1. `index.js` 先加载 logger，再注册 `App` 和 `PlaybackService`。
 2. `App.tsx` 通过进程级命令锁调用 `setupPlayer`，配置 Android 后台继续播放、30 秒前台宽限、RNTP RepeatMode Off。
 3. 如原生播放队列仍在，App 直接接管，不 reset；否则按 `player_state.trackIndex` 重建单曲队列。
-4. UI 播放/暂停/切歌/seek 和后台 Remote* 事件全部进入 `playerCommandQueue`。正常 RNTP HeadlessJS 复用同一 ReactContext，由 JS 链排队；Android/iOS 原生 `PlayerCommandLock` 额外防御多 ReactContext/桥接重入。
+4. UI 播放/暂停/切歌/seek 和后台 Remote\* 事件全部进入 `playerCommandQueue`。正常 RNTP HeadlessJS 复用同一 ReactContext，由 JS 链排队；Android/iOS 原生 `PlayerCommandLock` 额外防御多 ReactContext/桥接重入。
 5. 单曲原生队列到尾后产生 `PlaybackQueueEnded`：校验 generation/曲目/结束位置 → 按 `cycleEligible` 计数 → 先判断 N 遍 → 再执行四种模式。
 6. 异常停止时，`PlaybackError`/`PlayerError`/`PlaybackState` 写日志；若仍然 `expected_playing=true`，watchdog 重建队列并验证播放，最多退避恢复三轮。
 
 ## 4. 配置、环境变量、外部依赖
 
-| 位置 | 作用 |
-|---|---|
-| `package.json` / `package-lock.json` | JS 依赖和 npm scripts |
-| `tsconfig.json` | TypeScript strict 约束和 `@/*` 别名 |
-| `babel.config.js` / `metro.config.js` | RN 转译与打包 |
-| `jest.config.js` / `.eslintrc.js` / `.prettierrc.js` | 测试和质量规则 |
-| `android/build.gradle` | SDK 23/35、Kotlin 1.9.25、Maven 镜像 |
-| `android/app/build.gradle` | appId、版本、签名、Hermes/RN |
-| `AndroidManifest.xml` | 前台播放/通知/唤醒权限、诊断 FileProvider |
-| `ios/Podfile` / `Info.plist` | iOS 13.4、Pods、后台 audio |
-| `react-native.config.js` | iOS 音频和字体资源 |
+| 位置                                                 | 作用                                         |
+| ---------------------------------------------------- | -------------------------------------------- |
+| `package.json` / `package-lock.json`                 | JS 依赖和 npm scripts                        |
+| `tsconfig.json`                                      | TypeScript strict 约束和 `@/*` 别名          |
+| `babel.config.js` / `metro.config.js`                | RN 转译与打包                                |
+| `jest.config.js` / `.eslintrc.js` / `.prettierrc.js` | 测试和质量规则                               |
+| `android/build.gradle`                               | SDK 23/35、Kotlin 1.9.25、Maven 镜像         |
+| `android/app/build.gradle`                           | appId、版本、签名、Hermes/RN                 |
+| `AndroidManifest.xml`                                | 前台播放/通知/唤醒权限、诊断 FileProvider    |
+| `ios/Podfile` / `Info.plist`                         | iOS 15.0、Pods、UIScene 生命周期、后台 audio |
+| `react-native.config.js`                             | iOS 音频和字体资源                           |
 
 Android release 签名需要：
 

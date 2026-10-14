@@ -29,16 +29,16 @@
 
 ## 技术栈
 
-| 范畴 | 选型 |
-|---|---|
-| App | React Native 0.75.5, React 18.3.1, TypeScript 5.5 |
-| 播放 | react-native-track-player 4.1 |
-| 导航 | React Navigation bottom-tabs 6 |
-| UI 状态 | Zustand 4.5 |
-| 本地持久化 | react-native-mmkv 2.12 |
-| Android | minSdk 23, target/compileSdk 35, Kotlin 1.9.25, Hermes |
-| iOS | iOS 13.4+, CocoaPods, Objective-C++ AppDelegate/原生模块 |
-| 测试/质量 | Jest 29, React Native Testing Library, ESLint, Prettier, tsc strict |
+| 范畴       | 选型                                                                   |
+| ---------- | ---------------------------------------------------------------------- |
+| App        | React Native 0.75.5, React 18.3.1, TypeScript 5.5                      |
+| 播放       | react-native-track-player 4.1                                          |
+| 导航       | React Navigation bottom-tabs 6                                         |
+| UI 状态    | Zustand 4.5                                                            |
+| 本地持久化 | react-native-mmkv 2.12                                                 |
+| Android    | minSdk 23, target/compileSdk 35, Kotlin 1.9.25, Hermes                 |
+| iOS        | iOS 15.0+, CocoaPods, Objective-C++ AppDelegate/SceneDelegate/原生模块 |
+| 测试/质量  | Jest 29, React Native Testing Library, ESLint, Prettier, tsc strict    |
 
 ## 快速定位
 
