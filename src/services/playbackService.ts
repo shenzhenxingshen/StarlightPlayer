@@ -1,4 +1,5 @@
 import TrackPlayer, { Event, State } from 'react-native-track-player';
+import { Platform } from 'react-native';
 import { TRACKS } from '../constants/tracks';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { useStatsStore } from '../store/statsStore';
@@ -444,10 +445,14 @@ export default async function PlaybackService() {
     if (loadExpectedPlaying()) scheduleUnexpectedStopRecovery('playback-error');
   });
 
-  TrackPlayer.addEventListener(Event.PlayerError, ({ code, message }) => {
-    addLog('ERROR', `PlayerError: ${code} ${message}`);
-    if (loadExpectedPlaying()) scheduleUnexpectedStopRecovery('player-error');
-  });
+  // PlayerError 只由 RNTP Android 用于前台服务启动失败；iOS 未声明该事件，
+  // 向 RCTEventEmitter 注册会直接触发启动红屏。
+  if (Platform.OS === 'android') {
+    TrackPlayer.addEventListener(Event.PlayerError, ({ code, message }) => {
+      addLog('ERROR', `PlayerError: ${code} ${message}`);
+      if (loadExpectedPlaying()) scheduleUnexpectedStopRecovery('player-error');
+    });
+  }
 
   TrackPlayer.addEventListener(Event.PlaybackState, ({ state }) => {
     addLog('INFO', `PlaybackState: ${state} expected=${loadExpectedPlaying()}`);
