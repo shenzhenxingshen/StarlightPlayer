@@ -70,6 +70,12 @@ describe('trackManager · 索引边界', () => {
     expect(getCurrentIndex()).toBe(4);
   });
 
+  it('未知曲目的过期索引最终按列表边界夹紧', () => {
+    saveCurrentTrack({ id: 'legacy-unknown', index: TRACKS.length + 50 });
+    savePlayerState({ trackIndex: TRACKS.length + 50, playMode: 'repeat-one' });
+    expect(getCurrentIndex()).toBe(TRACKS.length - 1);
+  });
+
   it('显式曲目ID优先参与上下首和末曲判断', () => {
     setCurrentIndex(0);
     expect(getNextIndex(TRACKS[5].id)).toBe(6);
@@ -169,6 +175,42 @@ describe('trackManager · 原生队列、重试与竞态', () => {
     expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(1);
   });
 
+  it('Buffering 和 Loading 均视为已经启动，不误判超时', async () => {
+    mockedTrackPlayer.getPlaybackState.mockResolvedValueOnce({ state: State.Buffering });
+    await expect(playWithRetryInCommand('test:buffering')).resolves.toBeUndefined();
+
+    mockedTrackPlayer.getPlaybackState.mockResolvedValueOnce({ state: State.Loading });
+    await expect(playWithRetryInCommand('test:loading')).resolves.toBeUndefined();
+    expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(2);
+  });
+
+  it('短暂 Stopped 后进入 Buffering 时轮询成功', async () => {
+    mockedTrackPlayer.getPlaybackState
+      .mockResolvedValueOnce({ state: State.Stopped })
+      .mockResolvedValueOnce({ state: State.Buffering });
+    await expect(playWithRetryInCommand('test:poll-start')).resolves.toBeUndefined();
+    expect(mockedTrackPlayer.getPlaybackState).toHaveBeenCalledTimes(2);
+  });
+
+  it('两次播放都未进入启动态时抛出明确超时错误', async () => {
+    const now = jest
+      .spyOn(Date, 'now')
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(3001)
+      .mockReturnValueOnce(4000)
+      .mockReturnValue(7001);
+    mockedTrackPlayer.getPlaybackState.mockResolvedValue({ state: State.Stopped });
+    try {
+      await expect(playWithRetryInCommand('test:timeout')).rejects.toThrow(
+        'test:timeout: playback did not start',
+      );
+      expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(2);
+      expect(mockedTrackPlayer.retry).toHaveBeenCalledTimes(1);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
   it('第一次play失败会retry，第二次成功', async () => {
     mockedTrackPlayer.play.mockRejectedValueOnce(new Error('first failed')).mockResolvedValueOnce();
     await playWithRetryInCommand('test:retry');
@@ -199,6 +241,58 @@ describe('trackManager · 原生队列、重试与竞态', () => {
     });
     await expect(replaceTrackInCommand(0, 'user')).resolves.toBeNull();
     expect(loadCurrentTrack()).toBeNull();
+  });
+
+  it('队列自动重建在 reset 后过期时向调用方报告失败', async () => {
+    mockedTrackPlayer.getActiveTrack.mockResolvedValue({ id: TRACKS[1].id } as never);
+    mockedTrackPlayer.reset.mockImplementationOnce(async () => {
+      beginPendingTrackChange(TRACKS[2].id, 2, 'user');
+    });
+
+    await expect(ensureCurrentTrackLoadedInCommand('test:stale-rebuild')).rejects.toThrow(
+      'queue rebuild became stale',
+    );
+  });
+
+  it('Error 状态重建过期时不会继续调用 play', async () => {
+    mockedTrackPlayer.getPlaybackState.mockResolvedValueOnce({ state: State.Error } as never);
+    mockedTrackPlayer.reset.mockImplementationOnce(async () => {
+      beginPendingTrackChange(TRACKS[2].id, 2, 'user');
+    });
+
+    await expect(ensurePlayableAndPlayInCommand('test:stale-error')).rejects.toThrow(
+      'error-state rebuild became stale',
+    );
+    expect(mockedTrackPlayer.play).not.toHaveBeenCalled();
+  });
+
+  it('同步模式主动换曲从墙钟位置开始并创建新任务', async () => {
+    setSettings({ isCareMode: false, isSyncMode: true, repeatCount: 7 });
+    await expect(replaceTrackInCommand(1, 'user')).resolves.toEqual(TRACKS[1]);
+    expect(mockedTrackPlayer.seekTo).toHaveBeenCalledWith(expect.any(Number));
+    expect(loadCurrentTrack()?.id).toBe(TRACKS[1].id);
+    expect(loadSessionCount()).toBe(0);
+  });
+
+  it('三个播放包装函数遇到过期换曲时均返回 null 且不播放', async () => {
+    const invalidate = async () => {
+      beginPendingTrackChange(TRACKS[3].id, 3, 'user');
+    };
+
+    mockedTrackPlayer.reset.mockImplementationOnce(invalidate);
+    await expect(loadTrackAndPlay(0)).resolves.toBeNull();
+    mockedTrackPlayer.reset.mockImplementationOnce(invalidate);
+    await expect(loadNextTrackAndPlay()).resolves.toBeNull();
+    mockedTrackPlayer.reset.mockImplementationOnce(invalidate);
+    await expect(loadPreviousTrackAndPlay()).resolves.toBeNull();
+    expect(mockedTrackPlayer.play).not.toHaveBeenCalled();
+  });
+
+  it('loadTrack 默认按用户换曲处理', async () => {
+    saveSessionCount(5);
+    await loadTrack(1);
+    expect(loadCurrentTrack()?.id).toBe(TRACKS[1].id);
+    expect(loadSessionCount()).toBe(0);
   });
 
   it('上下首包装函数按当前权威索引换歌并播放', async () => {

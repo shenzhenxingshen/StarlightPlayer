@@ -110,9 +110,13 @@ const nextMock = loadNextTrackAndPlay as jest.Mock;
 const previousMock = loadPreviousTrackAndPlay as jest.Mock;
 const resetCycleMock = resetCycleIfCompleted as jest.Mock;
 const seekMock = seekWithReasonInCommand as jest.Mock;
+let appStateListenerSpy: jest.SpyInstance;
 
 describe('<PlayerScreen />', () => {
   beforeEach(() => {
+    appStateListenerSpy = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockReturnValue({ remove: jest.fn() } as any);
     (new MMKV() as any).clearAll();
     mockedTrackPlayer.__reset();
     useSettingsStore.setState({ isCareMode: false, isSyncMode: false, repeatCount: 7 });
@@ -132,6 +136,10 @@ describe('<PlayerScreen />', () => {
     previousMock.mockReset().mockResolvedValue(undefined);
     resetCycleMock.mockReset().mockReturnValue(false);
     seekMock.mockReset().mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    appStateListenerSpy.mockRestore();
   });
 
   it('大遍数、当前累计和四种模式切换均正确显示及持久化', () => {
@@ -264,5 +272,125 @@ describe('<PlayerScreen />', () => {
     });
     expect(loadPlayerState()).toEqual({ trackIndex: 0, playMode: 'repeat-one' });
     appStateSpy.mockRestore();
+  });
+
+  it.each([State.Buffering, State.Loading])('%s 状态按正在播放展示', state => {
+    playbackStateHook.mockReturnValue({ state });
+    const { getByText } = render(<PlayerScreen />);
+    expect(getByText(`track:${TRACKS[0].id}:true`)).toBeTruthy();
+  });
+
+  it('锁屏能力更新失败会记录错误但不影响页面渲染', async () => {
+    mockedTrackPlayer.updateOptions.mockRejectedValueOnce(new Error('options failed'));
+    const { getByText } = render(<PlayerScreen />);
+    expect(getByText(`track:${TRACKS[0].id}:false`)).toBeTruthy();
+    await waitFor(() =>
+      expect(addLog).toHaveBeenCalledWith('ERROR', 'UI:updateOptions failed', expect.any(Error)),
+    );
+  });
+
+  it('连续切换模式会替换旧 Toast 定时器，并在 1.5 秒后隐藏', () => {
+    jest.useFakeTimers();
+    try {
+      const { getByTestId } = render(<PlayerScreen />);
+      fireEvent.press(getByTestId('toggle-mode'));
+      fireEvent.press(getByTestId('toggle-mode'));
+      expect(getByTestId('mode-state').props.children).toBe('repeat-all:列表循环:false');
+
+      act(() => {
+        jest.advanceTimersByTime(1500);
+      });
+      expect(getByTestId('mode-state').props.children).toBe('repeat-all:-:false');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('同步开启排队后又被关闭时，在查曲前取消操作', async () => {
+    const { getByTestId } = render(<PlayerScreen />);
+    fireEvent.press(getByTestId('toggle-sync'));
+    setSettings({ isCareMode: false, isSyncMode: false, repeatCount: 7 });
+
+    await waitFor(() =>
+      expect(addLog).toHaveBeenCalledWith(
+        'INFO',
+        'UI:enableSync cancelled because sync mode changed again',
+      ),
+    );
+    expect(ensureTrackMock).not.toHaveBeenCalled();
+  });
+
+  it('同步开启查曲期间再次关闭时，不执行过期 seek', async () => {
+    ensureTrackMock.mockImplementationOnce(async () => {
+      setSettings({ isCareMode: false, isSyncMode: false, repeatCount: 7 });
+      return TRACKS[0];
+    });
+    const { getByTestId } = render(<PlayerScreen />);
+    fireEvent.press(getByTestId('toggle-sync'));
+
+    await waitFor(() =>
+      expect(addLog).toHaveBeenCalledWith(
+        'INFO',
+        'UI:enableSync cancelled after track lookup because sync mode changed',
+      ),
+    );
+    expect(seekMock).not.toHaveBeenCalled();
+  });
+
+  it('同步开启遇到无时长曲目或查曲失败时均安全退出', async () => {
+    ensureTrackMock.mockResolvedValueOnce({ ...TRACKS[0], durationMs: undefined });
+    const first = render(<PlayerScreen />);
+    fireEvent.press(first.getByTestId('toggle-sync'));
+    await waitFor(() => expect(ensureTrackMock).toHaveBeenCalled());
+    expect(seekMock).not.toHaveBeenCalled();
+    first.unmount();
+
+    useSettingsStore.setState({ isSyncMode: false });
+    setSettings({ isCareMode: false, isSyncMode: false, repeatCount: 7 });
+    ensureTrackMock.mockRejectedValueOnce(new Error('lookup failed'));
+    const second = render(<PlayerScreen />);
+    fireEvent.press(second.getByTestId('toggle-sync'));
+    await waitFor(() =>
+      expect(addLog).toHaveBeenCalledWith('ERROR', 'UI:enableSync failed', expect.any(Error)),
+    );
+    expect(seekMock).not.toHaveBeenCalled();
+  });
+
+  it('播放、暂停和 seek 原生失败时均被捕获并记录', async () => {
+    saveExpectedPlaying(true);
+    ensureTrackMock.mockRejectedValueOnce(new Error('play failed'));
+    const paused = render(<PlayerScreen />);
+    fireEvent.press(paused.getByTestId('play-pause'));
+    await waitFor(() =>
+      expect(addLog).toHaveBeenCalledWith('ERROR', 'UI:play failed', expect.any(Error)),
+    );
+    expect(loadExpectedPlaying()).toBe(false);
+    paused.unmount();
+
+    playbackStateHook.mockReturnValue({ state: State.Playing });
+    mockedTrackPlayer.pause.mockRejectedValueOnce(new Error('pause failed'));
+    const playing = render(<PlayerScreen />);
+    fireEvent.press(playing.getByTestId('play-pause'));
+    await waitFor(() =>
+      expect(addLog).toHaveBeenCalledWith('ERROR', 'UI:pause failed', expect.any(Error)),
+    );
+    playing.unmount();
+
+    playbackStateHook.mockReturnValue({ state: State.Paused });
+    mockedTrackPlayer.getActiveTrack.mockRejectedValueOnce(new Error('seek failed'));
+    const seeking = render(<PlayerScreen />);
+    fireEvent.press(seeking.getByTestId('mock-seek'));
+    await waitFor(() =>
+      expect(addLog).toHaveBeenCalledWith('ERROR', 'UI:seek failed', expect.any(Error)),
+    );
+  });
+
+  it('关怀模式即使收到 seek 回调也拒绝执行', async () => {
+    useSettingsStore.setState({ isCareMode: true });
+    setSettings({ isCareMode: true, isSyncMode: false, repeatCount: 7 });
+    const { getByTestId } = render(<PlayerScreen />);
+    fireEvent.press(getByTestId('mock-seek'));
+    await act(async () => {});
+    expect(seekMock).not.toHaveBeenCalled();
   });
 });

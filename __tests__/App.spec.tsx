@@ -27,7 +27,12 @@ jest.mock('@react-navigation/bottom-tabs', () => {
   return {
     createBottomTabNavigator: () => ({
       Navigator: ({ children }: any) => <View>{children}</View>,
-      Screen: ({ name }: any) => <Text>{`screen:${name}`}</Text>,
+      Screen: ({ name, options }: any) => (
+        <View>
+          <Text>{`screen:${name}`}</Text>
+          {options?.tabBarIcon?.({ color: 'mock-color' })}
+        </View>
+      ),
     }),
   };
 });

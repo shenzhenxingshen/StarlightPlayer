@@ -129,4 +129,64 @@ describe('<ProgressBar />', () => {
 
     expect(onSeek).not.toHaveBeenCalled();
   });
+
+  it('响应条件依赖可拖动状态、有效时长和布局宽度', () => {
+    const { getByTestId, rerender } = render(
+      <ProgressBar position={0} duration={100} onSeek={() => {}} seekable={true} />,
+    );
+    let area = getByTestId('progress-seek-area');
+    const event = responderEvent(10);
+    expect(area.props.onStartShouldSetResponder(event)).toBe(false);
+    expect(area.props.onMoveShouldSetResponder(event)).toBe(false);
+
+    act(() => {
+      area.props.onLayout({ nativeEvent: { layout: { width: 100 } } });
+    });
+    expect(area.props.onStartShouldSetResponder(event)).toBe(true);
+    expect(area.props.onMoveShouldSetResponder(event)).toBe(true);
+
+    rerender(<ProgressBar position={0} duration={0} onSeek={() => {}} seekable={true} />);
+    area = getByTestId('progress-seek-area');
+    expect(area.props.onStartShouldSetResponder(event)).toBe(false);
+  });
+
+  it('移动时夹紧预览位置，取消手势会恢复且不提交 seek', () => {
+    const onSeek = jest.fn();
+    const { getByTestId, getByText, getAllByText } = render(
+      <ProgressBar position={20} duration={100} onSeek={onSeek} seekable={true} />,
+    );
+    const area = getByTestId('progress-seek-area');
+    act(() => {
+      area.props.onLayout({ nativeEvent: { layout: { width: 100 } } });
+      area.props.onResponderGrant(responderEvent(-10));
+      area.props.onResponderMove(responderEvent(150));
+    });
+    expect(getAllByText('1:40')).toHaveLength(2);
+
+    act(() => {
+      area.props.onResponderTerminate();
+    });
+    expect(getByText('0:20')).toBeTruthy();
+    expect(onSeek).not.toHaveBeenCalled();
+
+    act(() => {
+      area.props.onResponderRelease(responderEvent(50));
+    });
+    expect(onSeek).not.toHaveBeenCalled();
+  });
+
+  it('不可拖动时 grant 和 move 都安全忽略', () => {
+    const onSeek = jest.fn();
+    const { getByTestId } = render(
+      <ProgressBar position={0} duration={100} onSeek={onSeek} seekable={false} />,
+    );
+    const area = getByTestId('progress-seek-area');
+    act(() => {
+      area.props.onLayout({ nativeEvent: { layout: { width: 100 } } });
+      area.props.onResponderGrant(responderEvent(50));
+      area.props.onResponderMove(responderEvent(60));
+      area.props.onResponderRelease(responderEvent(60));
+    });
+    expect(onSeek).not.toHaveBeenCalled();
+  });
 });

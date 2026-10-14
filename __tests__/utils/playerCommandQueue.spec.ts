@@ -50,4 +50,58 @@ describe('playerCommandQueue · 串行化与容错', () => {
 
     await expect(enqueuePlayerCommand('after-failure', async () => 'ok')).resolves.toBe('ok');
   });
+
+  it('原生锁缺失时明确失败，且不会执行播放器操作', async () => {
+    const acquire = nativeLock.acquire;
+    const operation = jest.fn(async () => 'unexpected');
+    (nativeLock as any).acquire = undefined;
+    try {
+      await expect(enqueuePlayerCommand('missing-lock', operation)).rejects.toThrow(
+        'PlayerCommandLock native module is unavailable',
+      );
+      expect(operation).not.toHaveBeenCalled();
+    } finally {
+      (nativeLock as any).acquire = acquire;
+    }
+  });
+
+  it('长命令定期续租，结束后立即停止心跳并释放锁', async () => {
+    jest.useFakeTimers();
+    let finish!: () => void;
+    const gate = new Promise<void>(resolve => {
+      finish = resolve;
+    });
+    try {
+      const command = enqueuePlayerCommand('long-running', async () => {
+        await gate;
+        return 42;
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      jest.advanceTimersByTime(10_000);
+      expect(nativeLock.renew).toHaveBeenCalledTimes(1);
+
+      finish();
+      await expect(command).resolves.toBe(42);
+      expect(nativeLock.release).toHaveBeenCalledTimes(1);
+
+      jest.advanceTimersByTime(30_000);
+      expect(nativeLock.renew).toHaveBeenCalledTimes(1);
+    } finally {
+      finish();
+      jest.useRealTimers();
+    }
+  });
+
+  it('不支持 renew 的旧原生模块仍可执行并释放', async () => {
+    const renew = nativeLock.renew;
+    (nativeLock as any).renew = undefined;
+    try {
+      await expect(enqueuePlayerCommand('legacy-lock', async () => 'ok')).resolves.toBe('ok');
+      expect(nativeLock.release).toHaveBeenCalledTimes(1);
+    } finally {
+      (nativeLock as any).renew = renew;
+    }
+  });
 });

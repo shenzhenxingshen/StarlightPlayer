@@ -1,6 +1,6 @@
 import TrackPlayer, { Event, State } from 'react-native-track-player';
 import { MMKV } from 'react-native-mmkv';
-import PlaybackService from '@/services/playbackService';
+import PlaybackService, { isStartedFromZero } from '@/services/playbackService';
 import { TRACKS } from '@/constants/tracks';
 import {
   bumpTrackGeneration,
@@ -72,6 +72,19 @@ describe('PlaybackService · 停止后的恢复', () => {
     const registeredEvents = mockedTrackPlayer.addEventListener.mock.calls.map(([event]) => event);
     expect(registeredEvents).toContain(Event.PlaybackError);
     expect(registeredEvents).not.toContain(Event.PlayerError);
+  });
+
+  it('重复初始化 Service 不会注册第二套监听器', async () => {
+    const calls = mockedTrackPlayer.addEventListener.mock.calls.length;
+    await PlaybackService();
+    expect(mockedTrackPlayer.addEventListener).toHaveBeenCalledTimes(calls);
+  });
+
+  it('旧接口 isStartedFromZero 与新的计数资格保持一致', () => {
+    saveCycleEligible(true);
+    expect(isStartedFromZero()).toBe(true);
+    saveCycleEligible(false);
+    expect(isStartedFromZero()).toBe(false);
   });
 
   it('RemoteStop 会取消持续播放和当前遍资格', async () => {
@@ -201,6 +214,22 @@ describe('PlaybackService · 停止后的恢复', () => {
     expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(1);
   });
 
+  it('同步恢复命令执行途中关闭同步时降级为普通恢复', async () => {
+    setSettings({ isCareMode: false, isSyncMode: true, repeatCount: 7 });
+    saveExpectedPlaying(true);
+    await mockedTrackPlayer.__emit(Event.RemoteDuck, { paused: true, permanent: false });
+    mockedTrackPlayer.getActiveTrack.mockImplementationOnce(async () => {
+      setSettings({ isCareMode: false, isSyncMode: false, repeatCount: 7 });
+      return { id: TRACKS[0].id, url: TRACKS[0].audioUrl } as never;
+    });
+    mockedTrackPlayer.seekTo.mockClear();
+
+    await mockedTrackPlayer.__emit(Event.RemoteDuck, { paused: false, permanent: false });
+
+    expect(mockedTrackPlayer.seekTo).not.toHaveBeenCalled();
+    expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(1);
+  });
+
   it('永久音频中断会停止且作废当前遍', async () => {
     saveExpectedPlaying(true);
     saveCycleEligible(true);
@@ -314,6 +343,26 @@ describe('PlaybackService · 停止后的恢复', () => {
     } finally {
       alignedSpy.mockRestore();
     }
+  });
+
+  it('同步换遍命令执行途中关闭同步时从 0 开始普通下一遍', async () => {
+    setSettings({ isCareMode: false, isSyncMode: true, repeatCount: 7 });
+    savePlayerState({ trackIndex: 0, playMode: 'play-all' });
+    saveSessionCount(2);
+    saveCycleEligible(true);
+    mockedTrackPlayer.getActiveTrack
+      .mockResolvedValueOnce({ id: TRACKS[0].id, url: TRACKS[0].audioUrl } as never)
+      .mockImplementationOnce(async () => {
+        setSettings({ isCareMode: false, isSyncMode: false, repeatCount: 7 });
+        return { id: TRACKS[0].id, url: TRACKS[0].audioUrl } as never;
+      });
+
+    await mockedTrackPlayer.__emit(Event.PlaybackQueueEnded, {
+      position: TRACKS[0].durationMs! / 1000,
+    });
+
+    expect(mockedTrackPlayer.seekTo).toHaveBeenCalledWith(0);
+    expect(loadSessionCount()).toBe(3);
   });
 
   it('play-one 达 N 遍后停止，不再自动重播', async () => {
@@ -552,6 +601,47 @@ describe('PlaybackService · 停止后的恢复', () => {
     expect(mockedTrackPlayer.seekTo).not.toHaveBeenCalled();
   });
 
+  it('无 track 的 ActiveTrackChanged 通知被安全忽略', async () => {
+    await expect(
+      mockedTrackPlayer.__emit(Event.PlaybackActiveTrackChanged, { track: undefined }),
+    ).resolves.toBeUndefined();
+    expect(mockedTrackPlayer.getActiveTrack).not.toHaveBeenCalled();
+  });
+
+  it('ActiveTrackChanged 等待命令锁期间 generation 改变时忽略旧事件', async () => {
+    let releaseBlocker!: () => void;
+    const blockerGate = new Promise<void>(resolve => {
+      releaseBlocker = resolve;
+    });
+    const blocker = enqueuePlayerCommand('test:active-track-blocker', () => blockerGate);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const changed = mockedTrackPlayer.__emit(Event.PlaybackActiveTrackChanged, {
+      track: { id: TRACKS[1].id },
+    });
+    bumpTrackGeneration();
+    releaseBlocker();
+    await blocker;
+    await changed;
+
+    expect(loadCurrentTrack()?.id).toBe(TRACKS[0].id);
+    expect(mockedTrackPlayer.getActiveTrack).not.toHaveBeenCalled();
+  });
+
+  it('预期的用户换曲通知提交状态但不会按恢复逻辑继承旧任务', async () => {
+    const pending = beginPendingTrackChange(TRACKS[1].id, 1, 'user');
+    mockedTrackPlayer.getActiveTrack.mockResolvedValue({ id: TRACKS[1].id } as never);
+
+    await mockedTrackPlayer.__emit(Event.PlaybackActiveTrackChanged, {
+      track: { id: TRACKS[1].id },
+    });
+
+    expect(loadCurrentTrack()?.id).toBe(TRACKS[1].id);
+    expect(loadTrackGeneration()).toBe(pending.generation);
+    expect(loadTaskCompletedCount(TRACKS[1].id)).toBe(0);
+  });
+
   it('意外进入 Stopped 且仍期望播放时，watchdog 会自动恢复', async () => {
     jest.useFakeTimers({ doNotFake: ['Date'] });
     try {
@@ -662,6 +752,53 @@ describe('PlaybackService · 停止后的恢复', () => {
     }
   });
 
+  it('同一恢复定时器只安排一次，用户取消后不访问播放器', async () => {
+    jest.useFakeTimers({ doNotFake: ['Date'] });
+    try {
+      saveExpectedPlaying(true);
+      mockedTrackPlayer.__emit(Event.PlaybackError, { code: 'E1', message: 'first' });
+      mockedTrackPlayer.__emit(Event.PlaybackError, { code: 'E2', message: 'duplicate' });
+      saveExpectedPlaying(false);
+      await jest.advanceTimersByTimeAsync(1500);
+
+      expect(mockedTrackPlayer.getPlaybackState).not.toHaveBeenCalled();
+      expect(mockedTrackPlayer.play).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it.each([State.Buffering, State.Loading] as const)(
+    'watchdog 看到 %s 且曲目存在时不重复播放',
+    async runningState => {
+      jest.useFakeTimers({ doNotFake: ['Date'] });
+      try {
+        saveExpectedPlaying(true);
+        mockedTrackPlayer.getPlaybackState.mockResolvedValue({ state: runningState });
+        mockedTrackPlayer.__emit(Event.PlaybackState, { state: State.Stopped });
+        await jest.advanceTimersByTimeAsync(1500);
+        expect(mockedTrackPlayer.play).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
+
+  it.each([State.Ended, State.Error, State.None])(
+    '非播放态 %s 在用户无播放意图时不触发 watchdog',
+    async stoppedState => {
+      jest.useFakeTimers({ doNotFake: ['Date'] });
+      try {
+        saveExpectedPlaying(false);
+        mockedTrackPlayer.__emit(Event.PlaybackState, { state: stoppedState });
+        await jest.advanceTimersByTimeAsync(6000);
+        expect(mockedTrackPlayer.getPlaybackState).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
+
   it('原生 generation 不匹配时忽略旧 QueueEnded', async () => {
     saveSessionCount(0);
     saveCycleEligible(true);
@@ -755,6 +892,35 @@ describe('PlaybackService · 停止后的恢复', () => {
 
     expect(loadCurrentTrack()?.id).toBe(TRACKS[0].id);
     expect(loadSessionCount()).toBe(1);
+  });
+
+  it('原生 active track 暂时为空时仍使用持久化曲目处理 QueueEnded', async () => {
+    saveSessionCount(0);
+    saveCycleEligible(true);
+    mockedTrackPlayer.getActiveTrack.mockResolvedValue(undefined);
+
+    await mockedTrackPlayer.__emit(Event.PlaybackQueueEnded, {
+      position: TRACKS[0].durationMs! / 1000,
+    });
+
+    expect(loadSessionCount()).toBe(1);
+    expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('没有 player_state 时 QueueEnded 使用 repeat-one 默认模式', async () => {
+    const raw = new MMKV() as any;
+    raw.clearAll();
+    raw.set('current_track', JSON.stringify({ id: TRACKS[0].id, index: 0 }));
+    saveCycleEligible(true);
+    mockedTrackPlayer.getActiveTrack.mockResolvedValue({ id: TRACKS[0].id } as never);
+
+    await mockedTrackPlayer.__emit(Event.PlaybackQueueEnded, {
+      position: TRACKS[0].durationMs! / 1000,
+    });
+
+    expect(loadSessionCount()).toBe(0);
+    expect(loadTaskCompletedCount(TRACKS[0].id)).toBe(1);
+    expect(mockedTrackPlayer.play).toHaveBeenCalledTimes(1);
   });
 
   it('未知 active track 的 QueueEnded 不会污染计数', async () => {

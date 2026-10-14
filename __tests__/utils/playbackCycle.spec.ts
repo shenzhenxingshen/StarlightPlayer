@@ -1,9 +1,14 @@
 import TrackPlayer from 'react-native-track-player';
 import { MMKV } from 'react-native-mmkv';
-import { resetCycleIfCompleted, seekWithReasonInCommand } from '@/utils/playbackCycle';
+import {
+  isNearCycleStart,
+  resetCycleIfCompleted,
+  seekWithReasonInCommand,
+} from '@/utils/playbackCycle';
 import {
   incrementTaskCompletedCount,
   loadCycleEligible,
+  loadPlaybackPausedAt,
   loadSessionCount,
   loadTaskCompletedCount,
   resetPlaybackTask,
@@ -58,6 +63,50 @@ describe('playbackCycle · 同步恢复计数资格', () => {
 
     expect(loadCycleEligible()).toBe(false);
   });
+
+  it('1.5 秒边界有效，负数、非有限值和边界外无效', () => {
+    expect(isNearCycleStart(0)).toBe(true);
+    expect(isNearCycleStart(1.5)).toBe(true);
+    expect(isNearCycleStart(1.5001)).toBe(false);
+    expect(isNearCycleStart(-0.01)).toBe(false);
+    expect(isNearCycleStart(Number.NaN)).toBe(false);
+    expect(isNearCycleStart(Number.POSITIVE_INFINITY)).toBe(false);
+  });
+
+  it('seek 会夹紧到合法范围，非法位置则拒绝', async () => {
+    await expect(seekWithReasonInCommand(Number.NaN, 'user-seek', 70)).rejects.toThrow(
+      'Invalid seek position',
+    );
+    await seekWithReasonInCommand(-5, 'user-seek', 70);
+    expect(mockedTrackPlayer.seekTo).toHaveBeenLastCalledWith(0);
+    expect(loadCycleEligible()).toBe(true);
+
+    await seekWithReasonInCommand(80, 'remote-seek', 70);
+    expect(mockedTrackPlayer.seekTo).toHaveBeenLastCalledWith(70);
+    expect(loadCycleEligible()).toBe(false);
+
+    await seekWithReasonInCommand(2, 'track-start');
+    expect(mockedTrackPlayer.seekTo).toHaveBeenLastCalledWith(2);
+  });
+
+  it('没有暂停时间时，同步恢复可按环形距离保留资格', async () => {
+    saveCycleEligible(true);
+    mockedTrackPlayer.getProgress.mockResolvedValue({ position: 69.8, duration: 70, buffered: 70 });
+
+    await seekWithReasonInCommand(0.2, 'sync-resume', 70);
+
+    expect(loadCycleEligible()).toBe(true);
+    expect(loadPlaybackPausedAt()).toBeNull();
+  });
+
+  it('旧遍无资格且同步位置不在开头时不能凭短暂停恢复资格', async () => {
+    saveCycleEligible(false);
+    savePlaybackPausedAt(Date.now() - 100);
+
+    await seekWithReasonInCommand(10.1, 'sync-resume', 70);
+
+    expect(loadCycleEligible()).toBe(false);
+  });
 });
 
 describe('playbackCycle · 已完成任务再次播放', () => {
@@ -84,5 +133,16 @@ describe('playbackCycle · 已完成任务再次播放', () => {
     expect(resetCycleIfCompleted()).toBe(false);
     expect(loadSessionCount()).toBe(6);
     expect(loadTaskCompletedCount('a05')).toBe(1);
+  });
+
+  it('没有当前曲目时达到 N 遍仍可安全清零', () => {
+    (new MMKV() as any).clearAll();
+    setSettings({ isCareMode: false, isSyncMode: false, repeatCount: 1 });
+    saveSessionCount(1);
+    saveCycleEligible(true);
+
+    expect(resetCycleIfCompleted()).toBe(true);
+    expect(loadSessionCount()).toBe(0);
+    expect(loadCycleEligible()).toBe(false);
   });
 });
