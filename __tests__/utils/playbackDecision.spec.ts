@@ -1,4 +1,9 @@
-import { decidePostCycleAction, isValidQueueEndPosition } from '@/utils/playbackDecision';
+import { State } from 'react-native-track-player';
+import {
+  decidePostCycleAction,
+  isValidQueueEndPosition,
+  shouldRestoreExpectedPlaying,
+} from '@/utils/playbackDecision';
 
 describe('playbackDecision · 每首重复遍数优先级', () => {
   const modes = ['repeat-one', 'play-one', 'repeat-all', 'play-all'] as const;
@@ -30,5 +35,25 @@ describe('playbackDecision · QueueEnded 位置校验', () => {
     expect(isValidQueueEndPosition(69.2, 70.684)).toBe(true);
     expect(isValidQueueEndPosition(20, 70.684)).toBe(false);
     expect(isValidQueueEndPosition(80, 70.684)).toBe(false);
+  });
+});
+
+describe('playbackDecision · 启动播放意图恢复', () => {
+  it.each([State.Playing, State.Buffering, State.Loading])(
+    '已有原生队列且状态为 %s 时恢复持续播放意图',
+    state => {
+      expect(shouldRestoreExpectedPlaying(true, state)).toBe(true);
+    },
+  );
+
+  it.each([State.Ready, State.Paused, State.Stopped, State.Ended, State.Error, State.None])(
+    '已有原生队列但状态为 %s 时保持暂停意图',
+    state => {
+      expect(shouldRestoreExpectedPlaying(true, state)).toBe(false);
+    },
+  );
+
+  it('冷启动重建队列的 Loading 只代表载入资源，不能自动恢复播放意图', () => {
+    expect(shouldRestoreExpectedPlaying(false, State.Loading)).toBe(false);
   });
 });

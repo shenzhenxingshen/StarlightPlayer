@@ -6,7 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, View, Text, StyleSheet, Platform, PermissionsAndroid } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import TrackPlayer, { RepeatMode, State } from 'react-native-track-player';
+import TrackPlayer, { RepeatMode } from 'react-native-track-player';
 import PlayerScreen from './screens/PlayerScreen';
 import PlaylistScreen from './screens/PlaylistScreen';
 import ProfileScreen from './screens/ProfileScreen';
@@ -31,6 +31,7 @@ import { buildPlayerOptions } from './utils/playerOptions';
 import { TRACKS } from './constants/tracks';
 import { addLog } from './utils/logger';
 import { isNearCycleStart } from './utils/playbackCycle';
+import { shouldRestoreExpectedPlaying } from './utils/playbackDecision';
 
 const Tab = createBottomTabNavigator();
 
@@ -121,11 +122,7 @@ const App: React.FC = () => {
           }
 
           const playback = await TrackPlayer.getPlaybackState();
-          saveExpectedPlaying(
-            playback.state === State.Playing ||
-              playback.state === State.Buffering ||
-              playback.state === State.Loading,
-          );
+          saveExpectedPlaying(shouldRestoreExpectedPlaying(activeIndex >= 0, playback.state));
         });
         // Android 13+ 通知权限
         if (Platform.OS === 'android' && Platform.Version >= 33) {
