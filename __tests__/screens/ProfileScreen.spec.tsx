@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert, NativeModules } from 'react-native';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { MMKV } from 'react-native-mmkv';
 import ProfileScreen from '@/screens/ProfileScreen';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -8,12 +8,20 @@ import { addLog } from '@/utils/logger';
 
 describe('<ProfileScreen />', () => {
   beforeEach(() => {
+    jest.useFakeTimers();
     (new MMKV() as any).clearAll();
     useSettingsStore.setState({ isCareMode: false, isSyncMode: true, repeatCount: 1 });
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     NativeModules.DiagnosticExporter.shareTextFile.mockResolvedValue(
       '/tmp/starlight-diagnostics.txt',
     );
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
   });
 
   it('快捷值使用千分位显示并可直接保存', () => {
