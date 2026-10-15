@@ -9,7 +9,7 @@
 - React Navigation 6 底部 Tab；Zustand 管 UI 状态；MMKV 管本地持久化和 UI/PlaybackService 通信。
 - MaterialIcons、Safe Area、Gesture Handler 负责 UI 基础能力。
 - Android 旧架构（`newArchEnabled=false`）+ Hermes，minSdk 23，target/compileSdk 35。
-- iOS 13.4+，CocoaPods，Objective-C++ 原生入口。
+- iOS/iPadOS 13.4+ Universal，CocoaPods，Objective-C++ AppDelegate/SceneDelegate 原生入口。
 
 ## 2. 目录结构
 
@@ -46,23 +46,37 @@ StarlightPlayer/
 1. `index.js` 先加载 logger，再注册 `App` 和 `PlaybackService`。
 2. `App.tsx` 通过进程级命令锁调用 `setupPlayer`，配置 Android 后台继续播放、30 秒前台宽限、RNTP RepeatMode Off。
 3. 如原生播放队列仍在，App 直接接管，不 reset；否则按 `player_state.trackIndex` 重建单曲队列。
-4. UI 播放/暂停/切歌/seek 和后台 Remote* 事件全部进入 `playerCommandQueue`。正常 RNTP HeadlessJS 复用同一 ReactContext，由 JS 链排队；Android/iOS 原生 `PlayerCommandLock` 额外防御多 ReactContext/桥接重入。
+4. UI 播放/暂停/切歌/seek 和后台 Remote\* 事件全部进入 `playerCommandQueue`。正常 RNTP HeadlessJS 复用同一 ReactContext，由 JS 链排队；Android/iOS 原生 `PlayerCommandLock` 额外防御多 ReactContext/桥接重入。
 5. 单曲原生队列到尾后产生 `PlaybackQueueEnded`：校验 generation/曲目/结束位置 → 按 `cycleEligible` 计数 → 先判断 N 遍 → 再执行四种模式。
 6. 异常停止时，`PlaybackError`/`PlayerError`/`PlaybackState` 写日志；若仍然 `expected_playing=true`，watchdog 重建队列并验证播放，最多退避恢复三轮。
 
+### 3.1 播放页响应式契约（需求 29）
+
+Android、iOS 各自只需一个安装包；iOS Target 的 `TARGETED_DEVICE_FAMILY` 必须保持 `1,2`，同时支持 iPhone 与 iPad。运行时依据当前窗口 `高度 / 宽度` 选型，不能依据设备型号，也不能把三类布局拆成构建变体：
+
+| 窗口比例  | 布局约束                                                                                                                                |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `> 1`     | 竖屏：保持纵向主体；模式、上一首、播放/暂停、下一首、同步五按钮一行。当前遍数在横向时间轴上方，每首重复遍数在轴下方、与起止时间同一行。 |
+| `0.75～1` | 方屏（含 `0.75`、`1`）：方案 3 三栏；左侧五按钮纵向等分，中间曲名+唱片，右侧遍数组+竖向时间轴。                                         |
+| `< 0.75`  | 横屏：沿用方案 3，增加栏间留白；尺寸取决于屏幕短边并设最小/最大值，宽屏和电视不得无限放大。                                             |
+
+方案 3 的几何不变量：左右轨道等高；中央唱片保持视觉中心；右侧“当前遍数（大）/每首重复遍数（小）”上下成组并位于竖向时间轴左侧，当前/总时长分别固定在轴的上、下端；播放/暂停、唱片和遍数组共享水平视觉中轴；底部 Tab 与安全区域不得遮挡内容。大数字显示千分位，不显示“当前遍数/每首重复遍数”汉字，但保留无障碍语义。
+
+响应式重排不得重新初始化 RNTP、替换队列、seek 或写入新的播放任务。四种播放模式、N 遍优先、`cycleEligible`、持久化续数和同步模式的所有业务规则保持不变；旋转前后的曲目、位置、播放状态、当前遍数和同步资格必须连续。
+
 ## 4. 配置、环境变量、外部依赖
 
-| 位置 | 作用 |
-|---|---|
-| `package.json` / `package-lock.json` | JS 依赖和 npm scripts |
-| `tsconfig.json` | TypeScript strict 约束和 `@/*` 别名 |
-| `babel.config.js` / `metro.config.js` | RN 转译与打包 |
-| `jest.config.js` / `.eslintrc.js` / `.prettierrc.js` | 测试和质量规则 |
-| `android/build.gradle` | SDK 23/35、Kotlin 1.9.25、Maven 镜像 |
-| `android/app/build.gradle` | appId、版本、签名、Hermes/RN |
-| `AndroidManifest.xml` | 前台播放/通知/唤醒权限、诊断 FileProvider |
-| `ios/Podfile` / `Info.plist` | iOS 13.4、Pods、后台 audio |
-| `react-native.config.js` | iOS 音频和字体资源 |
+| 位置                                                 | 作用                                                   |
+| ---------------------------------------------------- | ------------------------------------------------------ |
+| `package.json` / `package-lock.json`                 | JS 依赖和 npm scripts                                  |
+| `tsconfig.json`                                      | TypeScript strict 约束和 `@/*` 别名                    |
+| `babel.config.js` / `metro.config.js`                | RN 转译与打包                                          |
+| `jest.config.js` / `.eslintrc.js` / `.prettierrc.js` | 测试和质量规则                                         |
+| `android/build.gradle`                               | SDK 23/35、Kotlin 1.9.25、Maven 镜像                   |
+| `android/app/build.gradle`                           | appId、版本、签名、Hermes/RN                           |
+| `AndroidManifest.xml`                                | 前台播放/通知/唤醒权限、诊断 FileProvider              |
+| `ios/Podfile` / `Info.plist`                         | iOS/iPadOS 13.4、iPad 四方向/分屏、UIScene、后台 audio |
+| `react-native.config.js`                             | iOS 音频和字体资源                                     |
 
 Android release 签名需要：
 
@@ -97,6 +111,28 @@ cd android && ./gradlew assembleDebug
 ```
 
 `npm run copy-assets` 默认从仓库根目录 `assets/audio` 复制，但当前没有该目录；两端需要的 21 个 MP3 已分别在 Android/iOS 目录。使用该脚本时要显式传入源目录：`node scripts/copyAssets.js /absolute/audio/path`。
+
+### iOS 13/14 双轨验证
+
+产品最低版本和发布配置保持 iOS 13.4；不得因开发机升级而永久抬高。当前 Xcode 27 本机验证若必须使用 iOS 15，可仅对本次 Pods 安装临时覆盖：
+
+```bash
+cd ios
+STARLIGHT_LOCAL_IOS_DEPLOYMENT_TARGET=15.0 pod install
+# 本机测试的 xcodebuild 命令还需追加 IPHONEOS_DEPLOYMENT_TARGET=15.0
+```
+
+这条命令只覆盖本机 Xcode 27 的 Simulator/当前 SDK 验证，不能证明 iOS 13/14 兼容。另一条验证轨必须使用仍支持目标系统的 Xcode/Simulator，并至少用一台 iOS 13 或 14 真机做发布候选回归；兼容代码继续避免无可用性保护的 iOS 15+ API。若 Apple 最终从提交工具链层面禁止支持，才允许重新评估最低版本，同时为旧用户保留最后兼容版本。
+
+### 响应式与平台验收矩阵
+
+| 层级             | 最低覆盖                                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Jest/组件        | 比例 `>1`、`=1`、`=0.75`、`<0.75`；五按钮顺序；遍数显示规则；超大数字；旋转只重排、不触发播放命令。              |
+| iOS Simulator    | Xcode 27 + iOS 15+：iPhone 与 iPad 竖屏、4:3、16:9、分屏，安全区域/大字体/旋转，播放中及同步中切换布局状态连续。 |
+| Android Emulator | API 23 与 API 35，手机竖横屏、4:3 平板、16:9/电视尺寸；触摸目标、系统返回、TV/D-pad 焦点（如启用 TV）。          |
+| iOS 13/14 验证轨 | 旧 Simulator 做启动和基础布局；iOS 13/14 真机做安装、音频、旋转、锁屏、后台、中断恢复。                          |
+| 双端真机         | 四种模式 × repeat 1/大数 × 同步开关；前后台、锁屏/通知、来电与蓝牙；多设备同步漂移。模拟器通过不能替代此项。     |
 
 ## 7. 当前最缺失的文档
 

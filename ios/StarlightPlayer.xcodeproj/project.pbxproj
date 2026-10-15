@@ -35,9 +35,10 @@
 		CA6A7C371A6F48978DA5B553 /* D15 期盼.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 9EB4454D0B8743A1AE26C0E9 /* D15 期盼.mp3 */; };
 		CC067BB1C3784F7B8BBBB10A /* A02 大悲咒（唱版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 0FF00018751E4871ACB8A1A8 /* A02 大悲咒（唱版）.mp3 */; };
 		D05711B77BE54BA89AA83426 /* C14 南无观世音菩萨（慢版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 8E9379D8B822476C8CDB5CB1 /* C14 南无观世音菩萨（慢版）.mp3 */; };
-		DC036834A4844102ACBC10AB /* A01 大悲咒（跟我学）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 4A7B1F14E1B14053BCFB1349 /* A01 大悲咒（跟我学）.mp3 */; };
 		D14A00000000000000000002 /* DiagnosticExporter.mm in Sources */ = {isa = PBXBuildFile; fileRef = D14A00000000000000000001 /* DiagnosticExporter.mm */; };
 		D14A00000000000000000004 /* PlayerCommandLock.mm in Sources */ = {isa = PBXBuildFile; fileRef = D14A00000000000000000003 /* PlayerCommandLock.mm */; };
+		D14A00000000000000000006 /* SceneDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = D14A00000000000000000005 /* SceneDelegate.mm */; };
+		DC036834A4844102ACBC10AB /* A01 大悲咒（跟我学）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 4A7B1F14E1B14053BCFB1349 /* A01 大悲咒（跟我学）.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +91,8 @@
 		C303652E61B36FAE42B63E12 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = StarlightPlayer/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D14A00000000000000000001 /* DiagnosticExporter.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = DiagnosticExporter.mm; path = StarlightPlayer/DiagnosticExporter.mm; sourceTree = "<group>"; };
 		D14A00000000000000000003 /* PlayerCommandLock.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = PlayerCommandLock.mm; path = StarlightPlayer/PlayerCommandLock.mm; sourceTree = "<group>"; };
+		D14A00000000000000000005 /* SceneDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = SceneDelegate.mm; path = StarlightPlayer/SceneDelegate.mm; sourceTree = "<group>"; };
+		D14A00000000000000000007 /* SceneDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SceneDelegate.h; path = StarlightPlayer/SceneDelegate.h; sourceTree = "<group>"; };
 		E5F146CA712240DC974DE0BC /* C08 南无阿弥陀佛（慢版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "C08 南无阿弥陀佛（慢版）.mp3"; path = "StarlightPlayer/audio/C08 南无阿弥陀佛（慢版）.mp3"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FDD0BCD2AAC6477DA19178A2 /* D21 愿做菩萨那朵莲.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "D21 愿做菩萨那朵莲.mp3"; path = "StarlightPlayer/audio/D21 愿做菩萨那朵莲.mp3"; sourceTree = "<group>"; };
@@ -137,6 +140,8 @@
 			children = (
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
+				D14A00000000000000000007 /* SceneDelegate.h */,
+				D14A00000000000000000005 /* SceneDelegate.mm */,
 				D14A00000000000000000001 /* DiagnosticExporter.mm */,
 				D14A00000000000000000003 /* PlayerCommandLock.mm */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -497,6 +502,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
+				D14A00000000000000000006 /* SceneDelegate.mm in Sources */,
 				D14A00000000000000000002 /* DiagnosticExporter.mm in Sources */,
 				D14A00000000000000000004 /* PlayerCommandLock.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
@@ -571,7 +577,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = TGP8YQ5L5D;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = StarlightPlayer/Info.plist;
@@ -579,7 +585,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -589,6 +595,7 @@
 				PRODUCT_NAME = StarlightPlayer;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -599,14 +606,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = TGP8YQ5L5D;
 				INFOPLIST_FILE = StarlightPlayer/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -615,6 +622,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.starlightplayer.app;
 				PRODUCT_NAME = StarlightPlayer;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;

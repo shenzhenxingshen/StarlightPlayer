@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getSettings, setSettings } from '../utils/storage';
+import { getSettings, normalizeRepeatCount, setSettings } from '../utils/storage';
 
 interface SettingsStore {
   isCareMode: boolean;
@@ -26,7 +26,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   },
   setRepeatCount: (n: number) => {
     const s = get();
-    const val = Math.max(1, Math.min(9999, Math.round(n)));
+    const val = normalizeRepeatCount(n);
     setSettings({ isCareMode: s.isCareMode, isSyncMode: s.isSyncMode, repeatCount: val });
     set({ repeatCount: val });
   },

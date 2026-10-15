@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, AppState } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet, AppState, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TrackPlayer, {
   usePlaybackState,
   useProgress,
@@ -8,9 +8,7 @@ import TrackPlayer, {
   State,
   Event,
 } from 'react-native-track-player';
-import TrackInfo from '../components/TrackInfo';
-import Controls, { PlayMode, MODE_CONFIG } from '../components/Controls';
-import ProgressBar from '../components/ProgressBar';
+import { PlayMode, MODE_CONFIG } from '../components/Controls';
 import { useSettingsStore } from '../store/settingsStore';
 import { calculateAlignedPosition, msToSeconds } from '../utils/syncUtils';
 import { TRACKS } from '../constants/tracks';
@@ -19,6 +17,7 @@ import {
   getSettings,
   loadPlayerState,
   loadSessionCount,
+  loadTaskCompletedCount,
   loadTrackGeneration,
   savePlaybackPausedAt,
   saveExpectedPlaying,
@@ -38,11 +37,16 @@ import { BG_GROUND } from '../constants/colors';
 import { enqueuePlayerCommand } from '../utils/playerCommandQueue';
 import { resetCycleIfCompleted, seekWithReasonInCommand } from '../utils/playbackCycle';
 import { buildPlayerOptions } from '../utils/playerOptions';
+import { getRepeatDisplayVisibility } from '../utils/repeatDisplay';
+import { getPlayerLayout } from '../utils/playerLayout';
+import { PortraitPlayerLayout, WidePlayerLayout } from '../components/PlayerLayouts';
 
 // 标志：是否正在恢复上次状态，期间不保存
 let restoring = true;
 
 const PlayerScreen: React.FC = () => {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const playbackState = usePlaybackState();
   const progress = useProgress(500);
   const activeTrack = useActiveTrack();
@@ -52,14 +56,24 @@ const PlayerScreen: React.FC = () => {
     playbackState.state === State.Loading;
   const { isCareMode, repeatCount, isSyncMode, toggleSyncMode } = useSettingsStore();
 
-  // 读取当前遍数（随 progress 刷新）
-  const sessionCnt = loadSessionCount();
-  const currentRepeat = loadCycleEligible() ? sessionCnt + 1 : sessionCnt;
+  // 读取当前播放任务的累计遍数（随 progress 刷新）。
+  // session_count 只用于决定何时执行四种播放模式，不能用于单曲循环的累计展示。
+  const activeTrackId = activeTrack?.id == null ? null : String(activeTrack.id);
+  const taskCompletedCount = loadTaskCompletedCount(activeTrackId);
+  const currentRepeat = Math.min(
+    Number.MAX_SAFE_INTEGER,
+    taskCompletedCount + (loadCycleEligible() ? 1 : 0),
+  );
 
   // 从持久化恢复 playMode（曲目本身已由 App.tsx 初始化时加载）
   const saved = useRef(loadPlayerState());
   const [playMode, setPlayMode] = useState<PlayMode>(
     (saved.current?.playMode as PlayMode) || 'repeat-one',
+  );
+  const { showCurrentRepeat, showTotalRepeat } = getRepeatDisplayVisibility(
+    repeatCount,
+    playMode,
+    isCareMode,
   );
   const playModeRef = useRef(playMode);
   playModeRef.current = playMode;
@@ -223,46 +237,54 @@ const PlayerScreen: React.FC = () => {
   };
 
   const displayTrack = TRACKS.find(t => t.id === activeTrack?.id) || null;
+  const layout = getPlayerLayout(width, height, isCareMode);
+  const symmetricWideInset = Math.max(layout.edgePadding, insets.left, insets.right);
+  const responsiveContainerStyle = {
+    paddingTop: Math.max(insets.top, layout.wide ? layout.contentGap / 2 : 0),
+    paddingBottom: 0,
+    paddingHorizontal: layout.wide ? symmetricWideInset : 0,
+  };
+  const presentationProps = {
+    layout,
+    track: displayTrack,
+    isPlaying,
+    isCareMode,
+    progressProps: {
+      position: progress.position,
+      duration: progress.duration,
+      onSeek: handleSeek,
+      seekable: !isSyncMode && !isCareMode,
+      isCareMode,
+      currentRepeat: showCurrentRepeat ? currentRepeat : undefined,
+      totalRepeat: showTotalRepeat ? repeatCount : undefined,
+    },
+    controlsProps: {
+      isPlaying,
+      playMode,
+      isSyncMode,
+      modeLabel,
+      onPlayPause: isPlaying ? pauseCurrent : playCurrent,
+      onSkipToNext: handleSkipNext,
+      onSkipToPrevious: handleSkipPrev,
+      onToggleMode: toggleMode,
+      onToggleSync: handleToggleSync,
+      isCareMode,
+    },
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.albumArea}>
-        <TrackInfo track={displayTrack} isPlaying={isPlaying} isCareMode={isCareMode} />
-      </View>
-      <View style={styles.progressArea}>
-        <ProgressBar
-          position={progress.position}
-          duration={progress.duration}
-          onSeek={handleSeek}
-          seekable={!isSyncMode && !isCareMode}
-          isCareMode={isCareMode}
-          currentRepeat={currentRepeat}
-          totalRepeat={repeatCount}
-        />
-      </View>
-      <View style={styles.controlArea}>
-        <Controls
-          isPlaying={isPlaying}
-          playMode={playMode}
-          isSyncMode={isSyncMode}
-          modeLabel={modeLabel}
-          onPlayPause={isPlaying ? pauseCurrent : playCurrent}
-          onSkipToNext={handleSkipNext}
-          onSkipToPrevious={handleSkipPrev}
-          onToggleMode={toggleMode}
-          onToggleSync={handleToggleSync}
-          isCareMode={isCareMode}
-        />
-      </View>
-    </SafeAreaView>
+    <View testID="player-screen" style={[styles.container, responsiveContainerStyle]}>
+      {layout.wide ? (
+        <WidePlayerLayout {...presentationProps} />
+      ) : (
+        <PortraitPlayerLayout {...presentationProps} />
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG_GROUND },
-  albumArea: { flex: 1, justifyContent: 'center', overflow: 'hidden' },
-  progressArea: { paddingBottom: 8 },
-  controlArea: { paddingBottom: 24, paddingTop: 16 },
 });
 
 export default PlayerScreen;

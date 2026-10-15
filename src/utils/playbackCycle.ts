@@ -4,8 +4,10 @@ import {
   getSettings,
   clearPlaybackPausedAt,
   loadCycleEligible,
+  loadCurrentTrack,
   loadPlaybackPausedAt,
   loadSessionCount,
+  resetPlaybackTask,
   saveCycleEligible,
   saveSessionCount,
 } from './storage';
@@ -82,7 +84,9 @@ export function resetCycleIfCompleted(): boolean {
   if (count < repeatCount) return false;
 
   saveSessionCount(0);
+  const trackId = loadCurrentTrack()?.id;
+  if (trackId) resetPlaybackTask(trackId);
   saveCycleEligible(false);
-  addLog('INFO', `resetCycle: ${count}>=${repeatCount} → reset`);
+  addLog('INFO', `resetCycle: ${count}>=${repeatCount} → reset task=${trackId ?? 'none'}`);
   return true;
 }

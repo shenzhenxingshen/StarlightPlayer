@@ -9,6 +9,17 @@ const PENDING_TRACK_CHANGE_KEY = 'pending_track_change';
 const EXPECTED_PLAYING_KEY = 'expected_playing';
 const TRACK_GENERATION_KEY = 'track_generation';
 const PLAYBACK_PAUSED_AT_KEY = 'playback_paused_at';
+const PLAYBACK_TASK_PROGRESS_KEY = 'playback_task_progress';
+
+const normalizeNonNegativeCount = (value: unknown, fallback = 0): number => {
+  const count = Number(value);
+  return Number.isSafeInteger(count) && count >= 0 ? count : fallback;
+};
+
+export function normalizeRepeatCount(value: unknown): number {
+  const count = Number(value);
+  return Number.isSafeInteger(count) && count >= 1 ? count : 1;
+}
 
 // --- Player State 持久化 ---
 export type PlayMode = 'play-one' | 'repeat-one' | 'play-all' | 'repeat-all';
@@ -49,7 +60,6 @@ export function getSettings(): { isCareMode: boolean; isSyncMode: boolean; repea
     const data = storage.getString(SETTINGS_KEY);
     if (!data) return { isCareMode: false, isSyncMode: true, repeatCount: 1 };
     const parsed = JSON.parse(data);
-    const repeatCount = Number(parsed.repeatCount);
     return {
       isCareMode:
         typeof parsed.isCareMode === 'boolean'
@@ -58,9 +68,7 @@ export function getSettings(): { isCareMode: boolean; isSyncMode: boolean; repea
             ? parsed.isLargeTextMode
             : false,
       isSyncMode: typeof parsed.isSyncMode === 'boolean' ? parsed.isSyncMode : true,
-      repeatCount: Number.isFinite(repeatCount)
-        ? Math.max(1, Math.min(9999, Math.round(repeatCount)))
-        : 1,
+      repeatCount: normalizeRepeatCount(parsed.repeatCount),
     };
   } catch {
     return { isCareMode: false, isSyncMode: true, repeatCount: 1 };
@@ -72,7 +80,10 @@ export function setSettings(settings: {
   isSyncMode: boolean;
   repeatCount: number;
 }): void {
-  storage.set(SETTINGS_KEY, JSON.stringify(settings));
+  storage.set(
+    SETTINGS_KEY,
+    JSON.stringify({ ...settings, repeatCount: normalizeRepeatCount(settings.repeatCount) }),
+  );
 }
 
 // --- Session Count（跨运行时共享） ---
@@ -81,16 +92,86 @@ const CYCLE_ELIGIBLE_KEY = 'cycle_eligible';
 const LEGACY_STARTED_FROM_ZERO_KEY = 'started_from_zero';
 
 export function saveSessionCount(count: number): void {
-  storage.set(SESSION_COUNT_KEY, count);
+  storage.set(SESSION_COUNT_KEY, normalizeNonNegativeCount(count));
 }
 
 export function loadSessionCount(): number {
   try {
     const count = storage.getNumber(SESSION_COUNT_KEY);
-    return Number.isInteger(count) && count != null && count >= 0 ? count : 0;
+    return normalizeNonNegativeCount(count);
   } catch {
     return 0;
   }
+}
+
+// --- 当前播放任务累计遍数 ---
+// session_count 只负责“完成 N 遍后执行播放模式”；这里负责跨重启展示累计遍数。
+export interface PlaybackTaskProgress {
+  trackId: string;
+  completedCount: number;
+}
+
+export function savePlaybackTaskProgress(progress: PlaybackTaskProgress): void {
+  storage.set(
+    PLAYBACK_TASK_PROGRESS_KEY,
+    JSON.stringify({
+      trackId: progress.trackId,
+      completedCount: normalizeNonNegativeCount(progress.completedCount),
+    }),
+  );
+}
+
+export function loadPlaybackTaskProgress(): PlaybackTaskProgress | null {
+  try {
+    const data = storage.getString(PLAYBACK_TASK_PROGRESS_KEY);
+    if (!data) return null;
+    const parsed = JSON.parse(data);
+    if (typeof parsed.trackId !== 'string' || parsed.trackId.length === 0) return null;
+    return {
+      trackId: parsed.trackId,
+      completedCount: normalizeNonNegativeCount(parsed.completedCount),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function loadTaskCompletedCount(trackId: string | null | undefined): number {
+  if (!trackId) return 0;
+  const progress = loadPlaybackTaskProgress();
+  return progress?.trackId === trackId ? progress.completedCount : 0;
+}
+
+/**
+ * 恢复同一播放任务；首次升级到该数据结构时以已有 session_count 作为初始累计值。
+ * 如果已经存在其他曲目的任务记录，则视为新任务并从 0 开始，防止串曲。
+ */
+export function ensurePlaybackTask(
+  trackId: string,
+  legacyCompletedCount: number = loadSessionCount(),
+): PlaybackTaskProgress {
+  const current = loadPlaybackTaskProgress();
+  if (current?.trackId === trackId) return current;
+  const next = {
+    trackId,
+    completedCount: current == null ? normalizeNonNegativeCount(legacyCompletedCount) : 0,
+  };
+  savePlaybackTaskProgress(next);
+  return next;
+}
+
+export function resetPlaybackTask(trackId: string): void {
+  savePlaybackTaskProgress({ trackId, completedCount: 0 });
+}
+
+export function incrementTaskCompletedCount(
+  trackId: string,
+  legacyCompletedCount: number = loadSessionCount(),
+): number {
+  const task = ensurePlaybackTask(trackId, legacyCompletedCount);
+  const completedCount = Math.min(Number.MAX_SAFE_INTEGER, task.completedCount + 1);
+  savePlaybackTaskProgress({ trackId, completedCount });
+  return completedCount;
 }
 
 export function saveCycleEligible(value: boolean): void {

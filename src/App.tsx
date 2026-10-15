@@ -3,10 +3,18 @@ import { GOLD, GOLD_DIM, BG_GROUND, BG_SURFACE, BORDER_STRONG, TEXT_TER } from '
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StatusBar, View, Text, StyleSheet, Platform, PermissionsAndroid } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  StatusBar,
+  View,
+  Text,
+  StyleSheet,
+  Platform,
+  PermissionsAndroid,
+  useWindowDimensions,
+} from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import TrackPlayer, { RepeatMode, State } from 'react-native-track-player';
+import TrackPlayer, { RepeatMode } from 'react-native-track-player';
 import PlayerScreen from './screens/PlayerScreen';
 import PlaylistScreen from './screens/PlaylistScreen';
 import ProfileScreen from './screens/ProfileScreen';
@@ -14,13 +22,16 @@ import { replaceTrackInCommand } from './utils/trackManager';
 import {
   getSettings,
   discardPendingTrackChange,
+  ensurePlaybackTask,
   loadCurrentTrack,
   loadPlayerState,
+  loadSessionCount,
   saveCurrentTrack,
   saveCycleEligible,
   saveExpectedPlaying,
   savePlayerState,
   saveSessionCount,
+  resetPlaybackTask,
 } from './utils/storage';
 import { useSettingsStore } from './store/settingsStore';
 import { enqueuePlayerCommand } from './utils/playerCommandQueue';
@@ -28,6 +39,8 @@ import { buildPlayerOptions } from './utils/playerOptions';
 import { TRACKS } from './constants/tracks';
 import { addLog } from './utils/logger';
 import { isNearCycleStart } from './utils/playbackCycle';
+import { shouldRestoreExpectedPlaying } from './utils/playbackDecision';
+import { getPlayerLayout } from './utils/playerLayout';
 
 const Tab = createBottomTabNavigator();
 
@@ -99,11 +112,14 @@ const App: React.FC = () => {
             if (persistedTrack?.id !== TRACKS[activeIndex].id) {
               const progress = await TrackPlayer.getProgress();
               saveSessionCount(0);
+              resetPlaybackTask(TRACKS[activeIndex].id);
               saveCycleEligible(isNearCycleStart(progress.position));
               addLog(
                 'WARN',
                 `initializePlayer: native track differs from persisted ${persistedTrack?.id ?? 'none'}→${TRACKS[activeIndex].id}`,
               );
+            } else {
+              ensurePlaybackTask(TRACKS[activeIndex].id, loadSessionCount());
             }
             saveCurrentTrack({ id: TRACKS[activeIndex].id, index: activeIndex });
             savePlayerState({
@@ -115,11 +131,7 @@ const App: React.FC = () => {
           }
 
           const playback = await TrackPlayer.getPlaybackState();
-          saveExpectedPlaying(
-            playback.state === State.Playing ||
-              playback.state === State.Buffering ||
-              playback.state === State.Loading,
-          );
+          saveExpectedPlaying(shouldRestoreExpectedPlaying(activeIndex >= 0, playback.state));
         });
         // Android 13+ 通知权限
         if (Platform.OS === 'android' && Platform.Version >= 33) {
@@ -185,6 +197,11 @@ const App: React.FC = () => {
 
 const AppTabs: React.FC = () => {
   const { isCareMode } = useSettingsStore();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const layout = getPlayerLayout(width, height, isCareMode);
+  const tabBarHeight = layout.tabBarHeight + insets.bottom;
+  const tabBarPaddingBottom = Math.max(layout.tabBarPaddingBottom, insets.bottom);
   return (
     <Tab.Navigator
       initialRouteName="Player"
@@ -193,21 +210,24 @@ const AppTabs: React.FC = () => {
         tabBarStyle: {
           backgroundColor: BG_SURFACE,
           borderTopColor: BORDER_STRONG,
-          height: 72,
-          paddingBottom: 10,
-          paddingTop: 6,
+          height: tabBarHeight,
+          paddingBottom: tabBarPaddingBottom,
+          paddingTop: layout.tabBarPaddingTop,
         },
         tabBarActiveTintColor: GOLD,
         tabBarInactiveTintColor: TEXT_TER,
-        tabBarLabelStyle: { fontSize: 14 },
+        tabBarLabelStyle: { fontSize: layout.tabLabelSize },
         tabBarIconStyle: { marginBottom: -2 },
+        tabBarHideOnKeyboard: true,
       }}>
       <Tab.Screen
         name="Player"
         component={PlayerScreen}
         options={{
           title: '播放',
-          tabBarIcon: ({ color }) => <Icon name="play-circle-outline" size={32} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <Icon name="play-circle-outline" size={layout.tabIconSize} color={color} />
+          ),
         }}
       />
       {!isCareMode && (
@@ -216,7 +236,9 @@ const AppTabs: React.FC = () => {
           component={PlaylistScreen}
           options={{
             title: '列表',
-            tabBarIcon: ({ color }) => <Icon name="queue-music" size={32} color={color} />,
+            tabBarIcon: ({ color }) => (
+              <Icon name="queue-music" size={layout.tabIconSize} color={color} />
+            ),
           }}
         />
       )}
@@ -225,7 +247,7 @@ const AppTabs: React.FC = () => {
         component={ProfileScreen}
         options={{
           title: '我的',
-          tabBarIcon: ({ color }) => <Icon name="person" size={32} color={color} />,
+          tabBarIcon: ({ color }) => <Icon name="person" size={layout.tabIconSize} color={color} />,
         }}
       />
     </Tab.Navigator>

@@ -31,7 +31,11 @@ const VinylRecord: React.FC<VinylRecordProps> = ({ isPlaying, size = 230 }) => {
       glowAnim.current?.stop();
       glow.setValue(0.2);
     }
-  }, [isPlaying]);
+    return () => {
+      spinAnim.current?.stop();
+      glowAnim.current?.stop();
+    };
+  }, [glow, isPlaying, spin]);
 
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const r = size / 2;

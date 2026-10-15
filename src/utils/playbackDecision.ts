@@ -1,3 +1,4 @@
+import { State } from 'react-native-track-player';
 import { PlayMode } from './storage';
 
 export type PostCycleAction =
@@ -34,5 +35,19 @@ export function isValidQueueEndPosition(positionSeconds: number, durationSeconds
     durationSeconds > 0 &&
     positionSeconds >= durationSeconds - 2 &&
     positionSeconds <= durationSeconds + 5
+  );
+}
+
+/**
+ * 只有接管到启动前已存在的原生队列时，才从原生状态恢复“应持续播放”意图。
+ * 冷启动重建队列也会短暂经过 Loading，但那只是资源加载，不能因此自动播放。
+ */
+export function shouldRestoreExpectedPlaying(
+  hasNativeActiveTrack: boolean,
+  state: State,
+): boolean {
+  return (
+    hasNativeActiveTrack &&
+    (state === State.Playing || state === State.Buffering || state === State.Loading)
   );
 }
