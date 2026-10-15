@@ -27,6 +27,16 @@
 
 详细状态机和异常恢复约定见 [播放架构](docs/PLAYBACK_ARCHITECTURE.md)。
 
+## 响应式播放界面（需求 29）
+
+每个平台只发布一个安装包，运行时按当前窗口的 `高度 / 宽度` 自动选布局；旋转、分屏或窗口缩放后即时重排：
+
+- 竖屏 `> 1`：保留纵向内容结构，播放模式、上一首、播放/暂停、下一首、同步模式五个按钮改为一行；当前遍数在横向时间轴上方，每首重复遍数在时间轴下方并与两端时间对齐。
+- 方屏 `0.75～1`（含边界）：采用方案 3 三栏结构，左侧为五按钮纵向控制轨，中间为曲名和唱片，右侧为遍数与竖向时间轴。
+- 横屏 `< 0.75`：沿用方案 3 并增加横向留白；控件按屏幕短边缩放并设置上限，避免平板或电视上无限放大。
+
+方屏/横屏右栏中，当前遍数与每首重复遍数上下成组、置于竖向时间轴左侧，起止时间位于轴的上、下端；左右两条轨道等高，播放/暂停、唱片和遍数组共用视觉中轴。布局切换只改变视图，不得重建播放器、seek、清零或改变同步和计数资格。
+
 ## 技术栈
 
 | 范畴       | 选型                                                                   |
@@ -37,7 +47,7 @@
 | UI 状态    | Zustand 4.5                                                            |
 | 本地持久化 | react-native-mmkv 2.12                                                 |
 | Android    | minSdk 23, target/compileSdk 35, Kotlin 1.9.25, Hermes                 |
-| iOS        | iOS 15.0+, CocoaPods, Objective-C++ AppDelegate/SceneDelegate/原生模块 |
+| iOS        | iOS 13.4+, CocoaPods, Objective-C++ AppDelegate/SceneDelegate/原生模块 |
 | 测试/质量  | Jest 29, React Native Testing Library, ESLint, Prettier, tsc strict    |
 
 ## 快速定位
@@ -69,6 +79,8 @@ npm run format:check
 ```
 
 Android release 签名使用 `STARLIGHT_STORE_PASSWORD`、`STARLIGHT_KEY_ALIAS`、`STARLIGHT_KEY_PASSWORD`。
+
+iOS 产品最低版本保持 13.4。Xcode 27 本机若需以 iOS 15 临时完成 Simulator/当前 SDK 验证，可在 `pod install` 时设置 `STARLIGHT_LOCAL_IOS_DEPLOYMENT_TARGET=15.0`，并在本次 `xcodebuild` 命令中临时传入 `IPHONEOS_DEPLOYMENT_TARGET=15.0`；这些覆盖不代表放弃 iOS 13/14，发布前仍须以可用旧工具链和真机完成兼容验证。
 
 ## 资源与网络
 

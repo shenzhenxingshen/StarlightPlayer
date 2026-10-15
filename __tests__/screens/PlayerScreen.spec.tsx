@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires, @typescript-eslint/no-shadow */
 import React from 'react';
-import { AppState } from 'react-native';
+import { AppState, Dimensions } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import TrackPlayer, {
   Event,
@@ -35,18 +35,20 @@ import { addLog } from '@/utils/logger';
 jest.mock('@/components/TrackInfo', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  return ({ track, isPlaying }: any) => <Text>{`track:${track?.id ?? 'none'}:${isPlaying}`}</Text>;
+  return ({ track, isPlaying, variant }: any) => (
+    <Text testID="track-layout">{`track:${track?.id ?? 'none'}:${isPlaying}:${variant}`}</Text>
+  );
 });
 
 jest.mock('@/components/ProgressBar', () => {
   const React = require('react');
   const { Pressable, Text } = require('react-native');
   const { formatRepeatCount } = require('@/utils/numberFormat');
-  return ({ currentRepeat, totalRepeat, seekable, onSeek }: any) => (
+  return ({ currentRepeat, totalRepeat, seekable, onSeek, orientation }: any) => (
     <Pressable testID="mock-seek" onPress={() => onSeek(12.5)}>
-      <Text>{`repeats:${currentRepeat == null ? '-' : formatRepeatCount(currentRepeat)}:${
-        totalRepeat == null ? '-' : formatRepeatCount(totalRepeat)
-      }:${seekable}`}</Text>
+      <Text testID="progress-layout">{`${orientation}:repeats:${
+        currentRepeat == null ? '-' : formatRepeatCount(currentRepeat)
+      }:${totalRepeat == null ? '-' : formatRepeatCount(totalRepeat)}:${seekable}`}</Text>
     </Pressable>
   );
 });
@@ -63,6 +65,7 @@ jest.mock('@/components/Controls', () => {
   const MockControls = (props: any) => (
     <View>
       <Text testID="mode-state">{`${props.playMode}:${props.modeLabel ?? '-'}:${props.isSyncMode}`}</Text>
+      <Text testID="controls-layout">{props.orientation}</Text>
       <Pressable testID="play-pause" onPress={props.onPlayPause} />
       <Pressable testID="next" onPress={props.onSkipToNext} />
       <Pressable testID="previous" onPress={props.onSkipToPrevious} />
@@ -114,6 +117,10 @@ let appStateListenerSpy: jest.SpyInstance;
 
 describe('<PlayerScreen />', () => {
   beforeEach(() => {
+    Dimensions.set({
+      window: { width: 390, height: 844, scale: 3, fontScale: 1 },
+      screen: { width: 390, height: 844, scale: 3, fontScale: 1 },
+    });
     appStateListenerSpy = jest
       .spyOn(AppState, 'addEventListener')
       .mockReturnValue({ remove: jest.fn() } as any);
@@ -148,7 +155,7 @@ describe('<PlayerScreen />', () => {
     savePlaybackTaskProgress({ trackId: TRACKS[0].id, completedCount: 4_999_998 });
     const { getByText, getByTestId } = render(<PlayerScreen />);
 
-    expect(getByText('repeats:4,999,999:5,000,000:true')).toBeTruthy();
+    expect(getByText('horizontal:repeats:4,999,999:5,000,000:true')).toBeTruthy();
     fireEvent.press(getByTestId('toggle-mode'));
     expect(getByTestId('mode-state').props.children).toBe('play-one:单曲播放:false');
     expect(loadPlayerState()?.playMode).toBe('play-one');
@@ -169,7 +176,7 @@ describe('<PlayerScreen />', () => {
     useSettingsStore.setState({ isSyncMode: true });
     setSettings({ isCareMode: false, isSyncMode: true, repeatCount: 7 });
     const { getByText, getByTestId } = render(<PlayerScreen />);
-    expect(getByText('repeats:1:7:false')).toBeTruthy();
+    expect(getByText('horizontal:repeats:1:7:false')).toBeTruthy();
     fireEvent.press(getByTestId('play-pause'));
 
     await waitFor(() =>
@@ -277,13 +284,13 @@ describe('<PlayerScreen />', () => {
   it.each([State.Buffering, State.Loading])('%s 状态按正在播放展示', state => {
     playbackStateHook.mockReturnValue({ state });
     const { getByText } = render(<PlayerScreen />);
-    expect(getByText(`track:${TRACKS[0].id}:true`)).toBeTruthy();
+    expect(getByText(`track:${TRACKS[0].id}:true:stacked`)).toBeTruthy();
   });
 
   it('锁屏能力更新失败会记录错误但不影响页面渲染', async () => {
     mockedTrackPlayer.updateOptions.mockRejectedValueOnce(new Error('options failed'));
     const { getByText } = render(<PlayerScreen />);
-    expect(getByText(`track:${TRACKS[0].id}:false`)).toBeTruthy();
+    expect(getByText(`track:${TRACKS[0].id}:false:stacked`)).toBeTruthy();
     await waitFor(() =>
       expect(addLog).toHaveBeenCalledWith('ERROR', 'UI:updateOptions failed', expect.any(Error)),
     );
@@ -392,5 +399,42 @@ describe('<PlayerScreen />', () => {
     fireEvent.press(getByTestId('mock-seek'));
     await act(async () => {});
     expect(seekMock).not.toHaveBeenCalled();
+  });
+
+  it('旋转只切换展示布局，不重建播放任务或触发播放器命令', () => {
+    savePlaybackTaskProgress({ trackId: TRACKS[0].id, completedCount: 38 });
+    const { getByTestId, getByText } = render(<PlayerScreen />);
+    expect(getByTestId('player-layout-portrait')).toBeTruthy();
+    expect(getByTestId('controls-layout').props.children).toBe('row');
+    expect(getByTestId('progress-layout').props.children).toBe('horizontal:repeats:39:7:true');
+
+    fireEvent.press(getByTestId('toggle-mode'));
+    expect(getByTestId('mode-state').props.children).toBe('play-one:单曲播放:false');
+    mockedTrackPlayer.updateOptions.mockClear();
+    ensureTrackMock.mockClear();
+    ensurePlayMock.mockClear();
+    seekMock.mockClear();
+    nextMock.mockClear();
+    previousMock.mockClear();
+
+    act(() => {
+      Dimensions.set({
+        window: { width: 844, height: 390, scale: 3, fontScale: 1 },
+        screen: { width: 844, height: 390, scale: 3, fontScale: 1 },
+      });
+    });
+
+    expect(getByTestId('player-layout-landscape')).toBeTruthy();
+    expect(getByTestId('controls-layout').props.children).toBe('rail');
+    expect(getByTestId('progress-layout').props.children).toBe('vertical:repeats:39:7:true');
+    expect(getByTestId('mode-state').props.children).toBe('play-one:单曲播放:false');
+    expect(getByText(`track:${TRACKS[0].id}:false:stage`)).toBeTruthy();
+    expect(mockedTrackPlayer.updateOptions).not.toHaveBeenCalled();
+    expect(ensureTrackMock).not.toHaveBeenCalled();
+    expect(ensurePlayMock).not.toHaveBeenCalled();
+    expect(seekMock).not.toHaveBeenCalled();
+    expect(nextMock).not.toHaveBeenCalled();
+    expect(previousMock).not.toHaveBeenCalled();
+    expect(mockedTrackPlayer.pause).not.toHaveBeenCalled();
   });
 });

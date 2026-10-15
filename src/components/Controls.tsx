@@ -1,18 +1,26 @@
 import { GOLD, GOLD_BORDER, GOLD_GLOW, INK, TEXT_SEC, BG_SURFACE } from '../constants/colors';
-import React from 'react';
-import { View, StyleSheet, Pressable, Text, useWindowDimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, Pressable, Text, StyleProp, ViewStyle } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 export type PlayMode = 'play-one' | 'repeat-one' | 'play-all' | 'repeat-all';
+export type ControlsOrientation = 'row' | 'rail';
 
 export const MODE_CONFIG: Record<PlayMode, { icon: string; label: string; next: PlayMode }> = {
-  'repeat-one': { icon: 'repeat-one',     label: '单曲循环', next: 'play-one' },
-  'play-one':   { icon: 'looks-one',      label: '单曲播放', next: 'repeat-all' },
-  'repeat-all': { icon: 'repeat',         label: '列表循环', next: 'play-all' },
-  'play-all':   { icon: 'playlist-play',  label: '列表播放', next: 'repeat-one' },
+  'repeat-one': { icon: 'repeat-one', label: '单曲循环', next: 'play-one' },
+  'play-one': { icon: 'looks-one', label: '单曲播放', next: 'repeat-all' },
+  'repeat-all': { icon: 'repeat', label: '列表循环', next: 'play-all' },
+  'play-all': { icon: 'playlist-play', label: '列表播放', next: 'repeat-one' },
 };
 
-interface ControlsProps {
+export interface ControlSizes {
+  playButton: number;
+  playIcon: number;
+  skipIcon: number;
+  functionIcon: number;
+}
+
+export interface ControlsProps {
   isPlaying: boolean;
   playMode: PlayMode;
   isSyncMode: boolean;
@@ -23,76 +31,248 @@ interface ControlsProps {
   onToggleMode: () => void;
   onToggleSync: () => void;
   isCareMode?: boolean;
+  orientation?: ControlsOrientation;
+  sizes?: Partial<ControlSizes>;
+  height?: number;
+  modeLabelPlacement?: 'inline' | 'external';
 }
 
-const Controls: React.FC<ControlsProps> = ({
-  isPlaying, playMode, isSyncMode, modeLabel, onPlayPause, onSkipToNext, onSkipToPrevious, onToggleMode, onToggleSync, isCareMode = false,
+interface ControlButtonProps {
+  testID: string;
+  accessibilityLabel: string;
+  icon: string;
+  iconSize: number;
+  color: string;
+  onPress: () => void;
+  playButtonSize?: number;
+  preferredFocus?: boolean;
+  selected?: boolean;
+}
+
+const ControlButton: React.FC<ControlButtonProps> = ({
+  testID,
+  accessibilityLabel,
+  icon,
+  iconSize,
+  color,
+  onPress,
+  playButtonSize,
+  preferredFocus = false,
+  selected = false,
 }) => {
-  const { width } = useWindowDimensions();
-  const playCircleSize = isCareMode ? Math.round(width * 0.38) : Math.round(width * 0.22);
-  const playIconSize = Math.round(playCircleSize * 0.8);
-  const skipSize = Math.round(width * 0.1);
-  const funcSize = Math.round(width * 0.07);
+  const [focused, setFocused] = useState(false);
+  const buttonStyle: StyleProp<ViewStyle> = [
+    styles.button,
+    playButtonSize != null && {
+      width: playButtonSize,
+      height: playButtonSize,
+      borderRadius: playButtonSize / 2,
+      borderWidth: 2,
+      borderColor: GOLD_BORDER,
+      backgroundColor: GOLD_GLOW,
+    },
+    focused && styles.buttonFocused,
+  ];
+
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      hasTVPreferredFocus={preferredFocus}
+      hitSlop={8}
+      style={buttonStyle}>
+      <Icon name={icon} size={iconSize} color={color} />
+    </Pressable>
+  );
+};
+
+const Controls: React.FC<ControlsProps> = ({
+  isPlaying,
+  playMode,
+  isSyncMode,
+  modeLabel,
+  onPlayPause,
+  onSkipToNext,
+  onSkipToPrevious,
+  onToggleMode,
+  onToggleSync,
+  isCareMode = false,
+  orientation = 'row',
+  sizes,
+  height,
+  modeLabelPlacement = 'inline',
+}) => {
+  const defaults: ControlSizes =
+    orientation === 'rail'
+      ? {
+          playButton: isCareMode ? 72 : 58,
+          playIcon: isCareMode ? 52 : 44,
+          skipIcon: 34,
+          functionIcon: 27,
+        }
+      : {
+          playButton: isCareMode ? 112 : 76,
+          playIcon: isCareMode ? 82 : 58,
+          skipIcon: 38,
+          functionIcon: 28,
+        };
+  const resolved = { ...defaults, ...sizes };
+  const directionStyle = orientation === 'rail' ? styles.rail : styles.row;
+  const containerStyle: StyleProp<ViewStyle> = [
+    styles.container,
+    directionStyle,
+    height != null && { height },
+  ];
 
   if (isCareMode) {
     return (
-      <View style={styles.container}>
-        <View style={{ alignItems: 'center' }}>
-          <Pressable onPress={onPlayPause} hitSlop={8}>
-            <View style={[styles.playCircle, { width: playCircleSize, height: playCircleSize, borderRadius: playCircleSize / 2 }]}>
-              <Icon name={isPlaying ? 'pause' : 'play-arrow'} size={playIconSize} color={GOLD} />
-            </View>
-          </Pressable>
-        </View>
+      <View testID={`controls-${orientation}`} style={[containerStyle, styles.careContainer]}>
+        <ControlButton
+          testID="play-pause-button"
+          accessibilityLabel={isPlaying ? '暂停' : '播放'}
+          icon={isPlaying ? 'pause' : 'play-arrow'}
+          iconSize={resolved.playIcon}
+          color={GOLD}
+          onPress={onPlayPause}
+          playButtonSize={resolved.playButton}
+          preferredFocus
+          selected={isPlaying}
+        />
       </View>
     );
   }
 
-  const modeIcon = MODE_CONFIG[playMode]?.icon || 'repeat';
-
+  const mode = MODE_CONFIG[playMode] ?? MODE_CONFIG['repeat-one'];
   return (
-    <View style={styles.container}>
-      {modeLabel && (
-        <View style={styles.toast}>
+    <View testID={`controls-${orientation}`} style={containerStyle}>
+      {modeLabelPlacement === 'inline' && modeLabel && (
+        <View style={styles.toast} pointerEvents="none">
           <Text style={styles.toastText}>{modeLabel}</Text>
         </View>
       )}
-      <View style={{ alignItems: 'center' }}>
-        <View style={[styles.funcRow, { width: playCircleSize + 120 }]}>
-          <Pressable onPress={onToggleMode} hitSlop={8} style={styles.funcBtn}>
-            <Icon name={modeIcon} size={funcSize} color={TEXT_SEC} />
-          </Pressable>
-          <Pressable onPress={onToggleSync} hitSlop={8} style={styles.funcBtn}>
-            <Icon name={isSyncMode ? 'people-outline' : 'person-outline'} size={funcSize} color={isSyncMode ? GOLD : TEXT_SEC} />
-          </Pressable>
-        </View>
-        <View style={styles.mainRow}>
-          <Pressable onPress={onSkipToPrevious} hitSlop={8} style={styles.sideBtn}>
-            <Icon name="skip-previous" size={skipSize} color={INK} />
-          </Pressable>
-          <Pressable onPress={onPlayPause} hitSlop={8}>
-            <View style={[styles.playCircle, { width: playCircleSize, height: playCircleSize, borderRadius: playCircleSize / 2 }]}>
-              <Icon name={isPlaying ? 'pause' : 'play-arrow'} size={playIconSize} color={GOLD} />
-            </View>
-          </Pressable>
-          <Pressable onPress={onSkipToNext} hitSlop={8} style={styles.sideBtn}>
-            <Icon name="skip-next" size={skipSize} color={INK} />
-          </Pressable>
-        </View>
+      <View style={styles.slot}>
+        <ControlButton
+          testID="play-mode-button"
+          accessibilityLabel={`切换播放模式，当前${mode.label}`}
+          icon={mode.icon}
+          iconSize={resolved.functionIcon}
+          color={TEXT_SEC}
+          onPress={onToggleMode}
+        />
+      </View>
+      <View style={styles.slot}>
+        <ControlButton
+          testID="previous-button"
+          accessibilityLabel="上一首"
+          icon="skip-previous"
+          iconSize={resolved.skipIcon}
+          color={INK}
+          onPress={onSkipToPrevious}
+        />
+      </View>
+      <View style={styles.slot}>
+        <ControlButton
+          testID="play-pause-button"
+          accessibilityLabel={isPlaying ? '暂停' : '播放'}
+          icon={isPlaying ? 'pause' : 'play-arrow'}
+          iconSize={resolved.playIcon}
+          color={GOLD}
+          onPress={onPlayPause}
+          playButtonSize={resolved.playButton}
+          preferredFocus
+          selected={isPlaying}
+        />
+      </View>
+      <View style={styles.slot}>
+        <ControlButton
+          testID="next-button"
+          accessibilityLabel="下一首"
+          icon="skip-next"
+          iconSize={resolved.skipIcon}
+          color={INK}
+          onPress={onSkipToNext}
+        />
+      </View>
+      <View style={styles.slot}>
+        <ControlButton
+          testID="sync-button"
+          accessibilityLabel={isSyncMode ? '关闭同步播放' : '开启同步播放'}
+          icon={isSyncMode ? 'people-outline' : 'person-outline'}
+          iconSize={resolved.functionIcon}
+          color={isSyncMode ? GOLD : TEXT_SEC}
+          onPress={onToggleSync}
+          selected={isSyncMode}
+        />
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {},
-  toast: { position: 'absolute', top: -24, alignSelf: 'center', zIndex: 1 },
-  toastText: { color: GOLD, fontSize: 14, backgroundColor: BG_SURFACE, paddingHorizontal: 16, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: GOLD_BORDER, overflow: 'hidden' },
-  mainRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center' },
-  sideBtn: { width: 60, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 4 },
-  playCircle: { borderWidth: 2, borderColor: GOLD_BORDER, backgroundColor: GOLD_GLOW, alignItems: 'center', justifyContent: 'center' },
-  funcRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  funcBtn: { width: 60, alignItems: 'center', padding: 8 },
+  container: {
+    position: 'relative',
+    alignSelf: 'center',
+  },
+  row: {
+    width: '100%',
+    maxWidth: 640,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rail: {
+    width: '100%',
+    height: '100%',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  careContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  slot: {
+    flex: 1,
+    minWidth: 0,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  button: {
+    minWidth: 44,
+    minHeight: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonFocused: {
+    borderWidth: 3,
+    borderColor: GOLD,
+    backgroundColor: GOLD_GLOW,
+    transform: [{ scale: 1.08 }],
+  },
+  toast: {
+    position: 'absolute',
+    top: -30,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  toastText: {
+    color: GOLD,
+    fontSize: 14,
+    backgroundColor: BG_SURFACE,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: GOLD_BORDER,
+    overflow: 'hidden',
+  },
 });
 
 export default Controls;

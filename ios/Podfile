@@ -1,7 +1,7 @@
 require_relative '../node_modules/react-native/scripts/react_native_pods'
 require_relative '../node_modules/@react-native-community/cli-platform-ios/native_modules'
 
-platform :ios, '15.0'
+platform :ios, '13.4'
 install! 'cocoapods', :deterministic_uuids => false
 
 target 'StarlightPlayer' do
@@ -27,10 +27,16 @@ target 'StarlightPlayer' do
       :mac_catalyst_enabled => false
     )
 
-    # Xcode 27 no longer accepts iOS Simulator deployment targets below 15.
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |build_config|
-        build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    # Keep the distributable app compatible with iOS 13/14. Newer local SDKs
+    # may require an explicit temporary override, for example:
+    # STARLIGHT_LOCAL_IOS_DEPLOYMENT_TARGET=15.0 bundle exec pod install
+    local_deployment_target = ENV['STARLIGHT_LOCAL_IOS_DEPLOYMENT_TARGET']
+    if local_deployment_target && !local_deployment_target.empty?
+      Pod::UI.puts "Using temporary local iOS deployment target #{local_deployment_target}"
+      installer.pods_project.targets.each do |target|
+        target.build_configurations.each do |build_config|
+          build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = local_deployment_target
+        end
       end
     end
   end
