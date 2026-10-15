@@ -43,7 +43,7 @@ const getDeviceInfo = (): string => {
     lines.push(`设备名称: ${c.interfaceIdiom || '未知'}`);
   }
   lines.push(`RN版本: 0.75.5`);
-  lines.push(`App版本: 0.7.0`);
+  lines.push(`App版本: 1.0`);
   return lines.join('\n');
 };
 
