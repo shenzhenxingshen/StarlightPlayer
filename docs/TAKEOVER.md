@@ -9,7 +9,7 @@
 - React Navigation 6 底部 Tab；Zustand 管 UI 状态；MMKV 管本地持久化和 UI/PlaybackService 通信。
 - MaterialIcons、Safe Area、Gesture Handler 负责 UI 基础能力。
 - Android 旧架构（`newArchEnabled=false`）+ Hermes，minSdk 23，target/compileSdk 35。
-- iOS 13.4+，CocoaPods，Objective-C++ AppDelegate/SceneDelegate 原生入口。
+- iOS/iPadOS 13.4+ Universal，CocoaPods，Objective-C++ AppDelegate/SceneDelegate 原生入口。
 
 ## 2. 目录结构
 
@@ -52,7 +52,7 @@ StarlightPlayer/
 
 ### 3.1 播放页响应式契约（需求 29）
 
-Android、iOS 各自只需一个安装包。运行时依据当前窗口 `高度 / 宽度` 选型，不能依据设备型号，也不能把三类布局拆成构建变体：
+Android、iOS 各自只需一个安装包；iOS Target 的 `TARGETED_DEVICE_FAMILY` 必须保持 `1,2`，同时支持 iPhone 与 iPad。运行时依据当前窗口 `高度 / 宽度` 选型，不能依据设备型号，也不能把三类布局拆成构建变体：
 
 | 窗口比例  | 布局约束                                                                                                                                |
 | --------- | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -66,17 +66,17 @@ Android、iOS 各自只需一个安装包。运行时依据当前窗口 `高度 
 
 ## 4. 配置、环境变量、外部依赖
 
-| 位置                                                 | 作用                                         |
-| ---------------------------------------------------- | -------------------------------------------- |
-| `package.json` / `package-lock.json`                 | JS 依赖和 npm scripts                        |
-| `tsconfig.json`                                      | TypeScript strict 约束和 `@/*` 别名          |
-| `babel.config.js` / `metro.config.js`                | RN 转译与打包                                |
-| `jest.config.js` / `.eslintrc.js` / `.prettierrc.js` | 测试和质量规则                               |
-| `android/build.gradle`                               | SDK 23/35、Kotlin 1.9.25、Maven 镜像         |
-| `android/app/build.gradle`                           | appId、版本、签名、Hermes/RN                 |
-| `AndroidManifest.xml`                                | 前台播放/通知/唤醒权限、诊断 FileProvider    |
-| `ios/Podfile` / `Info.plist`                         | iOS 13.4、Pods、UIScene 生命周期、后台 audio |
-| `react-native.config.js`                             | iOS 音频和字体资源                           |
+| 位置                                                 | 作用                                                   |
+| ---------------------------------------------------- | ------------------------------------------------------ |
+| `package.json` / `package-lock.json`                 | JS 依赖和 npm scripts                                  |
+| `tsconfig.json`                                      | TypeScript strict 约束和 `@/*` 别名                    |
+| `babel.config.js` / `metro.config.js`                | RN 转译与打包                                          |
+| `jest.config.js` / `.eslintrc.js` / `.prettierrc.js` | 测试和质量规则                                         |
+| `android/build.gradle`                               | SDK 23/35、Kotlin 1.9.25、Maven 镜像                   |
+| `android/app/build.gradle`                           | appId、版本、签名、Hermes/RN                           |
+| `AndroidManifest.xml`                                | 前台播放/通知/唤醒权限、诊断 FileProvider              |
+| `ios/Podfile` / `Info.plist`                         | iOS/iPadOS 13.4、iPad 四方向/分屏、UIScene、后台 audio |
+| `react-native.config.js`                             | iOS 音频和字体资源                                     |
 
 Android release 签名需要：
 
@@ -126,13 +126,13 @@ STARLIGHT_LOCAL_IOS_DEPLOYMENT_TARGET=15.0 pod install
 
 ### 响应式与平台验收矩阵
 
-| 层级             | 最低覆盖                                                                                                     |
-| ---------------- | ------------------------------------------------------------------------------------------------------------ |
-| Jest/组件        | 比例 `>1`、`=1`、`=0.75`、`<0.75`；五按钮顺序；遍数显示规则；超大数字；旋转只重排、不触发播放命令。          |
-| iOS Simulator    | Xcode 27 + iOS 15+：竖屏、4:3、16:9，安全区域/大字体/旋转，播放中及同步中切换布局状态连续。                  |
-| Android Emulator | API 23 与 API 35，手机竖横屏、4:3 平板、16:9/电视尺寸；触摸目标、系统返回、TV/D-pad 焦点（如启用 TV）。      |
-| iOS 13/14 验证轨 | 旧 Simulator 做启动和基础布局；iOS 13/14 真机做安装、音频、旋转、锁屏、后台、中断恢复。                      |
-| 双端真机         | 四种模式 × repeat 1/大数 × 同步开关；前后台、锁屏/通知、来电与蓝牙；多设备同步漂移。模拟器通过不能替代此项。 |
+| 层级             | 最低覆盖                                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Jest/组件        | 比例 `>1`、`=1`、`=0.75`、`<0.75`；五按钮顺序；遍数显示规则；超大数字；旋转只重排、不触发播放命令。              |
+| iOS Simulator    | Xcode 27 + iOS 15+：iPhone 与 iPad 竖屏、4:3、16:9、分屏，安全区域/大字体/旋转，播放中及同步中切换布局状态连续。 |
+| Android Emulator | API 23 与 API 35，手机竖横屏、4:3 平板、16:9/电视尺寸；触摸目标、系统返回、TV/D-pad 焦点（如启用 TV）。          |
+| iOS 13/14 验证轨 | 旧 Simulator 做启动和基础布局；iOS 13/14 真机做安装、音频、旋转、锁屏、后台、中断恢复。                          |
+| 双端真机         | 四种模式 × repeat 1/大数 × 同步开关；前后台、锁屏/通知、来电与蓝牙；多设备同步漂移。模拟器通过不能替代此项。     |
 
 ## 7. 当前最缺失的文档
 

@@ -29,7 +29,7 @@
 
 ## 响应式播放界面（需求 29）
 
-每个平台只发布一个安装包，运行时按当前窗口的 `高度 / 宽度` 自动选布局；旋转、分屏或窗口缩放后即时重排：
+每个平台只发布一个安装包；iOS Target 为 iPhone/iPad Universal。运行时按当前窗口的 `高度 / 宽度` 自动选布局；旋转、iPad 分屏或窗口缩放后即时重排：
 
 - 竖屏 `> 1`：保留纵向内容结构，播放模式、上一首、播放/暂停、下一首、同步模式五个按钮改为一行；当前遍数在横向时间轴上方，每首重复遍数在时间轴下方并与两端时间对齐。
 - 方屏 `0.75～1`（含边界）：采用方案 3 三栏结构，左侧为五按钮纵向控制轨，中间为曲名和唱片，右侧为遍数与竖向时间轴。
@@ -39,16 +39,16 @@
 
 ## 技术栈
 
-| 范畴       | 选型                                                                   |
-| ---------- | ---------------------------------------------------------------------- |
-| App        | React Native 0.75.5, React 18.3.1, TypeScript 5.5                      |
-| 播放       | react-native-track-player 4.1                                          |
-| 导航       | React Navigation bottom-tabs 6                                         |
-| UI 状态    | Zustand 4.5                                                            |
-| 本地持久化 | react-native-mmkv 2.12                                                 |
-| Android    | minSdk 23, target/compileSdk 35, Kotlin 1.9.25, Hermes                 |
-| iOS        | iOS 13.4+, CocoaPods, Objective-C++ AppDelegate/SceneDelegate/原生模块 |
-| 测试/质量  | Jest 29, React Native Testing Library, ESLint, Prettier, tsc strict    |
+| 范畴       | 选型                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| App        | React Native 0.75.5, React 18.3.1, TypeScript 5.5                                        |
+| 播放       | react-native-track-player 4.1                                                            |
+| 导航       | React Navigation bottom-tabs 6                                                           |
+| UI 状态    | Zustand 4.5                                                                              |
+| 本地持久化 | react-native-mmkv 2.12                                                                   |
+| Android    | minSdk 23, target/compileSdk 35, Kotlin 1.9.25, Hermes                                   |
+| iOS        | iOS/iPadOS 13.4+, Universal, CocoaPods, Objective-C++ AppDelegate/SceneDelegate/原生模块 |
+| 测试/质量  | Jest 29, React Native Testing Library, ESLint, Prettier, tsc strict                      |
 
 ## 快速定位
 
