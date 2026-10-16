@@ -1,101 +1,113 @@
-# 星光播放器 隐私政策
+# 星光播放器隐私政策
 
-**最后更新日期：2026年10月12日**
+**最后更新日期：2026 年 10 月 16 日**
 
 ## 概述
 
-星光播放器（以下简称"本应用"）是一款佛教共修音乐播放器。我们高度重视您的隐私，本应用的设计原则是**不收集、不存储、不传输任何用户个人信息**。
+星光播放器（以下简称“本应用”）是一款离线经咒、佛号与歌曲播放器。本应用不要求注册账号，不接入广告、用户分析或追踪服务，也不会自动把设备中的播放数据或诊断信息上传到服务器。
 
-## 数据收集
+## 不收集的数据
 
-本应用**不收集任何个人数据**，包括但不限于：
+本应用不主动收集姓名、邮箱、电话号码、精确位置、通讯录、设备广告标识符、浏览记录或跨 App 活动，也不建立用户画像。
 
-- 姓名、邮箱、电话等身份信息
-- 位置信息
-- 设备标识符
-- 使用行为数据
-- 浏览记录
+## 设备本地数据
 
-## 本地存储
+为完成播放、恢复和诊断功能，本应用会在设备本地保存：
 
-本应用在您的设备本地存储以下数据，这些数据**仅保存在您的设备上**，不会上传到任何服务器：
+- 关怀模式、同步播放和每首重复遍数等设置；
+- 当前曲目、播放模式、播放意图和恢复播放所需的状态；
+- 当前播放任务已经完成的有效遍数和计数资格；
+- 按设备本地日期保存的各曲目每日播放统计，历史日期的数据可能继续保留；
+- 最多 1,000 条诊断日志，包括播放状态、控制事件和错误信息。
 
-- **播放设置**：关怀模式、同步播放和每首重复遍数
-- **播放统计**：今日播放的曲目和次数
-- **诊断日志**：播放状态、错误和设备基本型号信息。只有当您在“诊断信息”中主动导出并选择分享目标时，文件才会离开设备
+诊断页面还会读取平台、系统版本和基本设备/系统信息，用于在用户主动导出时生成诊断文件。页面只展示最近 30 条日志，导出文件包含当前保留的全部日志。
 
-您可以随时通过卸载应用来删除这些本地数据。
+这些数据默认只保存在设备上。本应用没有面向用户的云同步功能。卸载应用或使用系统“清除应用数据”功能会删除这些本地数据；系统备份行为由操作系统和用户的设备设置控制。
+
+## 诊断文件分享
+
+本应用不会自动上传诊断文件。只有当用户点击“导出诊断文件”，并在系统分享面板中主动选择保存位置、邮件或其他接收应用时，文件才会离开本应用。分享后的处理受用户选择的接收方隐私政策约束。
+
+诊断文件可能包含设备型号、系统版本、时间戳和播放事件。分享前请确认接收方可信；若不希望提供某些内容，可以先查看文件再决定是否发送。
 
 ## 网络访问
 
-本应用**不需要网络连接**即可正常使用。所有音频文件内置于应用中，播放功能完全离线运行。
+21 首音频均内置于安装包，播放、重复计数和同步位置计算不需要互联网。当前业务代码没有后端 API、账号、支付、推送、广告或分析请求。
 
-## 第三方服务
+平台工程目前仍包含 Android `INTERNET` 权限和 iOS 宽松 ATS 配置，但当前版本的业务功能没有使用它们传输用户数据。后续版本会评估是否移除这些非必要配置。
 
-本应用**不集成任何第三方分析、广告或追踪服务**。
+## 第三方组件
+
+本应用使用 React Native、react-native-track-player、React Navigation、MMKV 等开源组件实现界面、本地播放和本地存储，但没有集成第三方广告、分析或追踪 SDK。
 
 ## 儿童隐私
 
-本应用不收集任何用户的个人信息，因此也不会收集儿童的个人信息。本应用适合所有年龄段用户使用。
+本应用不要求账号，也不主动收集儿童或其他用户的个人信息。
 
-## 隐私政策变更
+## 政策变更
 
-如本隐私政策有任何变更，我们将在此页面更新。建议您定期查看本页面。
+如隐私实践发生变化，我们会更新本页面和“最后更新日期”。
 
 ## 联系我们
 
-如果您对本隐私政策有任何疑问，请通过以下方式联系我们：
+如对隐私政策有疑问，请通过 GitHub Issues 联系：
 
-- GitHub: [https://github.com/shenzhenxingshen/StarlightPlayer/issues](https://github.com/shenzhenxingshen/StarlightPlayer/issues)
+[https://github.com/shenzhenxingshen/StarlightPlayer/issues](https://github.com/shenzhenxingshen/StarlightPlayer/issues)
 
 ---
 
 # StarlightPlayer Privacy Policy
 
-**Last Updated: October 12, 2026**
+**Last updated: October 16, 2026**
 
 ## Overview
 
-StarlightPlayer is a Buddhist chanting music player. We take your privacy seriously. This app is designed to **not collect, store, or transmit any personal information**.
+StarlightPlayer is an offline player for chants, Buddhist names, and songs. It does not require an account, integrate advertising or analytics services, or automatically upload playback or diagnostic data.
 
-## Data Collection
+## Data We Do Not Collect
 
-This app **does not collect any personal data**, including but not limited to:
+The app does not actively collect names, email addresses, phone numbers, precise locations, contacts, advertising identifiers, browsing history, or cross-app activity, and it does not create user profiles.
 
-- Name, email, phone number, or other identity information
-- Location data
-- Device identifiers
-- Usage analytics
-- Browsing history
+## Data Stored on the Device
 
-## Local Storage
+To provide playback, restoration, and diagnostics, the app stores the following data locally:
 
-The following data is stored locally on your device only and is **never uploaded to any server**:
+- Care mode, synchronized playback, per-track repeat count, and other settings;
+- The current track, playback mode, playback intent, and state required for restoration;
+- Completed valid repeat cycles and cycle-counting eligibility;
+- Per-track daily playback statistics keyed by the device's local date, including retained historical dates;
+- Up to 1,000 diagnostic log entries containing playback states, control events, and errors.
 
-- **Settings**: Care mode, synchronized playback, and per-track repeat count
-- **Playback statistics**: Today's play counts per track
-- **Diagnostic logs**: Playback states, errors, and basic device model information. A diagnostic file leaves the device only when you explicitly export it and choose a share destination
+The diagnostics page also reads the platform, operating-system version, and basic device/system information when preparing a user-requested diagnostic export. The page shows the latest 30 log entries, while an exported file contains all currently retained entries.
 
-You can delete all local data by uninstalling the app.
+This data remains on the device by default. The app has no user-facing cloud-sync feature. Uninstalling the app or using the operating system's clear-app-data function deletes it. Operating-system backups are controlled by the platform and the user's device settings.
+
+## Sharing Diagnostic Files
+
+The app never uploads a diagnostic file automatically. A file leaves the app only after the user taps Export Diagnostic File and explicitly chooses a destination in the system share sheet. The selected recipient's privacy policy applies after sharing.
+
+A diagnostic file may include the device model, OS version, diagnostic timestamps, and playback events. Users should review the file and choose a trusted recipient before sharing it.
 
 ## Network Access
 
-This app **does not require an internet connection**. All audio files are bundled within the app, and playback works entirely offline.
+All 21 audio tracks are bundled with the app. Playback, repeat counting, and synchronized-position calculation work without an Internet connection. The current business logic has no backend API, account, payment, push-notification, advertising, or analytics requests.
 
-## Third-Party Services
+The platform projects still contain the Android `INTERNET` permission and a permissive iOS ATS setting, but current app features do not use them to transmit user data. Future releases will evaluate removing these unnecessary settings.
 
-This app **does not integrate any third-party analytics, advertising, or tracking services**.
+## Third-Party Components
+
+The app uses open-source components such as React Native, react-native-track-player, React Navigation, and MMKV for UI, local playback, and local storage. It does not integrate third-party advertising, analytics, or tracking SDKs.
 
 ## Children's Privacy
 
-This app does not collect personal information from any user, including children. It is suitable for users of all ages.
+The app does not require an account or actively collect personal information from children or other users.
 
-## Changes to This Policy
+## Changes
 
-Any changes to this privacy policy will be posted on this page. We encourage you to review this page periodically.
+If our privacy practices change, this page and its “Last updated” date will be revised.
 
-## Contact Us
+## Contact
 
-If you have any questions about this privacy policy, please contact us at:
+For privacy questions, contact us through GitHub Issues:
 
-- GitHub: [https://github.com/shenzhenxingshen/StarlightPlayer/issues](https://github.com/shenzhenxingshen/StarlightPlayer/issues)
+[https://github.com/shenzhenxingshen/StarlightPlayer/issues](https://github.com/shenzhenxingshen/StarlightPlayer/issues)

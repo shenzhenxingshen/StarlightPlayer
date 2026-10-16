@@ -1,15 +1,15 @@
 # StarlightPlayer 项目接管手册
 
-> 依据 2026-10-12 工作区的源码和配置整理。本文只描述代码可证实的现状；不把推测写成事实。
+> 依据 2026-10-16 `main` 分支的源码、配置和本机构建产物核对。本文只描述可证实的现状；不把推测写成事实。
 
 ## 1. 技术栈和主要框架
 
-- React Native 0.75.5 + React 18.3.1 + TypeScript 5.5，`strict: true`。
-- `react-native-track-player` 4.1 负责本地音频、后台播放、MediaSession/锁屏控制。
+- React Native 0.75.5 + React 18.3.1；TypeScript 声明为 `^5.5.4`，lockfile 当前解析为 5.9.3，`strict: true`。
+- `react-native-track-player` 声明为 `^4.1.0`、lockfile 当前解析为 4.1.2，负责本地音频、后台播放、MediaSession/锁屏控制。
 - React Navigation 6 底部 Tab；Zustand 管 UI 状态；MMKV 管本地持久化和 UI/PlaybackService 通信。
 - MaterialIcons、Safe Area、Gesture Handler 负责 UI 基础能力。
 - Android 旧架构（`newArchEnabled=false`）+ Hermes，minSdk 23，target/compileSdk 35。
-- iOS/iPadOS 13.4+ Universal，CocoaPods，Objective-C++ AppDelegate/SceneDelegate 原生入口。
+- iOS/iPadOS 工程目标为 13.4、Universal，使用 CocoaPods 和 Objective-C++ AppDelegate/SceneDelegate 原生入口。注意：当前已上传的 1.0.0 build 4 Archive 实际最低系统为 15.0，详见第 6 节。
 
 ## 2. 目录结构
 
@@ -34,7 +34,7 @@ StarlightPlayer/
 ├── android/                      # Gradle、Manifest、Kotlin 模块、21 首 MP3
 ├── ios/                          # Xcode/CocoaPods、ObjC++ 模块、21 首 MP3
 ├── __tests__/                    # Jest 纯逻辑与组件测试
-├── docs/                         # 接管、播放架构、测试、Lint
+├── docs/                         # 用户、开发、架构、发布、测试和资产文档
 ├── scripts/copyAssets.js         # 可选音频复制工具
 └── patches/patch-rntp.sh         # RNTP Android Maven 源替换脚本
 ```
@@ -66,17 +66,20 @@ Android、iOS 各自只需一个安装包；iOS Target 的 `TARGETED_DEVICE_FAMI
 
 ## 4. 配置、环境变量、外部依赖
 
-| 位置                                                 | 作用                                                   |
-| ---------------------------------------------------- | ------------------------------------------------------ |
-| `package.json` / `package-lock.json`                 | JS 依赖和 npm scripts                                  |
-| `tsconfig.json`                                      | TypeScript strict 约束和 `@/*` 别名                    |
-| `babel.config.js` / `metro.config.js`                | RN 转译与打包                                          |
-| `jest.config.js` / `.eslintrc.js` / `.prettierrc.js` | 测试和质量规则                                         |
-| `android/build.gradle`                               | SDK 23/35、Kotlin 1.9.25、Maven 镜像                   |
-| `android/app/build.gradle`                           | appId、版本、签名、Hermes/RN                           |
-| `AndroidManifest.xml`                                | 前台播放/通知/唤醒权限、诊断 FileProvider              |
-| `ios/Podfile` / `Info.plist`                         | iOS/iPadOS 13.4、iPad 四方向/分屏、UIScene、后台 audio |
-| `react-native.config.js`                             | iOS 音频和字体资源                                     |
+| 位置                                                 | 作用                                                            |
+| ---------------------------------------------------- | --------------------------------------------------------------- |
+| `package.json` / `package-lock.json`                 | JS 依赖和 npm scripts                                           |
+| `tsconfig.json`                                      | TypeScript strict 约束和 `@/*` 别名                             |
+| `babel.config.js` / `metro.config.js`                | RN 转译与打包                                                   |
+| `jest.config.js` / `.eslintrc.js` / `.prettierrc.js` | 测试和质量规则                                                  |
+| `android/build.gradle`                               | SDK 23/35、Kotlin 1.9.25、Maven 镜像                            |
+| `android/app/build.gradle`                           | appId、版本、签名、Hermes/RN                                    |
+| `AndroidManifest.xml`                                | 前台播放/通知/唤醒权限、诊断 FileProvider                       |
+| `ios/Podfile` / `Info.plist`                         | 源码目标 iOS/iPadOS 13.4、iPad 四方向/分屏、UIScene、后台 audio |
+| `ios/.xcode.env`                                     | Xcode 脚本的 Node 路径；当前硬编码 `/opt/homebrew/bin/node`     |
+| `react-native.config.js`                             | iOS 音频和字体资源                                              |
+
+当前版本来源并未统一：`package.json` 为 1.0.0；Android 为 `versionName 1.0 / versionCode 3`；iOS 为 `1.0.0 (4)`；诊断文本显示 1.0。每次发版必须按 [RELEASE.md](RELEASE.md) 的清单逐项更新和核验。
 
 Android release 签名需要：
 
@@ -85,7 +88,7 @@ Android release 签名需要：
 - `STARLIGHT_KEY_PASSWORD`
 - `android/app/release.keystore`（不应入库）
 
-没有发现 `.env`、API key、后端 URL 或运行时密钥。Gradle/npm/CocoaPods 仅在构建期访问外部仓库。
+没有发现运行时 dotenv、API key、后端 URL 或业务密钥。仓库中存在 Xcode 使用的 `ios/.xcode.env`，它不是业务环境变量文件。Gradle/npm/CocoaPods 仅在构建期访问外部仓库。
 
 ## 5. 数据库、缓存、消息队列、第三方服务
 
@@ -101,28 +104,32 @@ Android release 签名需要：
 ```bash
 npm start                  # Metro
 npm run android            # Android debug 安装/启动
-npm run ios                # iOS Simulator 安装/启动
+npm run ios -- --mode Debug --extra-params "IPHONEOS_DEPLOYMENT_TARGET=15.0" # 当前 Xcode 27 Simulator
 npm run typecheck:app      # 只校验 App 源码
 npm run typecheck          # tsc --noEmit
 npm run lint               # ESLint
 npm run format:check       # Prettier 检查
 npm test                   # Jest
-cd android && ./gradlew assembleDebug
+npm run test:coverage      # Jest 覆盖率
+./android/gradlew -p android assembleDebug
+./android/gradlew -p android assembleRelease
+./android/gradlew -p android bundleRelease
 ```
 
-`npm run copy-assets` 默认从仓库根目录 `assets/audio` 复制，但当前没有该目录；两端需要的 21 个 MP3 已分别在 Android/iOS 目录。使用该脚本时要显式传入源目录：`node scripts/copyAssets.js /absolute/audio/path`。
+`npm run copy-assets` 默认从仓库根目录 `assets/audio` 复制，但当前没有该目录；两端需要的 21 个 MP3 已分别在 Android/iOS 目录。脚本只复制 Android，不会同步 iOS。使用时要显式传入源目录：`node scripts/copyAssets.js /absolute/audio/path`，并按 [AUDIO_ASSETS.md](AUDIO_ASSETS.md) 单独校验双端资源。
 
-### iOS 13/14 双轨验证
+自动化数量、覆盖率口径和最近实测结果以 [TESTING.md](TESTING.md) 为准；warning 与格式遗留以 [LINTING.md](LINTING.md) 为准。当前 Shared Scheme 的 Run/LaunchAction 使用 Release，iOS 日常调试要显式传 `--mode Debug`；Xcode 27 的额外参数只用于本机 Simulator，旧工具链可省略，且不能作为 iOS 13/14 兼容证据。完整说明见 [ONBOARDING.md](ONBOARDING.md#7-ios--ipados-首次运行)。
 
-产品最低版本和发布配置保持 iOS 13.4；不得因开发机升级而永久抬高。当前 Xcode 27 本机验证若必须使用 iOS 15，可仅对本次 Pods 安装临时覆盖：
+### iOS 13/14 兼容目标与当前发布风险
+
+工程中的 `Podfile` 和 Target 仍以 iOS 13.4 为目标；不得因为开发机升级而静默永久抬高。当前 Xcode 27 本机验证若必须使用 iOS 15，可仅对本次 Pods 安装临时覆盖：
 
 ```bash
-cd ios
-STARLIGHT_LOCAL_IOS_DEPLOYMENT_TARGET=15.0 pod install
+(cd ios && STARLIGHT_LOCAL_IOS_DEPLOYMENT_TARGET=15.0 pod install)
 # 本机测试的 xcodebuild 命令还需追加 IPHONEOS_DEPLOYMENT_TARGET=15.0
 ```
 
-这条命令只覆盖本机 Xcode 27 的 Simulator/当前 SDK 验证，不能证明 iOS 13/14 兼容。另一条验证轨必须使用仍支持目标系统的 Xcode/Simulator，并至少用一台 iOS 13 或 14 真机做发布候选回归；兼容代码继续避免无可用性保护的 iOS 15+ API。若 Apple 最终从提交工具链层面禁止支持，才允许重新评估最低版本，同时为旧用户保留最后兼容版本。
+这条命令只覆盖本机 Xcode 27 的 Simulator/当前 SDK 验证，不能证明 iOS 13/14 兼容。更重要的是，当前已上传的 `1.0.0 (4)` Archive 内 `MinimumOSVersion=15.0`，所以 build 4 实际不支持 iOS 13/14。要恢复兼容，必须生成更高 build、在上传前检查 Archive 内最终 App 的 `MinimumOSVersion` 确为 `13.4`，并用旧系统真机回归。发布步骤和检查命令见 [RELEASE.md](RELEASE.md)。
 
 ### 响应式与平台验收矩阵
 
@@ -134,28 +141,38 @@ STARLIGHT_LOCAL_IOS_DEPLOYMENT_TARGET=15.0 pod install
 | iOS 13/14 验证轨 | 旧 Simulator 做启动和基础布局；iOS 13/14 真机做安装、音频、旋转、锁屏、后台、中断恢复。                          |
 | 双端真机         | 四种模式 × repeat 1/大数 × 同步开关；前后台、锁屏/通知、来电与蓝牙；多设备同步漂移。模拟器通过不能替代此项。     |
 
-## 7. 当前最缺失的文档
+## 7. 文档地图与仍缺资料
 
-已补齐接管和播放状态机。仍建议补充：
+- [文档门户](README.md)：按角色、任务和权威范围组织全部工程文档。
+- [新开发者上手](ONBOARDING.md)：fresh clone 后 60 分钟内完成环境、启动与基线验证。
+- [项目全景架构](ARCHITECTURE.md) / [本地数据模型](STORAGE_MODEL.md)：JS、原生、RNTP 与 MMKV 的边界。
+- [用户手册](USER_MANUAL.md)：面向最终用户的功能、操作和 FAQ。
+- [播放架构](PLAYBACK_ARCHITECTURE.md)：计数、同步、队列和恢复不变量。
+- [开发环境](DEVELOPMENT.md)：首次搭建与本地命令。
+- [测试手册](TESTING.md) / [人工 QA](QA_PLAYBOOK.md) / [设备矩阵](DEVICE_TEST_MATRIX.md)：自动化和真机验收。
+- [测试执行记录](test-runs/README.md)：按 commit、build 和设备保存每个候选版本的实际结果。
+- [故障排查](TROUBLESHOOTING.md)：按症状采证、判定和安全恢复。
+- [发布手册](RELEASE.md) / [版本发布记录](release-records/README.md)：发布方法与每个版本的实际制品/渠道状态。
+- [音频资产](AUDIO_ASSETS.md)：双端资源、校验和替换流程。
+- [无障碍现状](ACCESSIBILITY.md)：关怀模式边界和完整适配缺口。
+- [当前风险](KNOWN_ISSUES.md) / [设计决策](DECISIONS.md)：尚未关闭的问题和不能随意破坏的方案理由。
+- [`CONTRIBUTING.md`](../CONTRIBUTING.md)：提交、评审、测试和文档同步规则。
 
-1. 真机发布 SOP：Android keystore 申领/轮换、iOS Team/Profile、应用商店流程。
-2. 设备回归矩阵：华为/小米/OPPO/vivo/原生 Android 及主要 iOS 版本。
-3. 音频版权与来源台账：授权、原始文件 checksum、转码参数。
-4. 产品验收口径：“同步”时钟偏差、电池优化引导、中断后是否继续的文案。
-5. CI/发布自动化和版本号统一策略。
+仍需项目所有者提供、无法从代码恢复的资料：音频来源与授权证明、源码许可/分发条款（仓库当前没有 `LICENSE`）、Android release keystore 的受控保管/轮换信息、Apple 团队和证书的维护人、正式支持渠道、历次商店发布与回滚台账。仓库当前没有 CI；版本号也分散在 package、Android、iOS 和诊断文本中。
 
 ## 8. 需要项目所有者确认的问题
 
 1. 共修对齐当前按“设备本地当日 00:00”计算；跨时区和设备时钟不准时不会一致。这是否为最终产品定义？
 2. Android 是否需要保留 `INTERNET` 权限，iOS 是否需要 `NSAllowsArbitraryLoads=true`？当前功能不需要。
-3. 永久音频源目录应以 Android、iOS 还是另一份 canonical assets 为准？当前双份各约 114 MiB。
+3. 永久音频源目录应以 Android、iOS 还是另一份 canonical assets 为准？当前双份各约 116 MiB，且两份 manifest 已与实际 A05/D15 资源不一致。
 4. 每日统计按“完成时所在的本地日期”入桶，跨零点的一遍归到第二天；是否符合业务口径？
-5. 诊断文件包含设备型号、系统版本、播放事件和本地时间；隐私政策是否要明示“只在用户主动导出时分享”？
+5. 诊断文件包含设备型号、系统版本、播放事件和本地时间；这一字段范围是否获产品确认，是否需要增加用户清除日志或导出前脱敏能力？
 
 ## 9. 建议的接管计划
 
-1. 先确认上述产品问题，锁定播放不变量。
-2. 继续补 App/页面交互与原生模块测试；核心播放 Service 已有 87.98% 行、70.39% 分支覆盖。
-3. 做 Android/iOS 实机回归，覆盖 4 模式 × repeatCount 1/7 × 同步开关 × 前台/锁屏/划掉 UI。
-4. 重点在华为 Android 12 验证连续播放数小时，导出完整诊断文件。
-5. 补 CI 后再做权限收紧、音频单源化和发布 SOP。
+1. 先确认上述产品问题和音频授权，冻结播放不变量与 canonical 音频源。
+2. 优先重新生成兼容目标明确的 iOS 更高 build，并核验 Archive 最终最低系统；不要只看 Podfile。
+3. 修复音频 manifest 和 [LINTING.md](LINTING.md) 记录的静态检查债务，再建立 CI 质量门禁。
+4. 按设备矩阵做 Android/iOS 真机回归，重点覆盖四模式 × 重复遍数 × 同步开关 × 前后台/锁屏/中断。
+5. 在华为 Android 12 等受限后台环境连续播放数小时，导出完整诊断文件；同时用至少一台 iOS 13/14 真机验证兼容候选。
+6. 收紧当前业务不需要的网络权限/ATS，统一版本来源，并将签名、商店发布和回滚台账移交给明确维护人。
