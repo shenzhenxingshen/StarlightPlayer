@@ -39,11 +39,17 @@
 ### 产品、内容和用户支持
 
 - 用户操作：[图文用户手册](USER_MANUAL.md)
+- 离线传播与打印：[单文件 HTML](USER_MANUAL.html)、[A4 PDF](../output/pdf/StarlightPlayer-User-Manual-1.0.pdf)
 - 用户手册图片来源与更新规则：[截图说明](images/user-manual/README.md)
 - 隐私：[`PRIVACY.md`](../PRIVACY.md)
 - 音频文件、时长与哈希：[音频资产台账](AUDIO_ASSETS.md)
 - 关怀模式和无障碍边界：[无障碍与关怀模式](ACCESSIBILITY.md)
 - 用户可见变化：[`CHANGELOG.md`](../CHANGELOG.md)
+
+`USER_MANUAL.md` 是手册的唯一内容源。更新文字或截图后，在仓库根目录运行
+`python3 scripts/build_user_manual.py`，同时重建图片和样式均已内嵌的 HTML，以及适合
+A4 打印的 PDF。生成命令依赖 Pandoc 和 Google Chrome/Chromium；可以通过
+`CHROME_BIN` 指定浏览器可执行文件。
 
 ## 2. 唯一权威范围
 
