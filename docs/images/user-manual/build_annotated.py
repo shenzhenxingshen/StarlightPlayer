@@ -347,7 +347,7 @@ def build_all() -> None:
 
     board(
         "02-main-pages.png",
-        "三个主要页面与完整曲目分类",
+        "四个主要页面与完整曲目分类",
         [
             PanelSpec("android-player-sync-on.png", "播放", [m("1", (180, 2240), (180, 2100))]),
             PanelSpec(
@@ -356,9 +356,12 @@ def build_all() -> None:
                 [m("2", (540, 2240), (540, 2100)), m("4", (540, 365), (930, 365))],
             ),
             PanelSpec("android-track-list-lower.png", "列表（下半部）", [m("5", (220, 1130), (650, 1060))]),
-            PanelSpec("android-settings-normal.png", "我的", [m("3", (900, 2240), (900, 2100))]),
+            PanelSpec("ios-task-list.png", "任务", [m("3", (603, 2440), (603, 2260))]),
+            PanelSpec("android-settings-normal.png", "我的", [m("4", (900, 2240), (900, 2100))]),
         ],
-        columns=2,
+        columns=3,
+        cell_width=500,
+        max_image_height=840,
     )
 
     board(
@@ -656,6 +659,36 @@ def build_all() -> None:
         columns=2,
     )
 
+    board(
+        "17-scheduled-tasks.png",
+        "每日任务：查看、启停、立即播放与编辑",
+        [
+            PanelSpec(
+                "ios-task-list.png",
+                "任务列表",
+                [
+                    m("1", (160, 710), (95, 570)),
+                    m("2", (570, 710), (570, 570)),
+                    m("3", (1040, 710), (1110, 570)),
+                    m("4", (603, 2150), (820, 2050)),
+                ],
+            ),
+            PanelSpec(
+                "ios-task-edit.png",
+                "增加 / 修改任务",
+                [
+                    m("5", (603, 770), (880, 690)),
+                    m("6", (603, 1560), (880, 1480)),
+                    m("7", (1030, 1890), (890, 1810)),
+                    m("8", (603, 2150), (820, 2050)),
+                ],
+            ),
+        ],
+        columns=2,
+        cell_width=700,
+        max_image_height=1200,
+    )
+
     # Close-up illustrations.  Unlike the overview boards above, every image
     # contains its own Chinese explanation so it remains understandable when
     # viewed by itself or in a Markdown renderer that scales images down.
@@ -682,10 +715,10 @@ def build_all() -> None:
     )
     guide(
         "bottom-navigation.png",
-        "普通模式的三个主要页面",
-        "android-player-sync-on.png",
-        [g("三个页面入口\n播放 / 列表 / 我的", (540, 190), 95, (30, 105, 1050, 275))],
-        crop=(0, 2050, 1080, 2400),
+        "普通模式的四个主要页面",
+        "ios-task-list.png",
+        [g("四个页面入口\n播放 / 列表 / 任务 / 我的", (603, 225), 105, (35, 125, 1170, 325))],
+        crop=(0, 2200, 1206, 2622),
     )
     guide(
         "mode-repeat-one.png",
@@ -1003,6 +1036,43 @@ def build_all() -> None:
             g("选择保存位置或发送方式", (540, 740), 690, (30, 620, 1050, 900)),
         ],
         crop=(0, 1370, 1080, 2340),
+    )
+    guide(
+        "task-list.png",
+        "每日任务列表",
+        "ios-task-list.png",
+        [
+            g("左侧播放按钮\n忽略时刻，立即执行任务", (160, 710), 470, (85, 625, 235, 790)),
+            g("点击中间信息区域\n进入修改页面", (570, 710), 810, (250, 610, 905, 825)),
+            g("右侧开关只控制\n每天是否自动触发", (1040, 710), 1150, (955, 625, 1125, 795)),
+            g("点击这里增加任务\n新任务保存后默认关闭", (603, 2150), 1990, (45, 2070, 1160, 2245)),
+        ],
+        max_output_width=2200,
+    )
+    guide(
+        "task-edit-time-track.png",
+        "设置名称、时刻与曲目",
+        "ios-task-edit.png",
+        [
+            g("任务名称最长 30 个字符", (603, 210), 100, (55, 135, 1150, 280)),
+            g("选择每天启动的时、分、秒", (603, 450), 360, (55, 350, 1150, 545)),
+            g("从 21 首内置曲目中选择", (603, 710), 620, (55, 630, 1150, 795)),
+        ],
+        crop=(0, 320, 1206, 1150),
+        max_output_width=2200,
+    )
+    guide(
+        "task-edit-playback.png",
+        "设置任务的播放规则",
+        "ios-task-edit.png",
+        [
+            g("输入大于 0 的整数重复遍数", (603, 280), 180, (55, 205, 1150, 360)),
+            g("选择四种播放模式之一", (603, 610), 490, (55, 460, 1150, 750)),
+            g("同步：按当天 00:00 对齐\n不同步：从曲目开头播放", (1030, 890), 820, (55, 785, 1150, 1000)),
+            g("确认后点击保存\n新任务默认关闭", (603, 1150), 1080, (55, 1075, 1150, 1225)),
+        ],
+        crop=(0, 1000, 1206, 2260),
+        max_output_width=2200,
     )
 
 

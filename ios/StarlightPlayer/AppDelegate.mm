@@ -2,10 +2,16 @@
 
 #import <React/RCTBundleURLProvider.h>
 
+static NSString *const StarlightScheduledTaskNotification = @"StarlightScheduledTaskDueNotification";
+static NSString *const StarlightPendingTaskIdKey = @"starlight_pending_task_id";
+static NSString *const StarlightPendingTaskSourceKey = @"starlight_pending_task_source";
+static NSString *const StarlightPendingTaskScheduledAtKey = @"starlight_pending_task_scheduled_at";
+
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+  UNUserNotificationCenter.currentNotificationCenter.delegate = self;
   self.moduleName = @"StarlightPlayer";
   self.initialProps = @{};
 
@@ -33,6 +39,51 @@
   self.window.backgroundColor = [UIColor colorWithRed:0.071 green:0.071 blue:0.071 alpha:1.0];
 
   return result;
+}
+
+- (void)storeAndPublishScheduledTask:(NSString *)taskId
+                              source:(NSString *)source
+                         scheduledAt:(NSNumber *)scheduledAt
+{
+  if (taskId.length == 0) return;
+  NSNumber *effectiveScheduledAt = scheduledAt ?: @([[NSDate date] timeIntervalSince1970] * 1000.0);
+  NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+  [defaults setObject:taskId forKey:StarlightPendingTaskIdKey];
+  [defaults setObject:source forKey:StarlightPendingTaskSourceKey];
+  [defaults setObject:effectiveScheduledAt forKey:StarlightPendingTaskScheduledAtKey];
+  [[NSNotificationCenter defaultCenter] postNotificationName:StarlightScheduledTaskNotification
+                                                      object:nil
+                                                    userInfo:@{ @"taskId": taskId,
+                                                                @"source": source,
+                                                                @"scheduledAt": effectiveScheduledAt }];
+}
+
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+       willPresentNotification:(UNNotification *)notification
+         withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler
+{
+  NSString *taskId = notification.request.content.userInfo[@"starlightTaskId"];
+  if (taskId.length > 0) {
+    NSNumber *scheduledAt = @(notification.date.timeIntervalSince1970 * 1000.0);
+    [self storeAndPublishScheduledTask:taskId source:@"ios-foreground" scheduledAt:scheduledAt];
+    completionHandler(UNNotificationPresentationOptionNone);
+    return;
+  }
+  if (@available(iOS 14.0, *)) {
+    completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionSound);
+  } else {
+    completionHandler(UNNotificationPresentationOptionAlert | UNNotificationPresentationOptionSound);
+  }
+}
+
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+didReceiveNotificationResponse:(UNNotificationResponse *)response
+         withCompletionHandler:(void (^)(void))completionHandler
+{
+  NSString *taskId = response.notification.request.content.userInfo[@"starlightTaskId"];
+  NSNumber *scheduledAt = @(response.notification.date.timeIntervalSince1970 * 1000.0);
+  [self storeAndPublishScheduledTask:taskId source:@"notification-tap" scheduledAt:scheduledAt];
+  completionHandler();
 }
 
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge

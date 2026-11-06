@@ -1,0 +1,231 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, AppState, FlatList, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { TaskStackParamList } from '../navigation/TaskNavigator';
+import { useScheduledTaskStore } from '../store/scheduledTaskStore';
+import { TRACKS } from '../constants/tracks';
+import { formatTaskTime } from '../constants/scheduledTasks';
+import { MODE_CONFIG } from '../components/Controls';
+import {
+  BG_GROUND,
+  BG_RECESS,
+  BG_SURFACE,
+  BORDER,
+  GOLD,
+  INK,
+  TEXT_SEC,
+  TEXT_TER,
+} from '../constants/colors';
+import { executeScheduledTask } from '../services/scheduledTaskExecutor';
+import {
+  getTaskSchedulingStatus,
+  requestTaskSchedulingPermission,
+  syncTaskSchedules,
+  TaskSchedulingStatus,
+} from '../services/scheduledTaskScheduler';
+import { formatRepeatCount } from '../utils/numberFormat';
+import { addLog } from '../utils/logger';
+
+type Props = NativeStackScreenProps<TaskStackParamList, 'TaskList'>;
+
+function permissionMessage(status: TaskSchedulingStatus | null): string | null {
+  if (!status) return null;
+  if (status.platform === 'ios' && status.notificationPermission !== 'authorized') {
+    return '请允许通知；iOS 在 App 不活跃时需要点击通知才能开始任务。';
+  }
+  if (status.platform === 'android' && status.exactAlarmPermission === 'denied') {
+    return '请允许“闹钟和提醒”权限，否则系统可能延迟任务。';
+  }
+  if (status.platform === 'android' && status.notificationPermission === 'denied') {
+    return '请允许通知权限，任务后台播放时需要显示播放通知。';
+  }
+  return null;
+}
+
+const TaskListScreen: React.FC<Props> = ({ navigation }) => {
+  const tasks = useScheduledTaskStore(state => state.tasks);
+  const setTaskEnabled = useScheduledTaskStore(state => state.setTaskEnabled);
+  const [status, setStatus] = useState<TaskSchedulingStatus | null>(null);
+  const [playingTaskId, setPlayingTaskId] = useState<string | null>(null);
+
+  const refreshStatus = useCallback(() => {
+    getTaskSchedulingStatus()
+      .then(setStatus)
+      .catch(error => addLog('ERROR', 'read task scheduling status failed', error));
+  }, []);
+
+  useEffect(refreshStatus, [refreshStatus, tasks]);
+
+  // Android 的精确闹钟授权页会暂时离开 App；返回时重新把任务升级为精确闹钟。
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (state !== 'active') return;
+      syncTaskSchedules(tasks)
+        .then(setStatus)
+        .catch(error => addLog('ERROR', 'resync tasks after settings failed', error));
+    });
+    return () => subscription.remove();
+  }, [tasks]);
+
+  const toggleTask = useCallback(
+    async (taskId: string, enabled: boolean) => {
+      setTaskEnabled(taskId, enabled);
+      if (enabled) {
+        try {
+          setStatus(await requestTaskSchedulingPermission());
+        } catch (error) {
+          addLog('ERROR', 'request task scheduling permission failed', error);
+        }
+      }
+    },
+    [setTaskEnabled],
+  );
+
+  const playNow = useCallback(async (taskId: string) => {
+    setPlayingTaskId(taskId);
+    try {
+      await executeScheduledTask({ taskId, source: 'manual' });
+    } catch (error) {
+      Alert.alert('播放失败', String(error));
+    } finally {
+      setPlayingTaskId(null);
+    }
+  }, []);
+
+  const warning = permissionMessage(status);
+  return (
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+      {warning && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            requestTaskSchedulingPermission()
+              .then(setStatus)
+              .catch(() => {})
+          }
+          style={styles.warning}>
+          <Icon name="notifications-active" size={20} color="#9A6519" />
+          <Text style={styles.warningText}>{warning}</Text>
+          <Text style={styles.warningAction}>去设置</Text>
+        </Pressable>
+      )}
+      <FlatList
+        data={tasks}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={<Text style={styles.empty}>暂无任务，可点击下方增加。</Text>}
+        renderItem={({ item }) => {
+          const track = TRACKS.find(candidate => candidate.id === item.trackId);
+          return (
+            <View style={styles.taskCard}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`立即播放任务${item.name}`}
+                onPress={() => playNow(item.id)}
+                disabled={playingTaskId === item.id}
+                style={styles.playButton}>
+                <Icon
+                  name={playingTaskId === item.id ? 'hourglass-top' : 'play-arrow'}
+                  size={30}
+                  color="#FFFFFF"
+                />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`修改任务${item.name}`}
+                style={styles.taskInfo}
+                onPress={() => navigation.navigate('TaskEdit', { taskId: item.id })}>
+                <View style={styles.titleRow}>
+                  <Text style={styles.time}>{formatTaskTime(item)}</Text>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                </View>
+                <Text style={styles.details} numberOfLines={2}>
+                  {track?.title ?? item.trackId}　{formatRepeatCount(item.repeatCount)} 遍
+                </Text>
+                <Text style={styles.mode}>
+                  {MODE_CONFIG[item.playMode].label} · {item.isSyncMode ? '同步' : '不同步'}
+                </Text>
+              </Pressable>
+              <Switch
+                accessibilityLabel={`${item.name}${item.enabled ? '已启用' : '已关闭'}`}
+                value={item.enabled}
+                onValueChange={enabled => toggleTask(item.id, enabled)}
+                trackColor={{ false: BG_RECESS, true: GOLD }}
+              />
+            </View>
+          );
+        }}
+      />
+      <Pressable
+        accessibilityRole="button"
+        style={styles.addButton}
+        onPress={() => navigation.navigate('TaskEdit')}>
+        <Icon name="add" size={24} color={GOLD} />
+        <Text style={styles.addText}>增加任务</Text>
+      </Pressable>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: BG_GROUND },
+  listContent: { padding: 16, paddingBottom: 100 },
+  taskCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: BG_SURFACE,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: BORDER,
+  },
+  playButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: GOLD,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  taskInfo: { flex: 1, minWidth: 0, marginRight: 10 },
+  titleRow: { flexDirection: 'row', alignItems: 'baseline' },
+  time: { color: INK, fontSize: 24, fontWeight: '400', fontVariant: ['tabular-nums'] },
+  name: { color: INK, fontSize: 16, fontWeight: '600', marginLeft: 10, flex: 1 },
+  details: { color: TEXT_SEC, fontSize: 14, marginTop: 5 },
+  mode: { color: TEXT_TER, fontSize: 12, marginTop: 3 },
+  addButton: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+    height: 54,
+    borderRadius: 12,
+    backgroundColor: BG_SURFACE,
+    borderWidth: 1,
+    borderColor: GOLD,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addText: { color: GOLD, fontSize: 17, fontWeight: '600', marginLeft: 4 },
+  empty: { color: TEXT_SEC, textAlign: 'center', marginTop: 80 },
+  warning: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#FFF3D8',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  warningText: { flex: 1, color: '#76501B', fontSize: 13, lineHeight: 19, marginHorizontal: 8 },
+  warningAction: { color: '#9A6519', fontSize: 13, fontWeight: '700' },
+});
+
+export default TaskListScreen;

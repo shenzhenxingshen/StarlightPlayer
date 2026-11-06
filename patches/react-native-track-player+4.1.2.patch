@@ -1,0 +1,29 @@
+diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
+--- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
++++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
+@@ -39,6 +39,13 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+     private lateinit var musicService: MusicService
+     private val context = reactContext
+ 
++    private fun isScheduledTaskBackgroundSetupAllowed(): Boolean {
++        val allowedUntil = context
++            .getSharedPreferences("starlight_scheduled_tasks", Context.MODE_PRIVATE)
++            .getLong("allow_background_player_setup_until", 0L)
++        return allowedUntil >= System.currentTimeMillis()
++    }
++
+     @Nonnull
+     override fun getName(): String {
+         return "TrackPlayerModule"
+@@ -170,7 +177,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         }
+ 
+         // prevent crash Fatal Exception: android.app.RemoteServiceException$ForegroundServiceDidNotStartInTimeException
+-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && AppForegroundTracker.backgrounded) {
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
++            AppForegroundTracker.backgrounded &&
++            !isScheduledTaskBackgroundSetupAllowed()
++        ) {
+             promise.reject(
+                 "android_cannot_setup_player_in_background",
+                 "On Android the app must be in the foreground when setting up the player."

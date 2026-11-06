@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, AppState, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, AppState, DeviceEventEmitter, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TrackPlayer, {
   usePlaybackState,
@@ -90,6 +90,19 @@ const PlayerScreen: React.FC = () => {
   useEffect(() => {
     saved.current = null;
     restoring = false;
+  }, []);
+
+  // 定时任务可能在当前页面已挂载时替换播放配置，保持模式按钮与后台业务状态一致。
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener(
+      'StarlightPlayModeChanged',
+      (nextMode: PlayMode) => {
+        if (!MODE_CONFIG[nextMode]) return;
+        playModeRef.current = nextMode;
+        setPlayMode(nextMode);
+      },
+    );
+    return () => subscription.remove();
   }, []);
 
   // 切歌时保存状态（恢复期间不保存）

@@ -1,6 +1,6 @@
 # 当前风险与已知问题
 
-> 文档类型：活状态。源码核对基线：`0698f62`（2026-10-16）。这里记录尚未关闭的工程、测试、发布和接管风险；历史走查证据见 [CODE_REVIEW.md](CODE_REVIEW.md)。
+> 文档类型：活状态。源码核对基线：V1.1 开发分支（2026-11-06）。这里记录尚未关闭的工程、测试、发布和接管风险；历史走查证据见 [CODE_REVIEW.md](CODE_REVIEW.md)。
 
 ## 状态定义
 
@@ -19,11 +19,11 @@
 | ----------- | ------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | IOS-001     | P0     | OPEN    | 源码 deployment target 为 13.4，但已上传的 1.0.0 build 4 Archive 最终 `MinimumOSVersion=15.0`                                                       | build 4 无法支持 iOS 13/14 老用户                                          | 发布负责人生成更高 build，检查 Archive 并做 iOS 13/14 真机回归；否则由产品明确修改支持范围  |
 | LEGAL-001   | P0     | BLOCKED | 仓库没有 21 首音频的来源、授权范围和到期信息，也没有源码 `LICENSE`                                                                                  | 无法仅靠技术校验证明拥有分发权或明确源码使用边界                           | 产品/法务补齐受控授权台账；项目所有者确认源码许可策略                                       |
-| AUDIO-001   | P1     | OPEN    | Android/iOS 各维护一套音频，两个 `link-assets-manifest.json` 对 A05 哈希和 D15 文件名已过时                                                         | 改一端或依赖旧清单会造成跨端不一致                                         | 确立 canonical 音频源并自动生成双端清单；发布时按 [AUDIO_ASSETS.md](AUDIO_ASSETS.md)校验    |
+| AUDIO-001   | P1     | OPEN    | Android/iOS 仍各维护一套音频；V1.1 已更新 manifest 的 A05/D15，但没有 canonical 源或自动双端生成流程                                                | 改一端仍可能造成跨端不一致                                                 | 确立 canonical 音频源并自动生成双端清单；发布时按 [AUDIO_ASSETS.md](AUDIO_ASSETS.md)校验    |
 | QA-001      | P1     | OPEN    | 无 CI、Android instrumentation、iOS UI test 或跨端 E2E；模拟器流程没有仓库化自动脚本                                                                | fresh clone 无法复现此前设备操作，高覆盖率不能证明原生行为                 | 先建立 JS 质量门禁，再增加原生 smoke/E2E；每个候选创建 [test-runs](test-runs/README.md)记录 |
 | QA-002      | P1     | OPEN    | Jest 全局阈值仅 lines/statements 50%、functions 40%、branches 30%，远低于当前观测基线                                                               | 覆盖率大幅回退仍可能通过                                                   | 在 CI 建立后分阶段提高阈值，并为播放核心文件设置更高门槛                                    |
 | QUALITY-001 | P1     | OPEN    | 当前 ESLint 有 31 个 warning，`format:check` 因 7 个源码文件失败                                                                                    | 噪声会掩盖新增问题，无法形成严格门禁                                       | 分批修复，随后收紧 warning 和格式门槛；详见 [LINTING.md](LINTING.md)                        |
-| VERSION-001 | P1     | OPEN    | 版本分散在 npm、Android、iOS 和诊断页面，存在 `1.0`/`1.0.0` 两种写法                                                                                | 发版时容易漏改或展示不一致                                                 | 下一版本统一来源或增加发布校验脚本                                                          |
+| VERSION-001 | P1     | OPEN    | V1.1 已同步所有版本位置，但版本仍分散在 npm、Android、iOS 和诊断页面                                                                                | 后续发版仍容易漏改                                                         | 统一动态版本来源或增加发布校验脚本                                                          |
 | OPS-001     | P1     | BLOCKED | Android keystore、Apple 证书/账号、商店维护人、下载服务器路径/Nginx/统计任务和回滚责任没有完整移交台账                                              | 发布、续签或回滚依赖个人记忆                                               | 项目所有者在受控系统登记保管人和恢复流程；Git 只保存非秘密索引                              |
 | RELEASE-001 | P1     | OPEN    | 最新 Git tag 仍为 `v0.6.0`；1.0 只有事后恢复的 PARTIAL 发布记录，没有当时形成的 FINAL test-run/release record                                       | 源码、制品和商店版本难以追溯                                               | 核对公开版本事实后补签名 tag，并从下个候选开始绑定 test-run 和 release record               |
 | DIST-001    | P1     | OPEN    | Android 自建下载页仍使用裸 IP 的 HTTP 地址                                                                                                          | 页面或 APK 传输可被篡改，SHA-256 展示不能替代 TLS                          | 迁移到受信任域名和 HTTPS，保留旧版本回滚链接                                                |

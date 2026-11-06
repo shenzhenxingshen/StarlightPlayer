@@ -1,6 +1,6 @@
 # 星光播放器隐私政策
 
-**最后更新日期：2026 年 10 月 16 日**
+**最后更新日期：2026 年 11 月 6 日**
 
 ## 概述
 
@@ -15,6 +15,7 @@
 为完成播放、恢复和诊断功能，本应用会在设备本地保存：
 
 - 关怀模式、同步播放和每首重复遍数等设置；
+- 用户创建或修改的每日定时任务，包括名称、时刻、曲目和播放配置；
 - 当前曲目、播放模式、播放意图和恢复播放所需的状态；
 - 当前播放任务已经完成的有效遍数和计数资格；
 - 按设备本地日期保存的各曲目每日播放统计，历史日期的数据可能继续保留；
@@ -32,7 +33,7 @@
 
 ## 网络访问
 
-21 首音频均内置于安装包，播放、重复计数和同步位置计算不需要互联网。当前业务代码没有后端 API、账号、支付、推送、广告或分析请求。
+21 首音频均内置于安装包，播放、重复计数、同步位置计算和每日任务不需要互联网。每日任务使用 Android 系统闹钟或 iOS 本地通知，通知内容与任务配置保存在设备本地，不经过项目服务器。当前业务代码没有后端 API、账号、支付、远程推送、广告或分析请求。
 
 平台工程目前仍包含 Android `INTERNET` 权限和 iOS 宽松 ATS 配置，但当前版本的业务功能没有使用它们传输用户数据。后续版本会评估是否移除这些非必要配置。
 
@@ -58,7 +59,7 @@
 
 # StarlightPlayer Privacy Policy
 
-**Last updated: October 16, 2026**
+**Last updated: November 6, 2026**
 
 ## Overview
 
@@ -73,6 +74,7 @@ The app does not actively collect names, email addresses, phone numbers, precise
 To provide playback, restoration, and diagnostics, the app stores the following data locally:
 
 - Care mode, synchronized playback, per-track repeat count, and other settings;
+- User-created or edited daily scheduled tasks, including their names, times, tracks, and playback settings;
 - The current track, playback mode, playback intent, and state required for restoration;
 - Completed valid repeat cycles and cycle-counting eligibility;
 - Per-track daily playback statistics keyed by the device's local date, including retained historical dates;
@@ -90,7 +92,7 @@ A diagnostic file may include the device model, OS version, diagnostic timestamp
 
 ## Network Access
 
-All 21 audio tracks are bundled with the app. Playback, repeat counting, and synchronized-position calculation work without an Internet connection. The current business logic has no backend API, account, payment, push-notification, advertising, or analytics requests.
+All 21 audio tracks are bundled with the app. Playback, repeat counting, synchronized-position calculation, and daily tasks work without an Internet connection. Scheduled tasks use Android system alarms or iOS local notifications; their content and settings remain on the device and do not pass through a project server. The current business logic has no backend API, account, payment, remote push-notification, advertising, or analytics requests.
 
 The platform projects still contain the Android `INTERNET` permission and a permissive iOS ATS setting, but current app features do not use them to transmit user data. Future releases will evaluate removing these unnecessary settings.
 

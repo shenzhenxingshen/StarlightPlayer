@@ -1,4 +1,7 @@
 import { MMKV } from 'react-native-mmkv';
+import { DEFAULT_SCHEDULED_TASKS, sortScheduledTasks } from '../constants/scheduledTasks';
+import { TRACKS } from '../constants/tracks';
+import { ScheduledTask } from '../types/scheduledTask';
 
 const storage = new MMKV();
 
@@ -10,6 +13,7 @@ const EXPECTED_PLAYING_KEY = 'expected_playing';
 const TRACK_GENERATION_KEY = 'track_generation';
 const PLAYBACK_PAUSED_AT_KEY = 'playback_paused_at';
 const PLAYBACK_TASK_PROGRESS_KEY = 'playback_task_progress';
+const SCHEDULED_TASKS_KEY = 'scheduled_tasks_v1';
 
 const normalizeNonNegativeCount = (value: unknown, fallback = 0): number => {
   const count = Number(value);
@@ -84,6 +88,73 @@ export function setSettings(settings: {
     SETTINGS_KEY,
     JSON.stringify({ ...settings, repeatCount: normalizeRepeatCount(settings.repeatCount) }),
   );
+}
+
+// --- 每日定时任务 ---
+function normalizeClockPart(value: unknown, maximum: number): number | null {
+  const part = Number(value);
+  return Number.isInteger(part) && part >= 0 && part <= maximum ? part : null;
+}
+
+export function normalizeScheduledTask(value: unknown): ScheduledTask | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const candidate = value as Partial<ScheduledTask>;
+  const hour = normalizeClockPart(candidate.hour, 23);
+  const minute = normalizeClockPart(candidate.minute, 59);
+  const second = normalizeClockPart(candidate.second, 59);
+  const name = typeof candidate.name === 'string' ? candidate.name.trim().slice(0, 30) : '';
+  if (
+    typeof candidate.id !== 'string' ||
+    candidate.id.length === 0 ||
+    name.length === 0 ||
+    hour == null ||
+    minute == null ||
+    second == null ||
+    !TRACKS.some(track => track.id === candidate.trackId)
+  ) {
+    return null;
+  }
+  return {
+    id: candidate.id,
+    name,
+    hour,
+    minute,
+    second,
+    trackId: candidate.trackId as string,
+    repeatCount: normalizeRepeatCount(candidate.repeatCount),
+    playMode: normalizePlayMode(candidate.playMode),
+    isSyncMode: candidate.isSyncMode === true,
+    enabled: candidate.enabled === true,
+  };
+}
+
+export function saveScheduledTasks(tasks: readonly ScheduledTask[]): ScheduledTask[] {
+  const unique = new Map<string, ScheduledTask>();
+  tasks.forEach(task => {
+    const normalized = normalizeScheduledTask(task);
+    if (normalized) unique.set(normalized.id, normalized);
+  });
+  const saved = sortScheduledTasks([...unique.values()]);
+  storage.set(SCHEDULED_TASKS_KEY, JSON.stringify(saved));
+  return saved;
+}
+
+export function loadScheduledTasks(): ScheduledTask[] {
+  try {
+    const data = storage.getString(SCHEDULED_TASKS_KEY);
+    if (data == null) return saveScheduledTasks(DEFAULT_SCHEDULED_TASKS);
+    const parsed = JSON.parse(data);
+    if (!Array.isArray(parsed)) return saveScheduledTasks(DEFAULT_SCHEDULED_TASKS);
+    return sortScheduledTasks(
+      parsed.map(normalizeScheduledTask).filter((task): task is ScheduledTask => task != null),
+    );
+  } catch {
+    return saveScheduledTasks(DEFAULT_SCHEDULED_TASKS);
+  }
+}
+
+export function loadScheduledTask(taskId: string): ScheduledTask | null {
+  return loadScheduledTasks().find(task => task.id === taskId) ?? null;
 }
 
 // --- Session Count（跨运行时共享） ---

@@ -1,6 +1,6 @@
 # StarlightPlayer 项目全景架构
 
-> 适用于 1.0 源码，依据 2026-10-16 的 `main` 分支逐项核对。本文回答“模块如何协作、状态以谁为准、前台 UI 与后台播放怎样共同工作”。重复计数与同步算法的业务细节见 [PLAYBACK_ARCHITECTURE.md](PLAYBACK_ARCHITECTURE.md)，所有持久化字段见 [STORAGE_MODEL.md](STORAGE_MODEL.md)。
+> 适用于 1.1 源码，依据 2026-11-06 的当前分支逐项核对。本文回答“模块如何协作、状态以谁为准、前台 UI、后台播放与每日任务怎样共同工作”。重复计数与同步算法的业务细节见 [PLAYBACK_ARCHITECTURE.md](PLAYBACK_ARCHITECTURE.md)，所有持久化字段见 [STORAGE_MODEL.md](STORAGE_MODEL.md)。
 
 ## 1. 系统边界与核心目标
 
@@ -59,40 +59,43 @@ RNTP 的原生 RepeatMode 始终设置为 Off。重播、换曲、停止、遍�
 
 ### 3.1 入口与应用壳
 
-| 模块                        | 职责                                                                                    |
-| --------------------------- | --------------------------------------------------------------------------------------- |
-| `index.js`                  | 最先加载 logger；注册 React 根组件和 RNTP PlaybackService。                             |
-| `src/App.tsx`               | 初始化/复用 RNTP、恢复或接管队列、下发播放器能力、请求 Android 通知权限、创建底部 Tab。 |
-| `src/screens/*`             | 播放页、曲目列表和“我的”设置页；把用户意图交给统一命令层。                              |
-| `src/components/*`          | 曲目信息、唱片、五个控制按钮、横/竖进度条和竖屏/方屏/横屏组合布局。                     |
-| `src/utils/playerLayout.ts` | 纯函数计算窗口分类和有界布局 token；旋转或分屏只改变展示，不得触发播放器命令。          |
+| 模块                        | 职责                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| `index.js`                  | 最先加载 logger；注册 React 根组件、RNTP PlaybackService 和 Android 定时任务 Headless JS。 |
+| `src/App.tsx`               | 初始化/复用 RNTP、恢复或接管队列、下发播放器能力、接收 iOS 任务触发、创建底部 Tab。        |
+| `src/screens/*`             | 播放、列表、任务和“我的”页面；把用户意图交给统一业务/命令层。                              |
+| `src/components/*`          | 曲目信息、唱片、五个控制按钮、横/竖进度条和竖屏/方屏/横屏组合布局。                        |
+| `src/utils/playerLayout.ts` | 纯函数计算窗口分类和有界布局 token；旋转或分屏只改变展示，不得触发播放器命令。             |
 
 `App.tsx` 中的 `_initialized`、`_initializing` 和 `PlayerScreen.tsx` 中的 `restoring` 都只是当前 JS context 的防重标志。它们重建后会重置，不能被视为持久状态。
 
 ### 3.2 UI 状态
 
-| 模块                         | 职责                                                                                             |
-| ---------------------------- | ------------------------------------------------------------------------------------------------ |
-| `src/store/settingsStore.ts` | 启动时从 MMKV 读取关怀模式、同步模式和重复遍数；每次 toggle/set 先持久化，再更新 Zustand。       |
-| `src/store/statsStore.ts`    | 把当日完成次数映射到 Zustand；PlaybackService 通过它递增 MMKV 统计。当前页面没有展示这份统计。   |
-| `PlayerScreen` 本地 state    | 保存当前 `playMode`、短暂的模式提示等组件状态；`playMode` 每次变化同步写入 `player_state`。      |
-| RNTP React hooks             | `useActiveTrack`、`usePlaybackState`、`useProgress(500)`驱动实际曲目、播放态和 500 ms 进度刷新。 |
+| 模块                              | 职责                                                                                             |
+| --------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `src/store/settingsStore.ts`      | 启动时从 MMKV 读取关怀模式、同步模式和重复遍数；每次 toggle/set 先持久化，再更新 Zustand。       |
+| `src/store/statsStore.ts`         | 把当日完成次数映射到 Zustand；PlaybackService 通过它递增 MMKV 统计。当前页面没有展示这份统计。   |
+| `src/store/scheduledTaskStore.ts` | 保存、排序任务并同步到原生每日调度；MMKV 是完整任务配置的持久权威。                              |
+| `PlayerScreen` 本地 state         | 保存当前 `playMode`、短暂的模式提示等组件状态；`playMode` 每次变化同步写入 `player_state`。      |
+| RNTP React hooks                  | `useActiveTrack`、`usePlaybackState`、`useProgress(500)`驱动实际曲目、播放态和 500 ms 进度刷新。 |
 
 Zustand 不是后台播放状态的总线。PlaybackService 对设置、模式和计数的关键判断会直接读取 MMKV，避免依赖另一个 React context 中可能过期的内存快照。
 
 ### 3.3 播放业务内核
 
-| 模块                              | 职责                                                                                                |
-| --------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `src/utils/trackManager.ts`       | 从持久化曲目计算索引；以 reset → add → seek 的协议替换单曲队列；区分 restore 和真实换曲；验证启动。 |
-| `src/utils/playerCommandQueue.ts` | 把影响队列或播放状态的 TrackPlayer 写命令放进 JS Promise 链，并在执行期间取得原生进程锁。           |
-| `src/utils/playbackCycle.ts`      | 唯一的业务 seek 入口；按 seek 原因维护 `cycle_eligible`；处理完成任务后再次播放的清零。             |
-| `src/utils/playbackDecision.ts`   | 纯函数决定自然结束后重播、清零重播、下一首或停止；同时校验 QueueEnded 位置。                        |
-| `src/services/playbackService.ts` | 监听远程控制、音频中断、换曲、QueueEnded 和错误；计数、执行播放模式并运行异常停止 watchdog。        |
-| `src/utils/syncUtils.ts`          | 用“本地当天 00:00 至今的毫秒数 % 曲目业务时长”计算同步位置。                                        |
-| `src/utils/playerOptions.ts`      | 根据同步/关怀模式收紧远程 capability，配置 Android 划掉 UI 后继续播放和前台 Service 宽限。          |
-| `src/utils/storage.ts`            | MMKV schema、校验、旧字段兼容和跨生命周期协议。                                                     |
-| `src/constants/tracks.ts`         | 曲目 ID、顺序、文件名和业务标准时长；同步取模和结尾校验依赖这里的 `durationMs`。                    |
+| 模块                                     | 职责                                                                                                |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `src/utils/trackManager.ts`              | 从持久化曲目计算索引；以 reset → add → seek 的协议替换单曲队列；区分 restore 和真实换曲；验证启动。 |
+| `src/utils/playerCommandQueue.ts`        | 把影响队列或播放状态的 TrackPlayer 写命令放进 JS Promise 链，并在执行期间取得原生进程锁。           |
+| `src/utils/playbackCycle.ts`             | 唯一的业务 seek 入口；按 seek 原因维护 `cycle_eligible`；处理完成任务后再次播放的清零。             |
+| `src/utils/playbackDecision.ts`          | 纯函数决定自然结束后重播、清零重播、下一首或停止；同时校验 QueueEnded 位置。                        |
+| `src/services/playbackService.ts`        | 监听远程控制、音频中断、换曲、QueueEnded 和错误；计数、执行播放模式并运行异常停止 watchdog。        |
+| `src/utils/syncUtils.ts`                 | 用“本地当天 00:00 至今的毫秒数 % 曲目业务时长”计算同步位置。                                        |
+| `src/utils/playerOptions.ts`             | 根据同步/关怀模式收紧远程 capability，配置 Android 划掉 UI 后继续播放和前台 Service 宽限。          |
+| `src/utils/storage.ts`                   | MMKV schema、校验、旧字段兼容和跨生命周期协议。                                                     |
+| `src/constants/tracks.ts`                | 曲目 ID、顺序、文件名和业务标准时长；同步取模和结尾校验依赖这里的 `durationMs`。                    |
+| `src/services/scheduledTaskExecutor.ts`  | 校验启用状态/60 秒窗口，原子应用四项配置，并走正常换曲协议替换播放。                                |
+| `src/services/scheduledTaskScheduler.ts` | JS 与 Android/iOS 原生调度模块的边界，负责同步日程、权限状态和 iOS 触发事件。                       |
 
 ### 3.4 诊断链路
 
@@ -177,6 +180,25 @@ RNTP Android HeadlessJS 正常会复用应用 ReactContext，并非设计上固�
 iOS 使用 `UIScene`，`SceneDelegate.mm` 把 scene 的 active/inactive/background 回调转发为 React Native 监听的 UIApplication 通知，保证 `PlayerScreen` 的 AppState 保存逻辑能工作。`Info.plist` 声明后台 audio；后台音频的真正执行仍由 RNTP/AVFoundation 管理。
 
 ## 6. 主要数据与事件流
+
+### 6.0 每日任务触发
+
+```text
+任务页保存 scheduled_tasks_v1
+  → 原生同步每日日程
+  → Android AlarmManager / iOS UNCalendarNotification
+  → 到点（或 iOS 用户点击通知）传 taskId + 原计划时刻
+  → 校验任务仍启用且未超过 60 秒窗口
+  → 保存同步/重复遍数/playMode/trackIndex
+  → updateOptions → loadTrackAndPlay(reason=user)
+  → 正常播放状态机接管计数、同步换遍与四模式决策
+```
+
+Android 闹钟先排下一天再启动前台 Headless JS 服务，开机、手动改时间和时区变化会恢复日程。iOS 前台通知由 AppDelegate 直接转成 JS 事件；后台/终止状态不能由普通本地通知静默唤醒播放，只能保存触发信息并等待用户点击。后到任务使用相同替换协议，因此会中断并覆盖当前播放任务。
+
+Android 冷进程到点时，RNTP 4.1.2 默认禁止在后台首次调用 `setupPlayer`。`ScheduledTaskExecutionService` 先以 media playback 类型进入前台，并在 App 私有 SharedPreferences 中写入最长 120 秒的许可；`patch-package` 管理的 `react-native-track-player+4.1.2.patch` 只在这段窗口内放行初始化，Headless task 结束或 Service 销毁时立即清除。普通后台调用仍维持 RNTP 原有保护。此补丁由 npm `postinstall` 恢复，属于定时播放链路的一部分，而不是可选的开发机改动。
+
+触发执行有两层串行化：`taskExecutionTail` 保证同时到达的任务依次处理；单个任务把播放器初始化、能力更新、换曲和播放合并进一次 `enqueuePlayerCommand`，因此不会被同一 JS context 的用户命令或 PlaybackService 写命令插入。后到任务在前一命令结束后接管播放器，最终播放后到任务。
 
 ### 6.1 用户播放/暂停
 

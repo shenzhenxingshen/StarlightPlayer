@@ -1,6 +1,6 @@
 # 用户手册截图说明
 
-> 生成/核对日期：2026-10-16。这里的图片用于说明界面，不等同于发布候选测试证据。
+> 生成/核对日期：2026-11-06。这里的图片用于说明界面，不等同于发布候选测试证据。
 
 ## 目录
 
@@ -28,6 +28,8 @@ python3 docs/images/user-manual/build_annotated.py
 
 Android 截图来自 App 1.0 Debug 界面。iPhone 竖屏由旧 Debug 原生壳加载当前仓库 JavaScript；iPhone/iPad 横屏来自 `release/ios/screenshots/` 的 1.0 全分辨率 Simulator 截图。iPad 竖屏使用包含当前横竖屏和遍数界面的 Simulator build；它不用于展示版本号。
 
+V1.1 的 `ios-task-list.png` 与 `ios-task-edit.png` 来自 iPhone 16 Pro / iOS 18 Simulator 的 1.1.0 (5) Debug build；截图前保持三条预置任务为默认关闭状态。为在无 Simulator GUI 的环境中稳定采集页面，采集时只临时改变 React Navigation 的初始页面，截图后即恢复，最终源码默认仍从播放页启动。
+
 ## 总览合成图索引
 
 | 文件                             | 手册内容                                 |
@@ -50,6 +52,7 @@ Android 截图来自 App 1.0 Debug 界面。iPhone 竖屏由旧 Debug 原生壳�
 | `14c-layout-ipad-landscape.png`  | iPad 方屏/横屏三栏及同轴关系             |
 | `15-android-system-controls.png` | Android 通知权限、媒体通知与两种锁屏控制 |
 | `16-diagnostics-export.png`      | 诊断文件导出四步                         |
+| `17-scheduled-tasks.png`         | 每日任务的列表、启停、立即播放与编辑     |
 
 具体原图与标注图的关系维护在 `build_annotated.py` 的 `build_all()` 中。每个 `PanelSpec` 明确记录原图文件、裁切范围和标注坐标，避免只留下无法复现的成品图。
 
@@ -68,6 +71,7 @@ Android 截图来自 App 1.0 Debug 界面。iPhone 竖屏由旧 Debug 原生壳�
 | 响应式布局         | `iphone-portrait-controls.png`、`ipad-portrait-controls.png`、`iphone-landscape-layout.png`、`ipad-landscape-layout.png`                              |
 | Android 系统界面   | `notification-permission.png`、`notification-player.png`、`notification-sync.png`、`lockscreen-normal.png`、`lockscreen-care.png`                     |
 | 诊断导出           | `diagnostics-entry.png`、`diagnostics-expanded.png`、`diagnostics-export.png`、`diagnostics-share.png`                                                |
+| 每日任务           | `task-list.png`、`task-edit-time-track.png`、`task-edit-playback.png`                                                                                |
 
 每个 `GuideCallout` 保存图内中文说明、箭头目标、说明卡片位置和可选高亮范围。更新截图后如果分辨率或布局发生变化，必须重新核对这些坐标。
 

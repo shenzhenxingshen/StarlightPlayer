@@ -1,23 +1,23 @@
 # 双端发布手册
 
-> 最后核对：2026-10-16。发布人应逐项留下版本、commit、测试记录、签名指纹和制品 SHA-256；“构建成功”不等于“可发布”。
+> 最后核对：2026-11-06。发布人应逐项留下版本、commit、测试记录、签名指纹和制品 SHA-256；“构建成功”不等于“可发布”。
 
 现有 1.0 制品和渠道信息的事后恢复见 [`release-records/1.0.0-reconstructed.md`](release-records/1.0.0-reconstructed.md)；其中 UNKNOWN/PARTIAL 项不能当作发布通过。
 
 ## 1. 当前发布事实与已知风险
 
-| 项目                  | 当前值                                                          |
-| --------------------- | --------------------------------------------------------------- |
-| Git                   | `main` 的 `0698f62` 对应 1.0.0 build 4；发布时仍应重新确认 HEAD |
-| npm package           | 1.0.0                                                           |
-| Android               | `versionName 1.0`、`versionCode 3`                              |
-| iOS                   | `CFBundleShortVersionString 1.0.0`、`CFBundleVersion 4`         |
-| App 内诊断文本        | 硬编码显示 1.0                                                  |
-| Android applicationId | `com.starlightplayer`                                           |
-| iOS bundle identifier | `com.starlightplayer.app`                                       |
-| iOS Target            | iPhone/iPad Universal，`TARGETED_DEVICE_FAMILY = "1,2"`         |
+| 项目                  | 当前值                                                  |
+| --------------------- | ------------------------------------------------------- |
+| Git                   | V1.1 当前在开发分支，发布时必须记录冻结 commit          |
+| npm package           | 1.1.0                                                   |
+| Android               | `versionName 1.1`、`versionCode 4`                      |
+| iOS                   | `CFBundleShortVersionString 1.1.0`、`CFBundleVersion 5` |
+| App 内诊断文本        | 硬编码显示 1.1                                          |
+| Android applicationId | `com.starlightplayer`                                   |
+| iOS bundle identifier | `com.starlightplayer.app`                               |
+| iOS Target            | iPhone/iPad Universal，`TARGETED_DEVICE_FAMILY = "1,2"` |
 
-营销版本目前存在 `1.0` 与 `1.0.0` 两种写法。商店可以接受 Android/iOS 构建号不同，但营销版本和 App 内显示应统一成同一个完整字符串，例如统一为 `1.1.0`。
+Android 平台继续使用 `1.1`、iOS/npm 使用 `1.1.0`，App 诊断显示 `1.1`。商店可接受这种平台展示差异，但每次发布必须把这组映射作为一个整体核对，避免漏改。
 
 另一个关键风险：源码的 iOS deployment target 是 13.4，但已经上传成功的 `1.0.0 (4)` Archive 实际为 `MinimumOSVersion = 15.0`。因此 build 4 不能宣称支持 iOS 13/14。若产品继续承诺 iOS 13/14，下一个 build 必须在 Archive 产物层修复并用旧系统真机验证。
 
@@ -87,11 +87,19 @@ git diff --check
 - Android/iOS 均为 21 首，文件名集合完全相同；
 - 对应文件 SHA-256 完全相同；
 - `src/constants/tracks.ts` 的文件名与 `durationMs` 和实际解码结果一致；
-- A05 仍为当前确认的 48 kHz、双声道、约 320 kb/s 固定码率版本，时长 70.684 秒；
+- A05 为 V1.1 确认的 48 kHz、双声道、192 kb/s 固定帧长版本，时长 70.134 秒、SHA-256 为 `7073706814d42c6a51a5c072793146ab7a6a3dd7b08ce4bd4c588db6d84c1c94`；
 - 完成至少一个全曲自然结束、重复、同步换遍的设备回归；
 - 音频来源与授权台账由产品方确认。仓库目前没有足以证明版权/授权的信息。
 
-两个 `link-assets-manifest.json` 已知过时，不能用它们替代上述检查。
+两个 `link-assets-manifest.json` 已更新 A05 与 D15，但仍不能用它们替代上述逐文件检查。
+
+### 3.2.1 V1.1 定时任务专项
+
+- 全新安装的三条预置任务必须全部关闭；从 V1.0 升级后也不能未经用户启用就自动播放。
+- Android 分别验证通知权限、Android 12+ 精确闹钟权限、锁屏/Doze、重启、手动改时间和时区变化。
+- iOS 验证前台自动执行，以及后台/终止时“通知后点击播放”的平台降级；不要宣称普通本地通知能唤醒已终止 App 自动播放。
+- 验证计划时刻后 60 秒内执行、超过窗口跳过且不补播；任务页手动播放不受窗口限制。
+- 验证后到任务直接替换当前播放，并重新应用曲目、重复遍数、播放模式和同步模式。
 
 ### 3.3 设备回归
 

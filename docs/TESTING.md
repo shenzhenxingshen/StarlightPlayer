@@ -81,6 +81,8 @@ npm test -- --runInBand --findRelatedTests src/utils/playbackDecision.ts
 | `utils/repeatDisplay.spec.ts` / `utils/numberFormat.spec.ts`       | 遍数显示矩阵、安全大数和千分位                                                         |
 | `components/*.spec.tsx`                                            | 五按钮、进度拖动与无障碍动作、曲目信息、黑胶动画清理                                   |
 | `screens/*.spec.tsx`                                               | 播放、列表、“我的”、自定义遍数、诊断导出和异常路径                                     |
+| `screens/TaskScreens.spec.tsx` / `utils/scheduledTasks.spec.ts`    | 默认关闭任务、排序/校验/持久化、新增修改删除启停与大遍数                               |
+| `services/scheduledTaskExecutor.spec.ts`                           | 四项配置原子应用、启用状态、Android/iOS 60 秒窗口、立即播放与播放器复用                |
 | `store/*.spec.ts` / `utils/diagnosticsAndLogger.spec.ts`           | 设置/统计 store、日志上限、格式和诊断失败                                              |
 
 ## 3. 覆盖率：分母、阈值和发布口径
@@ -93,16 +95,16 @@ npm test -- --runInBand --findRelatedTests src/utils/playbackDecision.ts
 - `src/types/**`；
 - `src/constants/**`。
 
-当前分母是其余 25 个 TypeScript/TSX 文件。Jest 按 Istanbul 插桩后分别计算：
+V1.1 新增任务页面、服务和 store 后，当前分母是其余 31 个 TypeScript/TSX 文件。Jest 按 Istanbul 插桩后分别计算：
 
-| 指标       | 分母含义                                   | 2026-10-16 命中/总数 | 报告值 |
+| 指标       | 分母含义                                   | 2026-11-06 命中/总数 | 报告值 |
 | ---------- | ------------------------------------------ | -------------------- | ------ |
-| statements | 可执行语句                                 | 1,143 / 1,159        | 98.61% |
-| branches   | `if`、条件表达式、默认分支等生成的分支出口 | 831 / 904            | 91.92% |
-| functions  | 函数、回调等可调用单元                     | 241 / 244            | 98.77% |
-| lines      | 至少包含一个可执行语句的源码行             | 1,060 / 1,071        | 98.97% |
+| statements | 可执行语句                                 | 1,363 / 1,429        | 95.38% |
+| branches   | `if`、条件表达式、默认分支等生成的分支出口 | 943 / 1,047          | 90.06% |
+| functions  | 函数、回调等可调用单元                     | 312 / 341            | 91.49% |
+| lines      | 至少包含一个可执行语句的源码行             | 1,255 / 1,305        | 96.16% |
 
-分母**不包括**：`ios/`、`android/` 原生代码，MP3 解码路径，第三方依赖，测试代码和 mock，资源文件，以及操作系统后台/锁屏/蓝牙实现。因此 98% 不能解释为“整个 App 98% 已验证”，branches 91.92% 也不表示所有产品边界都已覆盖。
+分母**不包括**：`ios/`、`android/` 原生代码，MP3 解码路径，第三方依赖，测试代码和 mock，资源文件，以及操作系统后台/锁屏/蓝牙实现。因此 95% 不能解释为“整个 App 95% 已验证”，branches 90.06% 也不表示所有产品边界都已覆盖。
 
 覆盖率报告默认生成到被 Git 忽略的 `coverage/`；HTML 入口为 `coverage/lcov-report/index.html`。每次比较必须使用相同 commit、Node/Jest 版本和全量覆盖率命令。
 
@@ -263,7 +265,7 @@ npm run test:coverage -- --runInBand
 git diff --check
 ```
 
-2026-10-16 基线：28/28 suites、298/298 tests 通过；覆盖率见第 3 节；`playbackService.ts` statements 99.62%、branches 90.36%、functions/lines 100%。当前 `format:check` 已知失败、ESLint 有 31 个 warning；发布记录必须如实写明，不能因为 Jest 通过就忽略静态检查。详见 [LINTING.md](LINTING.md)。
+2026-11-06 V1.1 工作树实测：32/32 suites、319/319 tests 通过；statements 95.38%、branches 90.06%、functions 91.49%、lines 96.16%。全量 typecheck 通过，ESLint 退出 0 但保留 31 个历史 warning，`format:check` 仍因 7 个历史文件失败，详见 [LINTING.md](LINTING.md)。最终候选提交后必须从冻结 commit 重新执行并建立 test-run，不能把工作树结果直接当作发布证据。
 
 随后执行 [QA 执行手册](QA_PLAYBOOK.md) 中适用于本次候选的 P/S/L/U 场景，并将结果写入独立的 [`test-runs`](test-runs/README.md) 文件。完整发布门槛仍以 [双端发布手册](RELEASE.md) 为准。
 

@@ -23,6 +23,37 @@ NativeModules.PlayerCommandLock = {
 NativeModules.DiagnosticExporter = {
   shareTextFile: jest.fn(async () => '/tmp/starlight-diagnostics.txt'),
 };
+NativeModules.ScheduledTaskManager = {
+  syncTasks: jest.fn(async () => ({
+    platform: 'ios',
+    notificationPermission: 'authorized',
+    exactAlarmPermission: 'not-needed',
+  })),
+  consumePendingTrigger: jest.fn(async () => null),
+  requestSchedulingPermission: jest.fn(async () => ({
+    platform: 'ios',
+    notificationPermission: 'authorized',
+    exactAlarmPermission: 'not-needed',
+  })),
+  getSchedulingStatus: jest.fn(async () => ({
+    platform: 'ios',
+    notificationPermission: 'authorized',
+    exactAlarmPermission: 'not-needed',
+  })),
+  addListener: jest.fn(),
+  removeListeners: jest.fn(),
+};
+
+jest.mock('@react-navigation/native-stack', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    createNativeStackNavigator: () => ({
+      Navigator: ({ children }) => React.createElement(View, null, children),
+      Screen: () => null,
+    }),
+  };
+});
 
 // 关掉 RN 启动时的告警噪音
 jest.spyOn(console, 'warn').mockImplementation(() => {});

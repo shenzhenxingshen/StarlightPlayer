@@ -1,6 +1,6 @@
 # MMKV 本地数据模型与恢复协议
 
-> 适用于 1.0 源码，依据 2026-10-16 的 `src/utils/storage.ts`、`src/utils/logger.ts` 及全部调用方核对。本文是持久化 schema 的维护契约；新增、改名或删除 key 时必须同步更新本文和 `__tests__/utils/storage.spec.ts`。
+> 适用于 1.1 源码，依据 2026-11-06 的 `src/utils/storage.ts`、`src/utils/logger.ts` 及全部调用方核对。本文是持久化 schema 的维护契约；新增、改名或删除 key 时必须同步更新本文和相关测试。
 
 ## 1. 存储实现与约束
 
@@ -29,6 +29,7 @@
 | `track_generation`       | number   | 逻辑换曲代次                                 | `0`                                     | 识别迟到原生事件          |
 | `session_count`          | number   | 当前曲本轮已完成的有效遍数                   | `0`                                     | 达到 N 后执行播放模式     |
 | `playback_task_progress` | string   | JSON：当前播放任务累计完成遍数               | `null`                                  | UI 跨重启累计显示         |
+| `scheduled_tasks_v1`     | string   | JSON：用户的每日定时任务数组                 | 首次生成三条默认关闭任务                | 任务列表与原生调度来源    |
 | `cycle_eligible`         | boolean  | 当前周期是否具备结尾计数资格                 | 回退旧 key，最终 `false`                | 单周期计数资格            |
 | `started_from_zero`      | boolean  | 旧版周期资格                                 | `false`                                 | 只读兼容                  |
 | `expected_playing`       | boolean  | 用户/系统是否仍期望持续播放                  | `false`                                 | watchdog 是否可自动恢复   |
@@ -209,6 +210,17 @@
 - **损坏回退**：JSON 解析失败或非数组返回 `[]`；数组中只保留 string，其他项过滤。
 
 日志可能包含设备信息、曲目 ID、播放器状态和时间戳，但导出前不会写回 `app_logs`。诊断文件本身存放在临时/cache 目录，不是 MMKV key。
+
+### 3.15 `scheduled_tasks_v1`
+
+- **值类型**：JSON string，内容是 `ScheduledTask[]`。
+- **字段**：`id`、最长 30 字符的 `name`、`hour/minute/second`、有效 `trackId`、正安全整数 `repeatCount`、四种 `playMode`、`isSyncMode`、`enabled`。
+- **默认值**：仅在 key 缺失或 JSON 整体损坏时写入三条默认关闭任务；合法空数组表示用户已删除全部任务，不能再次生成预置项。
+- **读取/写入方**：`scheduledTaskStore` 经 `loadScheduledTasks` / `saveScheduledTasks` 读写；保存时过滤非法项、按 ID 去重，并按时刻和 ID 排序。
+- **原生镜像**：Android `SharedPreferences(starlight_scheduled_tasks)` 只镜像调度所需的 ID、名称、时分秒、启用状态，开机/改时间后恢复闹钟；iOS 以 `UNCalendarNotificationTrigger` 保存每日通知。两者不是任务完整配置的权威，真正执行时仍按 task ID 回到 MMKV 读取完整任务。
+- **临时触发**：iOS `NSUserDefaults` 中的 `starlight_pending_task_*` 只用于把通知 task ID、来源和原计划时间跨冷启动交给 JS，消费后删除；这些 key 不是用户配置。
+- **执行窗口**：系统触发超过计划时刻 60 秒即跳过；任务列表的手动播放不受限制。执行任务会重写 settings/player_state，并通过正常换曲协议创建新的播放任务。
+- **兼容性**：V1.0 没有此 key，升级到 V1.1 等同首次缺失，生成默认关闭任务，不会突然自动播放。
 
 ## 4. RNTP 原生队列与 MMKV 的权威边界
 

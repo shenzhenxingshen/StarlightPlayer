@@ -1,6 +1,6 @@
 # 开发环境与日常开发
 
-> 最后核对：2026-10-16。本文区分“仓库声明的要求”和“当前开发机曾验证的版本”；后者不是最低支持版本。
+> 最后核对：2026-11-06。本文区分“仓库声明的要求”和“当前开发机曾验证的版本”；后者不是最低支持版本。
 
 ## 1. 项目与工具链
 
@@ -29,6 +29,10 @@ npm ci
 ```
 
 `npm ci` 会严格使用 lockfile，并重建 `node_modules`。不要在普通构建中使用 `npm update`。如果中国网络环境下 RNTP 的 Maven 仓库不可达，可人工审阅后执行 `patches/patch-rntp.sh`；该脚本不会被 npm/Gradle 自动调用，使用 macOS BSD `sed -i ''`，并会直接修改 `node_modules`。每次 `npm ci` 后都可能需要重做，它不是源码补丁的永久替代品。
+
+安装过程必须允许 npm lifecycle scripts：`npm ci` 结束时会执行 `postinstall=patch-package`，把 `patches/react-native-track-player+4.1.2.patch` 应用到 RNTP 4.1.2。该补丁只允许由 Android 定时任务前台 Service 创建的、最长 120 秒的后台播放器初始化窗口；普通后台代码仍会被 RNTP 拒绝。使用 `--ignore-scripts` 会导致冷启动定时任务无法初始化播放器，不能作为可发布的安装结果。升级 RNTP 时必须重新生成并审阅补丁，并完成“App 未启动/进程已终止时到点”的 Android 真机回归。
+
+`patches/patch-rntp.sh` 与上述补丁用途不同：前者只处理历史 Maven 源可达性，后者是 V1.1 定时任务冷启动所需的运行时行为修正，不能互相替代。
 
 ### 2.2 Android
 
@@ -132,6 +136,12 @@ git diff
 详细约定见 [PLAYBACK_ARCHITECTURE.md](PLAYBACK_ARCHITECTURE.md)，测试要求见 [TESTING.md](TESTING.md) 和 [DEVICE_TEST_MATRIX.md](DEVICE_TEST_MATRIX.md)。
 
 ## 6. 资源与本地数据注意事项
+
+V1.1 新增 `scheduled_tasks_v1` MMKV schema 和双端原生调度。修改任务字段时必须同时检查：TypeScript 类型/归一化、Android `ScheduledTaskManagerModule` 的 JSON 镜像、iOS `ScheduledTaskManager.mm` 的通知 payload、冷启动 pending trigger、权限文案和 `__tests__/utils/scheduledTasks.spec.ts`。原生调度只保存 task ID 与时刻，完整配置仍以 MMKV 为准。
+
+任务执行先由专用 Promise 链按触发顺序串行，再把 `setupPlayer / updateOptions / replaceTrack / play` 放入一次 `enqueuePlayerCommand`。不得把这些 RNTP 写操作拆到命令队列外，否则到点任务可能和用户点按、锁屏控制或 QueueEnded 交错。后到任务会在前一任务命令完成后替换当前播放，符合“新任务直接中断旧任务”的产品规则。
+
+Android 真机需分别测试通知权限、Android 12+“闹钟和提醒”、重启、改时间/时区、Doze 和厂商省电。iOS Simulator 只能验证通知/UI 基础路径，不能证明终止状态、系统调度或旧 iOS 真机行为。
 
 - 两个平台各直接保存 21 首 MP3；修改音频时必须同步两份并按 `docs/AUDIO_ASSETS.md` 校验。
 - `scripts/copyAssets.js` 只复制到 Android，且默认的 `assets/audio` 当前不存在。它不能完成双端资源发布流程。

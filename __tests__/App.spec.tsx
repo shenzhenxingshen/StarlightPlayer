@@ -155,6 +155,7 @@ describe('<App /> 初始化与导航', () => {
         [
           ['Player', 'play-circle-outline'],
           ['Playlist', 'queue-music'],
+          ['Tasks', 'alarm'],
           ['Profile', 'person'],
         ] as const
       ).forEach(([screen, iconName]) => {
@@ -188,6 +189,7 @@ describe('<App /> 初始化与导航', () => {
     const { getByText, queryByText } = render(<App />);
     await waitFor(() => expect(getByText('screen:Player')).toBeTruthy());
     expect(queryByText('screen:Playlist')).toBeNull();
+    expect(queryByText('screen:Tasks')).toBeNull();
     expect(getByText('screen:Profile')).toBeTruthy();
   });
 });

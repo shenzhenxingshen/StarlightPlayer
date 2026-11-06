@@ -39,7 +39,7 @@
 ### 产品、内容和用户支持
 
 - 用户操作：[图文用户手册](USER_MANUAL.md)
-- 离线传播与打印：[单文件 HTML](USER_MANUAL.html)、[A4 PDF](../output/pdf/StarlightPlayer-User-Manual-1.0.pdf)
+- 离线传播与打印：[单文件 HTML](USER_MANUAL.html)、[A4 PDF](../output/pdf/StarlightPlayer-User-Manual-1.1.pdf)
 - 用户手册图片来源与更新规则：[截图说明](images/user-manual/README.md)
 - 隐私：[`PRIVACY.md`](../PRIVACY.md)
 - 音频文件、时长与哈希：[音频资产台账](AUDIO_ASSETS.md)

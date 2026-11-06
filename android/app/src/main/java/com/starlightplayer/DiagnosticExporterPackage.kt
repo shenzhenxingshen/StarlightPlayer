@@ -10,6 +10,7 @@ class DiagnosticExporterPackage : ReactPackage {
     listOf(
       DiagnosticExporterModule(reactContext),
       PlayerCommandLockModule(reactContext),
+      ScheduledTaskManagerModule(reactContext),
     )
 
   override fun createViewManagers(

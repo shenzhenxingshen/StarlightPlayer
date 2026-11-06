@@ -1,6 +1,6 @@
 import './utils/logger'; // 最先加载，拦截全局错误
 import { GOLD, GOLD_DIM, BG_GROUND, BG_SURFACE, BORDER_STRONG, TEXT_TER } from './constants/colors';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
@@ -18,6 +18,7 @@ import TrackPlayer, { RepeatMode } from 'react-native-track-player';
 import PlayerScreen from './screens/PlayerScreen';
 import PlaylistScreen from './screens/PlaylistScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import TaskNavigator from './navigation/TaskNavigator';
 import { replaceTrackInCommand } from './utils/trackManager';
 import {
   getSettings,
@@ -41,6 +42,13 @@ import { addLog } from './utils/logger';
 import { isNearCycleStart } from './utils/playbackCycle';
 import { shouldRestoreExpectedPlaying } from './utils/playbackDecision';
 import { getPlayerLayout } from './utils/playerLayout';
+import { useScheduledTaskStore } from './store/scheduledTaskStore';
+import {
+  consumePendingScheduledTask,
+  subscribeScheduledTaskTriggers,
+  syncTaskSchedules,
+} from './services/scheduledTaskScheduler';
+import { executeScheduledTask } from './services/scheduledTaskExecutor';
 
 const Tab = createBottomTabNavigator();
 
@@ -154,6 +162,29 @@ const App: React.FC = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!ready) return;
+    const run = (trigger: {
+      taskId: string;
+      source: 'ios-foreground' | 'notification-tap';
+      scheduledAt?: number;
+    }) => {
+      executeScheduledTask(trigger).catch(taskError =>
+        addLog('ERROR', `ScheduledTask ${trigger.source} failed: ${trigger.taskId}`, taskError),
+      );
+    };
+    syncTaskSchedules(useScheduledTaskStore.getState().tasks).catch(taskError =>
+      addLog('ERROR', 'initial scheduled task sync failed', taskError),
+    );
+    const unsubscribe = subscribeScheduledTaskTriggers(run);
+    consumePendingScheduledTask()
+      .then(trigger => {
+        if (trigger) run(trigger);
+      })
+      .catch(taskError => addLog('ERROR', 'consume pending scheduled task failed', taskError));
+    return unsubscribe;
+  }, [ready]);
+
   if (error) {
     return (
       <View style={st.center}>
@@ -202,6 +233,10 @@ const AppTabs: React.FC = () => {
   const layout = getPlayerLayout(width, height, isCareMode);
   const tabBarHeight = layout.tabBarHeight + insets.bottom;
   const tabBarPaddingBottom = Math.max(layout.tabBarPaddingBottom, insets.bottom);
+  const renderTaskTabIcon = useCallback(
+    ({ color }: { color: string }) => <Icon name="alarm" size={layout.tabIconSize} color={color} />,
+    [layout.tabIconSize],
+  );
   return (
     <Tab.Navigator
       initialRouteName="Player"
@@ -239,6 +274,16 @@ const AppTabs: React.FC = () => {
             tabBarIcon: ({ color }) => (
               <Icon name="queue-music" size={layout.tabIconSize} color={color} />
             ),
+          }}
+        />
+      )}
+      {!isCareMode && (
+        <Tab.Screen
+          name="Tasks"
+          component={TaskNavigator}
+          options={{
+            title: '任务',
+            tabBarIcon: renderTaskTabIcon,
           }}
         />
       )}

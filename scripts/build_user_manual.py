@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -22,7 +23,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = REPO_ROOT / "docs"
 SOURCE = DOCS_DIR / "USER_MANUAL.md"
 HTML_OUTPUT = DOCS_DIR / "USER_MANUAL.html"
-PDF_OUTPUT = REPO_ROOT / "output" / "pdf" / "StarlightPlayer-User-Manual-1.0.pdf"
+PACKAGE_VERSION = json.loads((REPO_ROOT / "package.json").read_text(encoding="utf-8"))["version"]
+MANUAL_VERSION = ".".join(PACKAGE_VERSION.split(".")[:2])
+PDF_OUTPUT = REPO_ROOT / "output" / "pdf" / f"StarlightPlayer-User-Manual-{MANUAL_VERSION}.pdf"
 TEMP_DIR = REPO_ROOT / "tmp" / "pdfs"
 PUBLIC_PRIVACY_URL = (
     "https://github.com/shenzhenxingshen/StarlightPlayer/blob/main/PRIVACY.md"
@@ -249,7 +252,7 @@ hr {
   }
 
   @top-right {
-    content: "1.0";
+    content: "__MANUAL_VERSION__";
     color: #5c6b68;
     font-family: "Arial Unicode MS", "PingFang SC", "Hiragino Sans GB", sans-serif;
     font-size: 8.5pt;
@@ -495,7 +498,10 @@ def main() -> int:
 
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
     css_path = TEMP_DIR / "user-manual.css"
-    css_path.write_text(PRINT_CSS.strip() + "\n", encoding="utf-8")
+    css_path.write_text(
+        PRINT_CSS.replace("__MANUAL_VERSION__", MANUAL_VERSION).strip() + "\n",
+        encoding="utf-8",
+    )
 
     build_html(css_path)
     validate_html()

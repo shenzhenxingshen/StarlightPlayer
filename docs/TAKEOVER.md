@@ -1,6 +1,6 @@
 # StarlightPlayer 项目接管手册
 
-> 依据 2026-10-16 `main` 分支的源码、配置和本机构建产物核对。本文只描述可证实的现状；不把推测写成事实。
+> 依据 2026-11-06 V1.1 开发分支的源码和配置核对。本文只描述可证实的现状；不把推测写成事实。
 
 ## 1. 技术栈和主要框架
 
@@ -15,14 +15,14 @@
 
 ```text
 StarlightPlayer/
-├── index.js                     # RN 入口，注册 App 和 PlaybackService
+├── index.js                     # RN 入口，注册 App、PlaybackService、定时 Headless task
 ├── src/
 │   ├── App.tsx                  # 播放器初始化、恢复、导航
-│   ├── screens/                 # 播放/列表/我的
+│   ├── screens/                 # 播放/列表/任务/我的
 │   ├── components/              # 播放控件、进度条、曲目信息
 │   ├── services/playbackService.ts
 │   │                            # 后台事件、计数、模式决策、恢复
-│   ├── store/                   # Zustand settings/stats
+│   ├── store/                   # Zustand settings/stats/scheduled tasks
 │   ├── constants/               # 曲目元数据、颜色
 │   └── utils/
 │       ├── storage.ts           # MMKV 跨生命周期协议
@@ -36,19 +36,23 @@ StarlightPlayer/
 ├── __tests__/                    # Jest 纯逻辑与组件测试
 ├── docs/                         # 用户、开发、架构、发布、测试和资产文档
 ├── scripts/copyAssets.js         # 可选音频复制工具
-└── patches/patch-rntp.sh         # RNTP Android Maven 源替换脚本
+└── patches/
+    ├── patch-rntp.sh             # 可选的 RNTP Android Maven 源替换脚本
+    └── react-native-track-player+4.1.2.patch
+                                 # 定时任务冷启动的 RNTP 后台初始化门控
 ```
 
 ## 3. 主要启动入口和核心流程
 
 接管时必须同时守住两项产品核心：完整 N 遍计数，以及按设备本地共同时间对齐的同步模式。同步负责“大家此刻播到哪里”，N 遍状态机负责“什么才算完成一遍”；二者不能互相替代。
 
-1. `index.js` 先加载 logger，再注册 `App` 和 `PlaybackService`。
+1. `index.js` 先加载 logger，再注册 `App`、`PlaybackService` 和 Android 定时任务 Headless JS。
 2. `App.tsx` 通过进程级命令锁调用 `setupPlayer`，配置 Android 后台继续播放、30 秒前台宽限、RNTP RepeatMode Off。
 3. 如原生播放队列仍在，App 直接接管，不 reset；否则按 `player_state.trackIndex` 重建单曲队列。
 4. UI 播放/暂停/切歌/seek 和后台 Remote\* 事件全部进入 `playerCommandQueue`。正常 RNTP HeadlessJS 复用同一 ReactContext，由 JS 链排队；Android/iOS 原生 `PlayerCommandLock` 额外防御多 ReactContext/桥接重入。
 5. 单曲原生队列到尾后产生 `PlaybackQueueEnded`：校验 generation/曲目/结束位置 → 按 `cycleEligible` 计数 → 先判断 N 遍 → 再执行四种模式。
 6. 异常停止时，`PlaybackError`/`PlayerError`/`PlaybackState` 写日志；若仍然 `expected_playing=true`，watchdog 重建队列并验证播放，最多退避恢复三轮。
+7. 每日任务由 MMKV 保存完整配置、原生系统保存时刻；到点后校验启用状态和 60 秒窗口，再走正常换曲协议替换当前播放。Android 可后台自动启动，iOS 后台/终止状态需用户点击本地通知。
 
 ### 3.1 播放页响应式契约（需求 29）
 
@@ -78,8 +82,9 @@ Android、iOS 各自只需一个安装包；iOS Target 的 `TARGETED_DEVICE_FAMI
 | `ios/Podfile` / `Info.plist`                         | 源码目标 iOS/iPadOS 13.4、iPad 四方向/分屏、UIScene、后台 audio |
 | `ios/.xcode.env`                                     | Xcode 脚本的 Node 路径；当前硬编码 `/opt/homebrew/bin/node`     |
 | `react-native.config.js`                             | iOS 音频和字体资源                                              |
+| `patches/react-native-track-player+4.1.2.patch`      | 仅为 Android 定时任务前台 Service 放行短时后台 RNTP 初始化      |
 
-当前版本来源并未统一：`package.json` 为 1.0.0；Android 为 `versionName 1.0 / versionCode 3`；iOS 为 `1.0.0 (4)`；诊断文本显示 1.0。每次发版必须按 [RELEASE.md](RELEASE.md) 的清单逐项更新和核验。
+当前 V1.1 映射为：`package.json` 1.1.0；Android `versionName 1.1 / versionCode 4`；iOS `1.1.0 (5)`；诊断文本 1.1。版本仍分散在多个文件，每次发版必须按 [RELEASE.md](RELEASE.md) 的清单逐项更新和核验。
 
 Android release 签名需要：
 
@@ -90,14 +95,16 @@ Android release 签名需要：
 
 没有发现运行时 dotenv、API key、后端 URL 或业务密钥。仓库中存在 Xcode 使用的 `ios/.xcode.env`，它不是业务环境变量文件。Gradle/npm/CocoaPods 仅在构建期访问外部仓库。
 
+`npm ci` 必须正常执行 `postinstall=patch-package`；不能用 `--ignore-scripts` 生成可发布依赖树。补丁与 lockfile 当前的 RNTP 4.1.2 绑定，升级 RNTP 后必须重做补丁和 Android 冷进程到点回归。旧的 `patches/patch-rntp.sh` 只解决 Maven 源可达性，不承担后台初始化门控。
+
 ## 5. 数据库、缓存、消息队列、第三方服务
 
 - 数据库：无。
 - 远程缓存：无。MMKV 是设备本地 KV，不是服务端缓存。
 - 消息队列：无。
 - 网络 API/登录/支付/推送/广告/分析：无。
-- 平台服务：仅使用 Android MediaSession/前台服务、iOS Now Playing/后台音频、系统分享面板。
-- 本地数据：设置、曲目/模式、当前遍数、每日统计、诊断日志。卸载 App 可删除。
+- 平台服务：Android MediaSession/前台媒体服务/AlarmManager，iOS Now Playing/后台音频/本地通知，以及系统分享面板。
+- 本地数据：设置、定时任务、曲目/模式、当前遍数、每日统计、诊断日志。卸载 App 可删除。
 
 ## 6. 测试、构建、启动命令
 
