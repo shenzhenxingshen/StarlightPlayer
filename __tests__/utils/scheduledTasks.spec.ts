@@ -1,6 +1,7 @@
 import { MMKV } from 'react-native-mmkv';
 import {
   DEFAULT_SCHEDULED_TASKS,
+  findEnabledTaskTimeConflict,
   formatTaskTime,
   sortScheduledTasks,
 } from '@/constants/scheduledTasks';
@@ -65,5 +66,15 @@ describe('每日定时任务持久化', () => {
     ];
     expect(sortScheduledTasks(source).map(task => task.id)).toEqual(['a', 'b']);
     expect(source.map(task => task.id)).toEqual(['b', 'a']);
+  });
+
+  it('只把同一时刻的其他已启用任务视为冲突', () => {
+    const candidate = { ...DEFAULT_SCHEDULED_TASKS[0], enabled: true };
+    const sameTime = { ...DEFAULT_SCHEDULED_TASKS[1], id: 'same', hour: 5, enabled: true };
+    const disabled = { ...sameTime, id: 'disabled', enabled: false };
+    expect(findEnabledTaskTimeConflict([sameTime], candidate)?.id).toBe('same');
+    expect(findEnabledTaskTimeConflict([disabled], candidate)).toBeNull();
+    expect(findEnabledTaskTimeConflict([sameTime], { ...candidate, enabled: false })).toBeNull();
+    expect(findEnabledTaskTimeConflict([candidate], candidate)).toBeNull();
   });
 });

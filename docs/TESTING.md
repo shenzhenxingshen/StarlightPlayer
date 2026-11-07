@@ -6,7 +6,7 @@
 
 | 层级                        | 当前实现                                           | 能证明                                                   | 不能证明                                                         |
 | --------------------------- | -------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------- |
-| TypeScript/Jest/RNTL        | 28 suites、298 tests；Node 环境和内存 mock         | 业务决策、持久化协议、组件交互、异常分支、响应式布局计算 | RNTP 原生状态机、真实解码、系统后台策略、硬件/系统事件           |
+| TypeScript/Jest/RNTL        | 32 suites、324 tests；Node 环境和内存 mock         | 业务决策、持久化协议、组件交互、异常分支、响应式布局计算 | RNTP 原生状态机、真实解码、系统后台策略、硬件/系统事件           |
 | iOS XCTest                  | `StarlightPlayerTests` 中 1 个根控制器 smoke test  | App 能在指定 Simulator/设备上启动并创建根控制器          | 播放、锁屏、后台、来电、蓝牙、同步听感和完整 UI 流程             |
 | Android JVM/instrumentation | **尚未建立**                                       | 无                                                       | 即使 Gradle task 显示成功，也不能在 0 个测试时视为原生回归 PASS  |
 | Simulator/Emulator 人工回归 | 可执行页面、布局、基础流程和部分进程恢复测试       | 指定 build 在指定模拟环境中的实际行为                    | 真机后台保活、锁屏硬件链路、电话、蓝牙、厂商省电和多设备听感同步 |
@@ -81,7 +81,7 @@ npm test -- --runInBand --findRelatedTests src/utils/playbackDecision.ts
 | `utils/repeatDisplay.spec.ts` / `utils/numberFormat.spec.ts`       | 遍数显示矩阵、安全大数和千分位                                                         |
 | `components/*.spec.tsx`                                            | 五按钮、进度拖动与无障碍动作、曲目信息、黑胶动画清理                                   |
 | `screens/*.spec.tsx`                                               | 播放、列表、“我的”、自定义遍数、诊断导出和异常路径                                     |
-| `screens/TaskScreens.spec.tsx` / `utils/scheduledTasks.spec.ts`    | 默认关闭任务、排序/校验/持久化、新增修改删除启停与大遍数                               |
+| `screens/TaskScreens.spec.tsx` / `utils/scheduledTasks.spec.ts`    | 默认关闭任务、排序/校验/持久化、左滑删除、同一时刻启用冲突、新增修改启停与大遍数       |
 | `services/scheduledTaskExecutor.spec.ts`                           | 四项配置原子应用、启用状态、Android/iOS 60 秒窗口、立即播放与播放器复用                |
 | `store/*.spec.ts` / `utils/diagnosticsAndLogger.spec.ts`           | 设置/统计 store、日志上限、格式和诊断失败                                              |
 
@@ -97,12 +97,12 @@ npm test -- --runInBand --findRelatedTests src/utils/playbackDecision.ts
 
 V1.1 新增任务页面、服务和 store 后，当前分母是其余 31 个 TypeScript/TSX 文件。Jest 按 Istanbul 插桩后分别计算：
 
-| 指标       | 分母含义                                   | 2026-11-06 命中/总数 | 报告值 |
+| 指标       | 分母含义                                   | 2026-11-07 命中/总数 | 报告值 |
 | ---------- | ------------------------------------------ | -------------------- | ------ |
-| statements | 可执行语句                                 | 1,363 / 1,429        | 95.38% |
-| branches   | `if`、条件表达式、默认分支等生成的分支出口 | 943 / 1,047          | 90.06% |
-| functions  | 函数、回调等可调用单元                     | 312 / 341            | 91.49% |
-| lines      | 至少包含一个可执行语句的源码行             | 1,255 / 1,305        | 96.16% |
+| statements | 可执行语句                                 | 1,395 / 1,458        | 95.67% |
+| branches   | `if`、条件表达式、默认分支等生成的分支出口 | 954 / 1,059          | 90.08% |
+| functions  | 函数、回调等可调用单元                     | 321 / 348            | 92.24% |
+| lines      | 至少包含一个可执行语句的源码行             | 1,283 / 1,329        | 96.53% |
 
 分母**不包括**：`ios/`、`android/` 原生代码，MP3 解码路径，第三方依赖，测试代码和 mock，资源文件，以及操作系统后台/锁屏/蓝牙实现。因此 95% 不能解释为“整个 App 95% 已验证”，branches 90.06% 也不表示所有产品边界都已覆盖。
 
@@ -265,7 +265,7 @@ npm run test:coverage -- --runInBand
 git diff --check
 ```
 
-2026-11-06 V1.1 工作树实测：32/32 suites、319/319 tests 通过；statements 95.38%、branches 90.06%、functions 91.49%、lines 96.16%。全量 typecheck 通过，ESLint 退出 0 但保留 31 个历史 warning，`format:check` 仍因 7 个历史文件失败，详见 [LINTING.md](LINTING.md)。最终候选提交后必须从冻结 commit 重新执行并建立 test-run，不能把工作树结果直接当作发布证据。
+2026-11-07 V1.1 工作树实测：32/32 suites、324/324 tests 通过；statements 95.67%、branches 90.08%、functions 92.24%、lines 96.53%。全量 typecheck 通过，ESLint 退出 0 但保留 31 个历史 warning，`format:check` 仍因历史文件失败，详见 [LINTING.md](LINTING.md)。最终候选提交后必须从冻结 commit 重新执行并建立 test-run，不能把工作树结果直接当作发布证据。
 
 随后执行 [QA 执行手册](QA_PLAYBOOK.md) 中适用于本次候选的 P/S/L/U 场景，并将结果写入独立的 [`test-runs`](test-runs/README.md) 文件。完整发布门槛仍以 [双端发布手册](RELEASE.md) 为准。
 

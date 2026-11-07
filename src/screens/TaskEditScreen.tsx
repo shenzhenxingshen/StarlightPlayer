@@ -84,8 +84,17 @@ const TaskEditScreen: React.FC<Props> = ({ navigation, route }) => {
       isSyncMode,
       enabled: existing?.enabled ?? false,
     };
-    if (existing) updateTask({ ...draft, id: existing.id });
-    else addTask(draft);
+    if (existing) {
+      const conflict = updateTask({ ...draft, id: existing.id });
+      if (conflict) {
+        return Alert.alert(
+          '启动时刻冲突',
+          `“${conflict.name}”已在 ${[conflict.hour, conflict.minute, conflict.second]
+            .map(value => String(value).padStart(2, '0'))
+            .join(':')} 启用。同一时刻只能启用一个任务。`,
+        );
+      }
+    } else addTask(draft);
     navigation.goBack();
   };
 

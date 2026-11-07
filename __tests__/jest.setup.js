@@ -3,7 +3,15 @@
 jest.mock('react-native-mmkv', () => require('./mocks/mmkv'));
 jest.mock('react-native-track-player', () => require('./mocks/trackPlayer'));
 jest.mock('react-native-vector-icons/MaterialIcons', () => 'Icon');
-jest.mock('react-native-gesture-handler', () => ({}));
+jest.mock('react-native-gesture-handler', () => {
+  const React = require('react');
+  const View = require('react-native').View;
+  return {
+    GestureHandlerRootView: ({ children, ...props }) => React.createElement(View, props, children),
+    Swipeable: ({ children, renderRightActions, ...props }) =>
+      React.createElement(View, props, children, renderRightActions?.()),
+  };
+});
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
   const View = require('react-native').View;

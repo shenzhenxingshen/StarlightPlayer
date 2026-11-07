@@ -62,6 +62,19 @@ export function sortScheduledTasks(tasks: readonly ScheduledTask[]): ScheduledTa
   );
 }
 
+export function findEnabledTaskTimeConflict(
+  tasks: readonly ScheduledTask[],
+  candidate: ScheduledTask,
+): ScheduledTask | null {
+  if (!candidate.enabled) return null;
+  const candidateTime = taskTimeInSeconds(candidate);
+  return (
+    tasks.find(
+      task => task.id !== candidate.id && task.enabled && taskTimeInSeconds(task) === candidateTime,
+    ) ?? null
+  );
+}
+
 export function formatTaskTime(task: Pick<ScheduledTask, 'hour' | 'minute' | 'second'>): string {
   return [task.hour, task.minute, task.second]
     .map(value => String(value).padStart(2, '0'))

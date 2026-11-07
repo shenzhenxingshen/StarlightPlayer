@@ -61,9 +61,57 @@ describe('任务列表', () => {
     const { getByLabelText } = render(
       <TaskListScreen navigation={navigation as any} route={{} as any} />,
     );
+    await waitFor(() =>
+      expect(NativeModules.ScheduledTaskManager.getSchedulingStatus).toHaveBeenCalled(),
+    );
     await act(async () => fireEvent(getByLabelText('早自习已关闭'), 'valueChange', true));
     expect(loadScheduledTasks().find(task => task.id === 'default-morning')?.enabled).toBe(true);
     expect(manager.requestSchedulingPermission).toHaveBeenCalled();
+  });
+
+  it('同一时刻已有启用任务时阻止第二个任务启用', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const tasks = loadScheduledTasks().map(task =>
+      task.id === 'default-morning'
+        ? { ...task, enabled: true }
+        : task.id === 'default-opportunity'
+          ? { ...task, hour: 5, minute: 30, second: 0 }
+          : task,
+    );
+    useScheduledTaskStore.getState().replaceAll(tasks);
+    const { getByLabelText } = render(
+      <TaskListScreen navigation={navigation as any} route={{} as any} />,
+    );
+    await waitFor(() =>
+      expect(NativeModules.ScheduledTaskManager.getSchedulingStatus).toHaveBeenCalled(),
+    );
+
+    await act(async () => fireEvent(getByLabelText('见缝插针已关闭'), 'valueChange', true));
+
+    expect(alert).toHaveBeenCalledWith(
+      '启动时刻冲突',
+      expect.stringContaining('同一时刻只能启用一个任务'),
+    );
+    expect(loadScheduledTasks().find(task => task.id === 'default-opportunity')?.enabled).toBe(
+      false,
+    );
+  });
+
+  it('左滑删除按钮确认后删除任务', async () => {
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find(button => button.style === 'destructive')?.onPress?.();
+    });
+    const { getByLabelText } = render(
+      <TaskListScreen navigation={navigation as any} route={{} as any} />,
+    );
+    await waitFor(() =>
+      expect(NativeModules.ScheduledTaskManager.getSchedulingStatus).toHaveBeenCalled(),
+    );
+    await act(async () => {
+      fireEvent.press(getByLabelText('删除任务早自习'));
+      await Promise.resolve();
+    });
+    expect(loadScheduledTasks().some(task => task.id === 'default-morning')).toBe(false);
   });
 });
 
@@ -131,5 +179,29 @@ describe('任务编辑', () => {
     fireEvent.press(screen.getByText('删除任务'));
     expect(loadScheduledTasks().some(task => task.id === 'default-evening')).toBe(false);
     expect(alert).toHaveBeenCalled();
+  });
+
+  it('阻止已启用任务修改到另一个已启用任务的相同时刻', () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const tasks = loadScheduledTasks().map(task =>
+      task.id === 'default-morning' || task.id === 'default-opportunity'
+        ? { ...task, enabled: true }
+        : task,
+    );
+    useScheduledTaskStore.getState().replaceAll(tasks);
+    const { getByLabelText, getByText } = render(
+      <TaskEditScreen
+        navigation={navigation as any}
+        route={route({ taskId: 'default-opportunity' }) as any}
+      />,
+    );
+    fireEvent.changeText(getByLabelText('时'), '05');
+    fireEvent.changeText(getByLabelText('分'), '30');
+    fireEvent.press(getByText('保存'));
+    expect(alert).toHaveBeenCalledWith(
+      '启动时刻冲突',
+      expect.stringContaining('同一时刻只能启用一个任务'),
+    );
+    expect(navigation.goBack).not.toHaveBeenCalled();
   });
 });

@@ -3,6 +3,7 @@ import { Alert, AppState, FlatList, Pressable, StyleSheet, Switch, Text, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { Swipeable } from 'react-native-gesture-handler';
 import { TaskStackParamList } from '../navigation/TaskNavigator';
 import { useScheduledTaskStore } from '../store/scheduledTaskStore';
 import { TRACKS } from '../constants/tracks';
@@ -47,6 +48,7 @@ function permissionMessage(status: TaskSchedulingStatus | null): string | null {
 const TaskListScreen: React.FC<Props> = ({ navigation }) => {
   const tasks = useScheduledTaskStore(state => state.tasks);
   const setTaskEnabled = useScheduledTaskStore(state => state.setTaskEnabled);
+  const deleteTask = useScheduledTaskStore(state => state.deleteTask);
   const [status, setStatus] = useState<TaskSchedulingStatus | null>(null);
   const [playingTaskId, setPlayingTaskId] = useState<string | null>(null);
 
@@ -71,7 +73,14 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
 
   const toggleTask = useCallback(
     async (taskId: string, enabled: boolean) => {
-      setTaskEnabled(taskId, enabled);
+      const conflict = setTaskEnabled(taskId, enabled);
+      if (conflict) {
+        Alert.alert(
+          '启动时刻冲突',
+          `“${conflict.name}”已在 ${formatTaskTime(conflict)} 启用。同一时刻只能启用一个任务，请先关闭原任务。`,
+        );
+        return;
+      }
       if (enabled) {
         try {
           setStatus(await requestTaskSchedulingPermission());
@@ -81,6 +90,16 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
       }
     },
     [setTaskEnabled],
+  );
+
+  const confirmDelete = useCallback(
+    (taskId: string, taskName: string) => {
+      Alert.alert('删除任务', `确定删除“${taskName}”吗？`, [
+        { text: '取消', style: 'cancel' },
+        { text: '删除', style: 'destructive', onPress: () => deleteTask(taskId) },
+      ]);
+    },
+    [deleteTask],
   );
 
   const playNow = useCallback(async (taskId: string) => {
@@ -119,44 +138,60 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
         renderItem={({ item }) => {
           const track = TRACKS.find(candidate => candidate.id === item.trackId);
           return (
-            <View style={styles.taskCard}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`立即播放任务${item.name}`}
-                onPress={() => playNow(item.id)}
-                disabled={playingTaskId === item.id}
-                style={styles.playButton}>
-                <Icon
-                  name={playingTaskId === item.id ? 'hourglass-top' : 'play-arrow'}
-                  size={30}
-                  color="#FFFFFF"
-                />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`修改任务${item.name}`}
-                style={styles.taskInfo}
-                onPress={() => navigation.navigate('TaskEdit', { taskId: item.id })}>
-                <View style={styles.titleRow}>
-                  <Text style={styles.time}>{formatTaskTime(item)}</Text>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {item.name}
+            <Swipeable
+              containerStyle={styles.swipeRow}
+              friction={2}
+              rightThreshold={40}
+              overshootRight={false}
+              renderRightActions={() => (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`删除任务${item.name}`}
+                  style={styles.swipeDelete}
+                  onPress={() => confirmDelete(item.id, item.name)}>
+                  <Icon name="delete-outline" size={25} color="#FFFFFF" />
+                  <Text style={styles.swipeDeleteText}>删除</Text>
+                </Pressable>
+              )}>
+              <View style={styles.taskCard}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`立即播放任务${item.name}`}
+                  onPress={() => playNow(item.id)}
+                  disabled={playingTaskId === item.id}
+                  style={styles.playButton}>
+                  <Icon
+                    name={playingTaskId === item.id ? 'hourglass-top' : 'play-arrow'}
+                    size={30}
+                    color="#FFFFFF"
+                  />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`修改任务${item.name}`}
+                  style={styles.taskInfo}
+                  onPress={() => navigation.navigate('TaskEdit', { taskId: item.id })}>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.time}>{formatTaskTime(item)}</Text>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                  </View>
+                  <Text style={styles.details} numberOfLines={2}>
+                    {track?.title ?? item.trackId}　{formatRepeatCount(item.repeatCount)} 遍
                   </Text>
-                </View>
-                <Text style={styles.details} numberOfLines={2}>
-                  {track?.title ?? item.trackId}　{formatRepeatCount(item.repeatCount)} 遍
-                </Text>
-                <Text style={styles.mode}>
-                  {MODE_CONFIG[item.playMode].label} · {item.isSyncMode ? '同步' : '不同步'}
-                </Text>
-              </Pressable>
-              <Switch
-                accessibilityLabel={`${item.name}${item.enabled ? '已启用' : '已关闭'}`}
-                value={item.enabled}
-                onValueChange={enabled => toggleTask(item.id, enabled)}
-                trackColor={{ false: BG_RECESS, true: GOLD }}
-              />
-            </View>
+                  <Text style={styles.mode}>
+                    {MODE_CONFIG[item.playMode].label} · {item.isSyncMode ? '同步' : '不同步'}
+                  </Text>
+                </Pressable>
+                <Switch
+                  accessibilityLabel={`${item.name}${item.enabled ? '已启用' : '已关闭'}`}
+                  value={item.enabled}
+                  onValueChange={enabled => toggleTask(item.id, enabled)}
+                  trackColor={{ false: BG_RECESS, true: GOLD }}
+                />
+              </View>
+            </Swipeable>
           );
         }}
       />
@@ -174,16 +209,23 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG_GROUND },
   listContent: { padding: 16, paddingBottom: 100 },
+  swipeRow: { marginBottom: 12, borderRadius: 14, overflow: 'hidden' },
   taskCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: BG_SURFACE,
     borderRadius: 14,
     padding: 14,
-    marginBottom: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: BORDER,
   },
+  swipeDelete: {
+    width: 88,
+    backgroundColor: '#C45B4F',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swipeDeleteText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600', marginTop: 3 },
   playButton: {
     width: 48,
     height: 48,

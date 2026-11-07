@@ -3,14 +3,15 @@ import { ScheduledTask, ScheduledTaskDraft } from '../types/scheduledTask';
 import { loadScheduledTasks, saveScheduledTasks } from '../utils/storage';
 import { syncTaskSchedules } from '../services/scheduledTaskScheduler';
 import { addLog } from '../utils/logger';
+import { findEnabledTaskTimeConflict } from '../constants/scheduledTasks';
 
 interface ScheduledTaskStore {
   tasks: ScheduledTask[];
   replaceAll: (tasks: ScheduledTask[]) => void;
   addTask: (draft: ScheduledTaskDraft) => ScheduledTask;
-  updateTask: (task: ScheduledTask) => void;
+  updateTask: (task: ScheduledTask) => ScheduledTask | null;
   deleteTask: (taskId: string) => void;
-  setTaskEnabled: (taskId: string, enabled: boolean) => void;
+  setTaskEnabled: (taskId: string, enabled: boolean) => ScheduledTask | null;
   refresh: () => void;
 }
 
@@ -35,21 +36,29 @@ export const useScheduledTaskStore = create<ScheduledTaskStore>((set, get) => ({
     return task;
   },
   updateTask: task => {
+    const conflict = findEnabledTaskTimeConflict(get().tasks, task);
+    if (conflict) return conflict;
     set({
       tasks: persistAndSchedule(
         get().tasks.map(current => (current.id === task.id ? task : current)),
       ),
     });
+    return null;
   },
   deleteTask: taskId => {
     set({ tasks: persistAndSchedule(get().tasks.filter(task => task.id !== taskId)) });
   },
   setTaskEnabled: (taskId, enabled) => {
+    const current = get().tasks.find(task => task.id === taskId);
+    if (!current) return null;
+    const conflict = findEnabledTaskTimeConflict(get().tasks, { ...current, enabled });
+    if (conflict) return conflict;
     set({
       tasks: persistAndSchedule(
         get().tasks.map(task => (task.id === taskId ? { ...task, enabled } : task)),
       ),
     });
+    return null;
   },
   refresh: () => set({ tasks: loadScheduledTasks() }),
 }));

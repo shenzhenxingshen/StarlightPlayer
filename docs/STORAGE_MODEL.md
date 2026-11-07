@@ -220,6 +220,7 @@
 - **原生镜像**：Android `SharedPreferences(starlight_scheduled_tasks)` 只镜像调度所需的 ID、名称、时分秒、启用状态，开机/改时间后恢复闹钟；iOS 以 `UNCalendarNotificationTrigger` 保存每日通知。两者不是任务完整配置的权威，真正执行时仍按 task ID 回到 MMKV 读取完整任务。
 - **临时触发**：iOS `NSUserDefaults` 中的 `starlight_pending_task_*` 只用于把通知 task ID、来源和原计划时间跨冷启动交给 JS，消费后删除；这些 key 不是用户配置。
 - **执行窗口**：系统触发超过计划时刻 60 秒即跳过；任务列表的手动播放不受限制。执行任务会重写 settings/player_state，并通过正常换曲协议创建新的播放任务。
+- **同刻启用约束**：相同 `HH:mm:ss` 可保存多条任务，但 store 只允许其中一条为启用状态。列表开关和已启用任务的编辑保存都会先检查其他已启用任务；冲突时不写 MMKV、不重建原生日程，并由 UI 提示先关闭原任务。
 - **兼容性**：V1.0 没有此 key，升级到 V1.1 等同首次缺失，生成默认关闭任务，不会突然自动播放。
 
 ## 4. RNTP 原生队列与 MMKV 的权威边界

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import TrackPlayer, { RepeatMode } from 'react-native-track-player';
 import PlayerScreen from './screens/PlayerScreen';
 import PlaylistScreen from './screens/PlaylistScreen';
@@ -206,23 +207,25 @@ const App: React.FC = () => {
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" backgroundColor={BG_GROUND} translucent={true} />
-      <NavigationContainer
-        theme={{
-          dark: false,
-          colors: {
-            primary: GOLD,
-            background: BG_GROUND,
-            card: BG_SURFACE,
-            text: '#2C2820',
-            border: BORDER_STRONG,
-            notification: GOLD,
-          },
-        }}>
-        <AppTabs />
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={st.root}>
+      <SafeAreaProvider>
+        <StatusBar barStyle="dark-content" backgroundColor={BG_GROUND} translucent={true} />
+        <NavigationContainer
+          theme={{
+            dark: false,
+            colors: {
+              primary: GOLD,
+              background: BG_GROUND,
+              card: BG_SURFACE,
+              text: '#2C2820',
+              border: BORDER_STRONG,
+              notification: GOLD,
+            },
+          }}>
+          <AppTabs />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 };
 
@@ -300,6 +303,7 @@ const AppTabs: React.FC = () => {
 };
 
 const st = StyleSheet.create({
+  root: { flex: 1 },
   center: { flex: 1, backgroundColor: BG_GROUND, alignItems: 'center', justifyContent: 'center' },
   verse: { color: GOLD_DIM, fontSize: 20, letterSpacing: 6, lineHeight: 38 },
 });
