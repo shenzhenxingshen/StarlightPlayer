@@ -10,8 +10,8 @@
 | --------------------- | ------------------------------------------------------- |
 | Git                   | V1.1 当前在开发分支，发布时必须记录冻结 commit          |
 | npm package           | 1.1.0                                                   |
-| Android               | `versionName 1.1`、`versionCode 5`                      |
-| iOS                   | `CFBundleShortVersionString 1.1.0`、`CFBundleVersion 6` |
+| Android               | `versionName 1.1`、`versionCode 6`                      |
+| iOS                   | `CFBundleShortVersionString 1.1.0`、`CFBundleVersion 7` |
 | App 内诊断文本        | 硬编码显示 1.1                                          |
 | Android applicationId | `com.starlightplayer`                                   |
 | iOS bundle identifier | `com.starlightplayer.app`                               |

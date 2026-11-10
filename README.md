@@ -10,8 +10,8 @@
 
 | 平台       | 当前源码版本              | 兼容性事实                                                  |
 | ---------- | ------------------------- | ----------------------------------------------------------- |
-| Android    | 1.1，versionCode 5        | minSdk 23，即 Android 6.0+                                  |
-| iOS/iPadOS | 1.1.0，build 6，Universal | 工程目标为 13.4；V1.1 发布包仍须核验最终 `MinimumOSVersion` |
+| Android    | 1.1，versionCode 6        | minSdk 23，即 Android 6.0+                                  |
+| iOS/iPadOS | 1.1.0，build 7，Universal | 工程目标为 13.4；V1.1 发布包仍须核验最终 `MinimumOSVersion` |
 
 历史上的 V1.0 build 4 Archive 最终 `MinimumOSVersion=15.0`，**不能宣称支持 iOS 13/14**。V1.1 源码仍以 13.4 为目标，但发布前必须检查新 Archive 内最终 App 的最低系统，并完成旧系统真机回归。详见[发布手册](docs/RELEASE.md)。
 
