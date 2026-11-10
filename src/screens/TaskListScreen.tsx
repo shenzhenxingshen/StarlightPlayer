@@ -6,9 +6,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { TaskStackParamList } from '../navigation/TaskNavigator';
 import { useScheduledTaskStore } from '../store/scheduledTaskStore';
-import { TRACKS } from '../constants/tracks';
 import { formatTaskTime } from '../constants/scheduledTasks';
-import { MODE_CONFIG } from '../components/Controls';
 import {
   BG_GROUND,
   BG_RECESS,
@@ -31,6 +29,13 @@ import { formatRepeatCount } from '../utils/numberFormat';
 import { addLog } from '../utils/logger';
 
 type Props = NativeStackScreenProps<TaskStackParamList, 'TaskList'>;
+
+const TASK_MODE_LABEL = {
+  'play-one': '单曲',
+  'repeat-one': '单曲循环',
+  'play-all': '列表',
+  'repeat-all': '列表循环',
+} as const;
 
 function permissionMessage(status: TaskSchedulingStatus | null): string | null {
   if (!status) return null;
@@ -162,65 +167,62 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={<Text style={styles.empty}>暂无任务，可点击下方增加。</Text>}
-        renderItem={({ item }) => {
-          const track = TRACKS.find(candidate => candidate.id === item.trackId);
-          return (
-            <Swipeable
-              containerStyle={styles.swipeRow}
-              friction={2}
-              rightThreshold={40}
-              overshootRight={false}
-              renderRightActions={() => (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`删除任务${item.name}`}
-                  style={styles.swipeDelete}
-                  onPress={() => confirmDelete(item.id, item.name)}>
-                  <Icon name="delete-outline" size={25} color="#FFFFFF" />
-                  <Text style={styles.swipeDeleteText}>删除</Text>
-                </Pressable>
-              )}>
-              <View style={styles.taskCard}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`立即播放任务${item.name}`}
-                  onPress={() => playNow(item.id)}
-                  disabled={playingTaskId === item.id}
-                  style={styles.playButton}>
-                  <Icon
-                    name={playingTaskId === item.id ? 'hourglass-top' : 'play-arrow'}
-                    size={30}
-                    color="#FFFFFF"
-                  />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`修改任务${item.name}`}
-                  style={styles.taskInfo}
-                  onPress={() => navigation.navigate('TaskEdit', { taskId: item.id })}>
-                  <View style={styles.titleRow}>
-                    <Text style={styles.time}>{formatTaskTime(item)}</Text>
-                    <Text style={styles.name} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                  </View>
-                  <Text style={styles.details} numberOfLines={2}>
-                    {track?.title ?? item.trackId}　{formatRepeatCount(item.repeatCount)} 遍
-                  </Text>
-                  <Text style={styles.mode}>
-                    {MODE_CONFIG[item.playMode].label} · {item.isSyncMode ? '同步' : '不同步'}
-                  </Text>
-                </Pressable>
-                <Switch
-                  accessibilityLabel={`${item.name}${item.enabled ? '已启用' : '已关闭'}`}
-                  value={item.enabled}
-                  onValueChange={enabled => toggleTask(item.id, enabled)}
-                  trackColor={{ false: BG_RECESS, true: GOLD }}
+        renderItem={({ item }) => (
+          <Swipeable
+            containerStyle={styles.swipeRow}
+            friction={2}
+            rightThreshold={40}
+            overshootRight={false}
+            renderRightActions={() => (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`删除任务${item.name}`}
+                style={styles.swipeDelete}
+                onPress={() => confirmDelete(item.id, item.name)}>
+                <Icon name="delete-outline" size={25} color="#FFFFFF" />
+                <Text style={styles.swipeDeleteText}>删除</Text>
+              </Pressable>
+            )}>
+            <View style={styles.taskCard}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`立即播放任务${item.name}`}
+                onPress={() => playNow(item.id)}
+                disabled={playingTaskId === item.id}
+                style={styles.playButton}>
+                <Icon
+                  name={playingTaskId === item.id ? 'hourglass-top' : 'play-arrow'}
+                  size={30}
+                  color="#FFFFFF"
                 />
-              </View>
-            </Swipeable>
-          );
-        }}
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`修改任务${item.name}`}
+                style={styles.taskInfo}
+                onPress={() => navigation.navigate('TaskEdit', { taskId: item.id })}>
+                <Text style={styles.time}>{formatTaskTime(item)}</Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.repeatCount} numberOfLines={1}>
+                    ，{formatRepeatCount(item.repeatCount)}遍
+                  </Text>
+                </View>
+                <Text style={styles.mode}>
+                  {TASK_MODE_LABEL[item.playMode]}，{item.isSyncMode ? '同步' : '不同步'}
+                </Text>
+              </Pressable>
+              <Switch
+                accessibilityLabel={`${item.name}${item.enabled ? '已启用' : '已关闭'}`}
+                value={item.enabled}
+                onValueChange={enabled => toggleTask(item.id, enabled)}
+                trackColor={{ false: BG_RECESS, true: GOLD }}
+              />
+            </View>
+          </Swipeable>
+        )}
       />
       <Pressable
         accessibilityRole="button"
@@ -263,11 +265,11 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   taskInfo: { flex: 1, minWidth: 0, marginRight: 10 },
-  titleRow: { flexDirection: 'row', alignItems: 'baseline' },
   time: { color: INK, fontSize: 24, fontWeight: '400', fontVariant: ['tabular-nums'] },
-  name: { color: INK, fontSize: 16, fontWeight: '600', marginLeft: 10, flex: 1 },
-  details: { color: TEXT_SEC, fontSize: 14, marginTop: 5 },
-  mode: { color: TEXT_TER, fontSize: 12, marginTop: 3 },
+  nameRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 4 },
+  name: { color: INK, fontSize: 16, fontWeight: '600', flexShrink: 1 },
+  repeatCount: { color: TEXT_SEC, fontSize: 14, flexShrink: 0 },
+  mode: { color: TEXT_TER, fontSize: 12, marginTop: 4 },
   addButton: {
     position: 'absolute',
     left: 16,

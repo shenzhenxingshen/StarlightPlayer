@@ -23,7 +23,7 @@ beforeEach(() => {
 
 describe('任务列表', () => {
   it('按时间显示三条默认关闭任务并提供立即播放', async () => {
-    const { getByText, getByLabelText } = render(
+    const { getByText, getAllByText, getByLabelText } = render(
       <TaskListScreen navigation={navigation as any} route={{} as any} />,
     );
     await waitFor(() =>
@@ -32,6 +32,10 @@ describe('任务列表', () => {
     expect(getByText('05:30:00')).toBeTruthy();
     expect(getByText('06:30:00')).toBeTruthy();
     expect(getByText('20:00:00')).toBeTruthy();
+    expect(getByText('早自习')).toBeTruthy();
+    expect(getByText('，49遍')).toBeTruthy();
+    expect(getAllByText('单曲，同步')).toHaveLength(2);
+    expect(() => getByText('大悲咒（共修版）')).toThrow();
     expect(getByLabelText('早自习已关闭').props.value).toBe(false);
 
     fireEvent.press(getByLabelText('立即播放任务早自习'));
