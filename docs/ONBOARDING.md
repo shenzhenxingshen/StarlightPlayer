@@ -48,8 +48,8 @@ git log -1 --oneline --decorate
 ```bash
 test -f package-lock.json
 test -f ios/Podfile.lock
-find ios/StarlightPlayer/audio -type f -name '*.mp3' | wc -l
-find android/app/src/main/assets/audio -type f -name '*.mp3' | wc -l
+find ios/StarlightPlayer/audio -type f \( -name '*.mp3' -o -name '*.wav' \) | wc -l
+find android/app/src/main/assets/audio -type f \( -name '*.mp3' -o -name '*.wav' \) | wc -l
 ```
 
 两个音频计数都应为 21。进一步的文件名、哈希和解码检查见 [音频资产台账](AUDIO_ASSETS.md)。

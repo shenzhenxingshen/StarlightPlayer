@@ -29,7 +29,7 @@ export const TRACKS: Track[] = [
   { 
     id: 'a05', code: 'A05', title: '大悲咒（共修版）', subtitle: '', section: 'A', 
     imageUrl: '/assets/images/cover.png', 
-    audioUrl: 'A05 大悲咒（共修版）.mp3',
+    audioUrl: 'A05 大悲咒（共修版）.wav',
     durationMs: 70385
   },
 

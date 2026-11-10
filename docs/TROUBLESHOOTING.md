@@ -94,8 +94,8 @@ xcodebuild \
 先记录曲目 ID/文件名、音量、静音/蓝牙输出设备、播放状态和 `PlaybackError`。检查源码资源：
 
 ```bash
-find ios/StarlightPlayer/audio -type f -name '*.mp3' | wc -l
-find android/app/src/main/assets/audio -type f -name '*.mp3' | wc -l
+find ios/StarlightPlayer/audio -type f \( -name '*.mp3' -o -name '*.wav' \) | wc -l
+find android/app/src/main/assets/audio -type f \( -name '*.mp3' -o -name '*.wav' \) | wc -l
 rg -n "audioUrl:|durationMs:" src/constants/tracks.ts
 ```
 
@@ -104,13 +104,13 @@ rg -n "audioUrl:|durationMs:" src/constants/tracks.ts
 ```bash
 unzip -l android/app/build/outputs/apk/debug/app-debug.apk \
   | rg 'assets/audio/' \
-  | rg '\.mp3$'
+  | rg '\.(mp3|wav)$'
 ```
 
 检查 iOS 已构建 App 或 Archive：
 
 ```bash
-find /absolute/path/to/StarlightPlayer.app -type f -name '*.mp3' -print
+find /absolute/path/to/StarlightPlayer.app -type f \( -name '*.mp3' -o -name '*.wav' \) -print
 ```
 
 如已安装 `ffprobe`/`ffmpeg`，按 [音频资产台账](AUDIO_ASSETS.md#5-每次发布的只读校验) 验证元数据和完整解码。

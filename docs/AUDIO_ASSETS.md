@@ -4,12 +4,12 @@
 
 ## 1. 当前资产结构
 
-应用内置 21 首 MP3，不在运行时下载。相同文件各保存一份：
+应用内置 20 首 MP3 和 1 首 PCM WAV，不在运行时下载。相同文件各保存一份：
 
 - Android：`android/app/src/main/assets/audio/`
 - iOS：`ios/StarlightPlayer/audio/`，并显式加入 Xcode Resources
 
-2026-11-10 实测两端均为 21 个文件、文件名集合一致、逐文件 SHA-256 一致；每端总大小为 119,804,178 bytes（114.25 MiB）。业务文件名和同步用时长的代码源是 `src/constants/tracks.ts`。
+2026-11-10 实测两端均为 21 个文件、文件名集合一致、逐文件 SHA-256 一致；每端总大小为 131,092,870 bytes（125.02 MiB）。业务文件名和同步用时长的代码源是 `src/constants/tracks.ts`。
 
 当前仓库没有独立的 canonical 原始音频目录。`scripts/copyAssets.js` 默认源 `assets/audio` 不存在，而且脚本只会复制到 Android，因此它不能作为完整的双端资产流水线。
 
@@ -21,7 +21,7 @@
 | A02  | A02 大悲咒（唱版）.mp3         |       174795 |
 | A03  | A03 大悲咒（慢版）.mp3         |        83235 |
 | A04  | A04 大悲咒（快版）.mp3         |        60008 |
-| A05  | A05 大悲咒（共修版）.mp3       |        70385 |
+| A05  | A05 大悲咒（共修版）.wav       |        70385 |
 | B06  | B06 发愿回向文.mp3             |        79944 |
 | C07  | C07 南无阿弥陀佛（唱版）.mp3   |       608888 |
 | C08  | C08 南无阿弥陀佛（慢版）.mp3   |       115083 |
@@ -43,25 +43,24 @@
 
 ## 3. A05 的特殊历史
 
-A05 曾是 Xing VBR 文件，包大小分布从 96 到 768 bytes；在同步模式每遍结束后的重新对齐场景中，它比其他曲目更容易暴露播放器时间轴/编码延迟差异。V1.0 使用 70.684 秒固定帧版本。V1.1 按产品确认，改用 21 遍录音按解码时间轴平均切分后的第一遍，增加 250 ms 前导静音，并转为与 A04 相同的音频规格；因此 V1.0/V1.1 不保证跨版本同步，用户应升级到相同版本。
+A05 曾是 Xing VBR 文件，包大小分布从 96 到 768 bytes；在同步模式每遍结束后的重新对齐场景中，它比其他曲目更容易暴露播放器时间轴/编码延迟差异。V1.0 使用 70.684 秒固定帧版本。V1.1 按产品确认，改用 21 遍录音按解码时间轴平均切分后的第一遍，增加 250 ms 前导静音，随后把有效解码样本无损封装为确定采样数的 PCM WAV；因此 V1.0/V1.1 不保证跨版本同步，用户应升级到相同版本。
 
 当前 A05 是重新编码后的版本：
 
 | 属性         | 当前值                                                             |
 | ------------ | ------------------------------------------------------------------ |
-| 容器/编码    | MP3                                                                |
+| 容器/编码    | RIFF/WAVE、PCM signed 16-bit little-endian                         |
 | 采样率       | 44,100 Hz                                                          |
 | 声道         | 2                                                                  |
-| 流码率       | 128,000 bit/s                                                      |
+| PCM 采样数   | 3,103,973 个/声道                                                  |
+| 流码率       | 1,411,200 bit/s                                                    |
 | ffprobe 时长 | 70.384875 s                                                        |
-| 起始时间     | 0.025057 s（MP3 解码延迟/Skip Samples 元数据）                     |
-| 大小         | 1,127,278 bytes                                                    |
-| 包大小       | 2,585 个 418 bytes、109 个 417 bytes（另有 Skip Samples side data） |
-| 帧布局       | CBR / 固定帧长，不是旧版可变包大小 Xing VBR                        |
-| SHA-1        | `e908aaf671d0e99041804ad4b78501745a029484`                         |
-| SHA-256      | `28aafa6f7797d9d873325bb90c50659b2c33237052b7032d0173d6395b842c7a` |
+| 起始时间     | 0 s；无 MP3 encoder delay/Skip Samples                             |
+| 大小         | 12,415,970 bytes                                                   |
+| SHA-1        | `9c1e53627dd113720e118f811d1ab72394e4c3dd`                         |
+| SHA-256      | `2ac5aa948dee1d7d8d903a7ee3952e2ca730c909507d84b0e6d42aa8d38accaa` |
 
-当前文件保持 CBR 固定帧布局，避免重新引入旧 A05 独有的 VBR 变量。但“固定帧长”不等于可以保证没有首音丢失：RNTP/AVPlayer 的 QueueEnded 回调、MP3 priming/padding 和重新 seek 的调度延迟仍要通过真机日志验证。
+当前文件以确定的 PCM 采样数消除了 MP3 priming/padding 和帧取整造成的文件时长口径差异。但 WAV 不能消除 RNTP/AVPlayer 在 QueueEnded 后重新 seek/play 的调度与输出启动延迟，首音保护仍要通过真机日志验证。
 
 ## 4. 历史 manifest 的定位
 
@@ -74,16 +73,16 @@ A05 曾是 Xing VBR 文件，包大小分布从 96 到 768 bytes；在同步模�
 ### 5.1 文件数与文件名
 
 ```bash
-find ios/StarlightPlayer/audio -type f -name '*.mp3' | wc -l
-find android/app/src/main/assets/audio -type f -name '*.mp3' | wc -l
+find ios/StarlightPlayer/audio -type f \( -name '*.mp3' -o -name '*.wav' \) | wc -l
+find android/app/src/main/assets/audio -type f \( -name '*.mp3' -o -name '*.wav' \) | wc -l
 
 STARLIGHT_AUDIO_AUDIT="$(mktemp -d)"
 rg -o "audioUrl: '[^']+'" src/constants/tracks.ts \
   | sed -E "s/audioUrl: '([^']+)'/\1/" \
   | sort > "$STARLIGHT_AUDIO_AUDIT/expected.txt"
-find ios/StarlightPlayer/audio -type f -name '*.mp3' -exec basename {} \; \
+find ios/StarlightPlayer/audio -type f \( -name '*.mp3' -o -name '*.wav' \) -exec basename {} \; \
   | sort > "$STARLIGHT_AUDIO_AUDIT/ios.txt"
-find android/app/src/main/assets/audio -type f -name '*.mp3' -exec basename {} \; \
+find android/app/src/main/assets/audio -type f \( -name '*.mp3' -o -name '*.wav' \) -exec basename {} \; \
   | sort > "$STARLIGHT_AUDIO_AUDIT/android.txt"
 diff -u "$STARLIGHT_AUDIO_AUDIT/expected.txt" "$STARLIGHT_AUDIO_AUDIT/ios.txt"
 diff -u "$STARLIGHT_AUDIO_AUDIT/expected.txt" "$STARLIGHT_AUDIO_AUDIT/android.txt"
@@ -96,11 +95,11 @@ diff -u "$STARLIGHT_AUDIO_AUDIT/expected.txt" "$STARLIGHT_AUDIO_AUDIT/android.tx
 ```bash
 (
   cd ios/StarlightPlayer/audio
-  for file in *.mp3; do shasum -a 256 "$file"; done | sort -k2
+  for file in *.mp3 *.wav; do test -e "$file" && shasum -a 256 "$file"; done | sort -k2
 ) > "$STARLIGHT_AUDIO_AUDIT/ios-sha256.txt"
 (
   cd android/app/src/main/assets/audio
-  for file in *.mp3; do shasum -a 256 "$file"; done | sort -k2
+  for file in *.mp3 *.wav; do test -e "$file" && shasum -a 256 "$file"; done | sort -k2
 ) > "$STARLIGHT_AUDIO_AUDIT/android-sha256.txt"
 diff -u "$STARLIGHT_AUDIO_AUDIT/ios-sha256.txt" "$STARLIGHT_AUDIO_AUDIT/android-sha256.txt"
 ```
@@ -110,7 +109,8 @@ diff -u "$STARLIGHT_AUDIO_AUDIT/ios-sha256.txt" "$STARLIGHT_AUDIO_AUDIT/android-
 ### 5.3 元数据、解码与时长
 
 ```bash
-for file in ios/StarlightPlayer/audio/*.mp3; do
+for file in ios/StarlightPlayer/audio/*.mp3 ios/StarlightPlayer/audio/*.wav; do
+  test -e "$file" || continue
   echo "=== $(basename "$file") ==="
   ffprobe -v error \
     -show_entries stream=codec_name,sample_rate,channels,bit_rate \
@@ -128,14 +128,14 @@ Android APK 构建后：
 
 ```bash
 unzip -l android/app/build/outputs/apk/release/app-release.apk \
-  | rg 'assets/audio/.*\.mp3$'
+  | rg 'assets/audio/.*\.(mp3|wav)$'
 ```
 
 iOS Archive 构建后：
 
 ```bash
 find "$STARLIGHT_ARCHIVE_PATH/Products/Applications/StarlightPlayer.app" \
-  -type f -name '*.mp3' -print
+  -type f \( -name '*.mp3' -o -name '*.wav' \) -print
 ```
 
 两端产物内仍应各有 21 首。最后在目标设备上抽测所有曲目能开始播放，并让 A05 至少自然完成一个同步周期。

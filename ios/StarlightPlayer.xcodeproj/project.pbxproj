@@ -19,7 +19,7 @@
 		2DF1E0C97E624CDCBF98A032 /* D21 愿做菩萨那朵莲.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FDD0BCD2AAC6477DA19178A2 /* D21 愿做菩萨那朵莲.mp3 */; };
 		33A7146846BA47A5839CA2EF /* C11 阿弥陀佛（慢版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 7F483794705D493A8D99E6ED /* C11 阿弥陀佛（慢版）.mp3 */; };
 		474959EA53BB4A5B973890CC /* C07 南无阿弥陀佛（唱版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 5CF41D6CF2DA4C78AB3D392A /* C07 南无阿弥陀佛（唱版）.mp3 */; };
-		5E945E6B2D2840359ACEDE83 /* A05 大悲咒（共修版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.mp3 */; };
+		5E945E6B2D2840359ACEDE83 /* A05 大悲咒（共修版）.wav in Resources */ = {isa = PBXBuildFile; fileRef = B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.wav */; };
 		6A6F608EFB664E2CB591B299 /* A04 大悲咒（快版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6C91764F45524588BE2C6B37 /* A04 大悲咒（快版）.mp3 */; };
 		6C2FE10FAB914DA3812F7B25 /* C09 南无阿弥陀佛（快版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 2533B064B5BB4313B4CFFF54 /* C09 南无阿弥陀佛（快版）.mp3 */; };
 		6FB692D6FB134245976A48C8 /* D17 观音灵感歌.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 7E9C3696F74D45E2B0FF3632 /* D17 观音灵感歌.mp3 */; };
@@ -88,7 +88,7 @@
 		8E9379D8B822476C8CDB5CB1 /* C14 南无观世音菩萨（慢版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "C14 南无观世音菩萨（慢版）.mp3"; path = "StarlightPlayer/audio/C14 南无观世音菩萨（慢版）.mp3"; sourceTree = "<group>"; };
 		9EB4454D0B8743A1AE26C0E9 /* D15 期盼.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "D15 期盼.mp3"; path = "StarlightPlayer/audio/D15 期盼.mp3"; sourceTree = "<group>"; };
 		A0F3EB22B7674AE2BDB4409E /* B06 发愿回向文.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "B06 发愿回向文.mp3"; path = "StarlightPlayer/audio/B06 发愿回向文.mp3"; sourceTree = "<group>"; };
-		B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "A05 大悲咒（共修版）.mp3"; path = "StarlightPlayer/audio/A05 大悲咒（共修版）.mp3"; sourceTree = "<group>"; };
+		B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.wav */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = audio.wav; name = "A05 大悲咒（共修版）.wav"; path = "StarlightPlayer/audio/A05 大悲咒（共修版）.wav"; sourceTree = "<group>"; };
 		C303652E61B36FAE42B63E12 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = StarlightPlayer/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D14A00000000000000000001 /* DiagnosticExporter.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = DiagnosticExporter.mm; path = StarlightPlayer/DiagnosticExporter.mm; sourceTree = "<group>"; };
 		D14A00000000000000000003 /* PlayerCommandLock.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = PlayerCommandLock.mm; path = StarlightPlayer/PlayerCommandLock.mm; sourceTree = "<group>"; };
@@ -182,7 +182,7 @@
 				3731ABA390F742F3B406E307 /* D16 回向偈.mp3 */,
 				7472BE1CECD747C8AE2E0B50 /* C13 南无观世音菩萨（唱版）.mp3 */,
 				46D4B4248ED141FA8DA6173D /* C10 阿弥陀佛（唱版）.mp3 */,
-				B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.mp3 */,
+				B0EA7B68E2594AC59EA72131 /* A05 大悲咒（共修版）.wav */,
 				E5F146CA712240DC974DE0BC /* C08 南无阿弥陀佛（慢版）.mp3 */,
 				2533B064B5BB4313B4CFFF54 /* C09 南无阿弥陀佛（快版）.mp3 */,
 				7F483794705D493A8D99E6ED /* C11 阿弥陀佛（慢版）.mp3 */,
@@ -346,7 +346,7 @@
 				88AAC811D74B402597B97683 /* D16 回向偈.mp3 in Resources */,
 				263DC35C253A43FE86C61C7E /* C13 南无观世音菩萨（唱版）.mp3 in Resources */,
 				77A007C6ACA143A3881A2A5A /* C10 阿弥陀佛（唱版）.mp3 in Resources */,
-				5E945E6B2D2840359ACEDE83 /* A05 大悲咒（共修版）.mp3 in Resources */,
+				5E945E6B2D2840359ACEDE83 /* A05 大悲咒（共修版）.wav in Resources */,
 				00366E43B5644356AAAB7FBB /* C08 南无阿弥陀佛（慢版）.mp3 in Resources */,
 				6C2FE10FAB914DA3812F7B25 /* C09 南无阿弥陀佛（快版）.mp3 in Resources */,
 				33A7146846BA47A5839CA2EF /* C11 阿弥陀佛（慢版）.mp3 in Resources */,
