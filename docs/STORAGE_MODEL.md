@@ -217,9 +217,10 @@
 - **字段**：`id`、最长 30 字符的 `name`、`hour/minute/second`、有效 `trackId`、正安全整数 `repeatCount`、四种 `playMode`、`isSyncMode`、`enabled`。
 - **默认值**：仅在 key 缺失或 JSON 整体损坏时写入三条默认关闭任务；合法空数组表示用户已删除全部任务，不能再次生成预置项。
 - **读取/写入方**：`scheduledTaskStore` 经 `loadScheduledTasks` / `saveScheduledTasks` 读写；保存时过滤非法项、按 ID 去重，并按时刻和 ID 排序。
-- **原生镜像**：Android `SharedPreferences(starlight_scheduled_tasks)` 只镜像调度所需的 ID、名称、时分秒、启用状态，开机/改时间后恢复闹钟；iOS 以 `UNCalendarNotificationTrigger` 保存每日通知。两者不是任务完整配置的权威，真正执行时仍按 task ID 回到 MMKV 读取完整任务。
+- **原生镜像**：Android `SharedPreferences(starlight_scheduled_tasks)` 只镜像调度所需的 ID、名称、时分秒、启用状态，授权/开机/升级/改时间后恢复闹钟；iOS 同时维护进程内日历定时器和 `UNCalendarNotificationTrigger`。两者不是任务完整配置的权威，真正执行时仍按 task ID 回到 MMKV 读取完整任务。
 - **临时触发**：iOS `NSUserDefaults` 中的 `starlight_pending_task_*` 只用于把通知 task ID、来源和原计划时间跨冷启动交给 JS，消费后删除；这些 key 不是用户配置。
-- **执行窗口**：系统触发超过计划时刻 60 秒即跳过；任务列表的手动播放不受限制。执行任务会重写 settings/player_state，并通过正常换曲协议创建新的播放任务。
+- **后台成功标记**：iOS `starlight_last_automatic_task_*` 记录最近一次真正启动成功的后台任务，用于移除/忽略同轮本地通知；它不是任务配置，也不能用于恢复计数。
+- **执行窗口**：系统触发超过计划时刻 15 分钟即跳过；同一 task ID 且计划时刻相差不超过 60 秒的自动触发视为同一轮。任务列表的手动播放不受限制。执行任务会重写 settings/player_state，并通过正常换曲协议创建新的播放任务。
 - **同刻启用约束**：相同 `HH:mm:ss` 可保存多条任务，但 store 只允许其中一条为启用状态。列表开关和已启用任务的编辑保存都会先检查其他已启用任务；冲突时不写 MMKV、不重建原生日程，并由 UI 提示先关闭原任务。
 - **兼容性**：V1.0 没有此 key，升级到 V1.1 等同首次缺失，生成默认关闭任务，不会突然自动播放。
 

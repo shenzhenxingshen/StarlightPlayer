@@ -69,6 +69,26 @@ describe('任务列表', () => {
     expect(manager.requestSchedulingPermission).toHaveBeenCalled();
   });
 
+  it('Android启用任务后提供后台运行设置入口', async () => {
+    const manager = NativeModules.ScheduledTaskManager;
+    manager.getSchedulingStatus.mockResolvedValueOnce({
+      platform: 'android',
+      notificationPermission: 'authorized',
+      exactAlarmPermission: 'authorized',
+    });
+    const tasks = loadScheduledTasks().map(task =>
+      task.id === 'default-morning' ? { ...task, enabled: true } : task,
+    );
+    useScheduledTaskStore.getState().replaceAll(tasks);
+
+    const { getByLabelText } = render(
+      <TaskListScreen navigation={navigation as any} route={{} as any} />,
+    );
+    await waitFor(() => expect(getByLabelText('检查后台运行设置')).toBeTruthy());
+    fireEvent.press(getByLabelText('检查后台运行设置'));
+    await waitFor(() => expect(manager.openBackgroundSettings).toHaveBeenCalled());
+  });
+
   it('同一时刻已有启用任务时阻止第二个任务启用', async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const tasks = loadScheduledTasks().map(task =>

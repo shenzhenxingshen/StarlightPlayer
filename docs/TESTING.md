@@ -82,7 +82,7 @@ npm test -- --runInBand --findRelatedTests src/utils/playbackDecision.ts
 | `components/*.spec.tsx`                                            | 五按钮、进度拖动与无障碍动作、曲目信息、黑胶动画清理                                   |
 | `screens/*.spec.tsx`                                               | 播放、列表、“我的”、自定义遍数、诊断导出和异常路径                                     |
 | `screens/TaskScreens.spec.tsx` / `utils/scheduledTasks.spec.ts`    | 默认关闭任务、排序/校验/持久化、左滑删除、同一时刻启用冲突、新增修改启停与大遍数       |
-| `services/scheduledTaskExecutor.spec.ts`                           | 四项配置原子应用、启用状态、Android/iOS 60 秒窗口、立即播放与播放器复用                |
+| `services/scheduledTaskExecutor.spec.ts`                           | 四项配置原子应用、启用状态、Android/iOS 15 分钟窗口、同轮去重、立即播放与播放器复用    |
 | `store/*.spec.ts` / `utils/diagnosticsAndLogger.spec.ts`           | 设置/统计 store、日志上限、格式和诊断失败                                              |
 
 ## 3. 覆盖率：分母、阈值和发布口径

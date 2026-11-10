@@ -167,7 +167,7 @@ const App: React.FC = () => {
     if (!ready) return;
     const run = (trigger: {
       taskId: string;
-      source: 'ios-foreground' | 'notification-tap';
+      source: 'ios-foreground' | 'ios-background' | 'notification-tap';
       scheduledAt?: number;
     }) => {
       executeScheduledTask(trigger).catch(taskError =>

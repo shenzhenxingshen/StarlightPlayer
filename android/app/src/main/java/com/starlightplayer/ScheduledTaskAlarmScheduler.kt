@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
@@ -13,6 +14,7 @@ import java.util.Calendar
 object ScheduledTaskAlarmScheduler {
   private const val PREFS = "starlight_scheduled_tasks"
   private const val TASKS_KEY = "tasks_json"
+  private const val TAG = "StarlightTasks"
 
   fun sync(context: Context, tasksJson: String) {
     val previous = readTasks(context)
@@ -85,7 +87,14 @@ object ScheduledTaskAlarmScheduler {
     val operation = pendingIntent(context, taskId, triggerAt)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
       if (canScheduleExactly(context)) {
-        manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, operation)
+        try {
+          manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, operation)
+        } catch (error: SecurityException) {
+          // Permission can be revoked between canScheduleExactAlarms() and this call. Keep a
+          // best-effort alarm instead of losing the enabled task entirely.
+          Log.w(TAG, "Exact alarm permission changed while scheduling $taskId", error)
+          manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, operation)
+        }
       } else {
         manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, operation)
       }

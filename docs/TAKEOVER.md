@@ -52,7 +52,7 @@ StarlightPlayer/
 4. UI 播放/暂停/切歌/seek 和后台 Remote\* 事件全部进入 `playerCommandQueue`。正常 RNTP HeadlessJS 复用同一 ReactContext，由 JS 链排队；Android/iOS 原生 `PlayerCommandLock` 额外防御多 ReactContext/桥接重入。
 5. 单曲原生队列到尾后产生 `PlaybackQueueEnded`：校验 generation/曲目/结束位置 → 按 `cycleEligible` 计数 → 先判断 N 遍 → 再执行四种模式。
 6. 异常停止时，`PlaybackError`/`PlayerError`/`PlaybackState` 写日志；若仍然 `expected_playing=true`，watchdog 重建队列并验证播放，最多退避恢复三轮。
-7. 每日任务由 MMKV 保存完整配置、原生系统保存时刻；到点后校验启用状态和 60 秒窗口，再走正常换曲协议替换当前播放。Android 可后台自动启动，iOS 后台/终止状态需用户点击本地通知。
+7. 每日任务由 MMKV 保存完整配置、原生系统保存时刻；到点后校验启用状态、15 分钟窗口和同轮去重，再走正常换曲协议替换当前播放。Android 可由系统闹钟冷启动；iOS 进程仍可执行时自动切换，被挂起/终止时需用户点击本地通知。
 
 ### 3.1 播放页响应式契约（需求 29）
 
@@ -103,7 +103,7 @@ Android release 签名需要：
 - 远程缓存：无。MMKV 是设备本地 KV，不是服务端缓存。
 - 消息队列：无。
 - 网络 API/登录/支付/推送/广告/分析：无。
-- 平台服务：Android MediaSession/前台媒体服务/AlarmManager，iOS Now Playing/后台音频/本地通知，以及系统分享面板。
+- 平台服务：Android MediaSession/前台媒体服务/AlarmManager，iOS Now Playing/后台音频/进程内日历定时器/本地通知，以及系统分享面板。
 - 本地数据：设置、定时任务、曲目/模式、当前遍数、每日统计、诊断日志。卸载 App 可删除。
 
 ## 6. 测试、构建、启动命令

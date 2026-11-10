@@ -7,6 +7,8 @@ interface NativeScheduledTaskManager {
   consumePendingTrigger(): Promise<ScheduledTaskTrigger | null>;
   requestSchedulingPermission(): Promise<TaskSchedulingStatus>;
   getSchedulingStatus(): Promise<TaskSchedulingStatus>;
+  openBackgroundSettings?(): Promise<TaskSchedulingStatus>;
+  markAutomaticTaskStarted?(taskId: string, scheduledAt: number): void;
   addListener?(eventName: string): void;
   removeListeners?(count: number): void;
 }
@@ -19,7 +21,7 @@ export interface TaskSchedulingStatus {
 
 export interface ScheduledTaskTrigger {
   taskId: string;
-  source: 'ios-foreground' | 'notification-tap';
+  source: 'ios-foreground' | 'ios-background' | 'notification-tap';
   scheduledAt?: number;
 }
 
@@ -53,6 +55,16 @@ export async function getTaskSchedulingStatus(): Promise<TaskSchedulingStatus> {
 export async function requestTaskSchedulingPermission(): Promise<TaskSchedulingStatus> {
   if (!nativeManager) return UNSUPPORTED_SCHEDULING_STATUS;
   return nativeManager.requestSchedulingPermission();
+}
+
+export async function openTaskBackgroundSettings(): Promise<TaskSchedulingStatus> {
+  if (!nativeManager?.openBackgroundSettings) return getTaskSchedulingStatus();
+  return nativeManager.openBackgroundSettings();
+}
+
+export function markAutomaticTaskStarted(trigger: ScheduledTaskTrigger): void {
+  if (trigger.source !== 'ios-background' || trigger.scheduledAt == null) return;
+  nativeManager?.markAutomaticTaskStarted?.(trigger.taskId, trigger.scheduledAt);
 }
 
 export async function consumePendingScheduledTask(): Promise<ScheduledTaskTrigger | null> {

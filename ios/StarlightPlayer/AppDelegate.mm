@@ -1,11 +1,15 @@
 #import "AppDelegate.h"
 
 #import <React/RCTBundleURLProvider.h>
+#import <math.h>
 
 static NSString *const StarlightScheduledTaskNotification = @"StarlightScheduledTaskDueNotification";
 static NSString *const StarlightPendingTaskIdKey = @"starlight_pending_task_id";
 static NSString *const StarlightPendingTaskSourceKey = @"starlight_pending_task_source";
 static NSString *const StarlightPendingTaskScheduledAtKey = @"starlight_pending_task_scheduled_at";
+static NSString *const StarlightLastAutomaticTaskIdKey = @"starlight_last_automatic_task_id";
+static NSString *const StarlightLastAutomaticTaskScheduledAtKey = @"starlight_last_automatic_task_scheduled_at";
+static NSTimeInterval const StarlightAutomaticNotificationDedupWindowMs = 12.0 * 60.0 * 60.0 * 1000.0;
 
 @implementation AppDelegate
 
@@ -82,6 +86,17 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 {
   NSString *taskId = response.notification.request.content.userInfo[@"starlightTaskId"];
   NSNumber *scheduledAt = @(response.notification.date.timeIntervalSince1970 * 1000.0);
+  NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+  NSString *lastAutomaticTaskId = [defaults stringForKey:StarlightLastAutomaticTaskIdKey];
+  NSNumber *lastAutomaticScheduledAt = [defaults objectForKey:StarlightLastAutomaticTaskScheduledAtKey];
+  if ([lastAutomaticTaskId isEqualToString:taskId] &&
+      lastAutomaticScheduledAt != nil &&
+      fabs(lastAutomaticScheduledAt.doubleValue - scheduledAt.doubleValue) <=
+        StarlightAutomaticNotificationDedupWindowMs) {
+    [center removeDeliveredNotificationsWithIdentifiers:@[response.notification.request.identifier]];
+    completionHandler();
+    return;
+  }
   [self storeAndPublishScheduledTask:taskId source:@"notification-tap" scheduledAt:scheduledAt];
   completionHandler();
 }

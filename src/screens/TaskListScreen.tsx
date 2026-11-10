@@ -22,6 +22,7 @@ import {
 import { executeScheduledTask } from '../services/scheduledTaskExecutor';
 import {
   getTaskSchedulingStatus,
+  openTaskBackgroundSettings,
   requestTaskSchedulingPermission,
   syncTaskSchedules,
   TaskSchedulingStatus,
@@ -34,7 +35,7 @@ type Props = NativeStackScreenProps<TaskStackParamList, 'TaskList'>;
 function permissionMessage(status: TaskSchedulingStatus | null): string | null {
   if (!status) return null;
   if (status.platform === 'ios' && status.notificationPermission !== 'authorized') {
-    return '请允许通知；iOS 在 App 不活跃时需要点击通知才能开始任务。';
+    return '请允许通知；iOS 被系统挂起或关闭时，需要通过通知继续启动任务。';
   }
   if (status.platform === 'android' && status.exactAlarmPermission === 'denied') {
     return '请允许“闹钟和提醒”权限，否则系统可能延迟任务。';
@@ -113,7 +114,8 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, []);
 
-  const warning = permissionMessage(status);
+  const hasEnabledTasks = tasks.some(task => task.enabled);
+  const warning = hasEnabledTasks ? permissionMessage(status) : null;
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       {warning && (
@@ -129,6 +131,31 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.warningText}>{warning}</Text>
           <Text style={styles.warningAction}>去设置</Text>
         </Pressable>
+      )}
+      {hasEnabledTasks && status?.platform === 'android' && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="检查后台运行设置"
+          onPress={() =>
+            openTaskBackgroundSettings()
+              .then(setStatus)
+              .catch(error => addLog('ERROR', 'open background settings failed', error))
+          }
+          style={styles.platformHint}>
+          <Icon name="battery-saver" size={19} color={TEXT_SEC} />
+          <Text style={styles.platformHintText}>
+            为提高后台准时率，请允许后台运行和自启动，并将电池策略设为“不限制”。系统“强行停止”后任务无法自动执行。
+          </Text>
+          <Text style={styles.platformHintAction}>检查</Text>
+        </Pressable>
+      )}
+      {hasEnabledTasks && status?.platform === 'ios' && (
+        <View style={styles.platformHint} accessibilityRole="text">
+          <Icon name="info-outline" size={19} color={TEXT_SEC} />
+          <Text style={styles.platformHintText}>
+            正在后台播放且进程仍可执行时会尝试自动切换；被系统挂起或关闭时将通过通知提醒，点击后启动任务。
+          </Text>
+        </View>
       )}
       <FlatList
         data={tasks}
@@ -268,6 +295,19 @@ const styles = StyleSheet.create({
   },
   warningText: { flex: 1, color: '#76501B', fontSize: 13, lineHeight: 19, marginHorizontal: 8 },
   warningAction: { color: '#9A6519', fontSize: 13, fontWeight: '700' },
+  platformHint: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    padding: 11,
+    borderRadius: 10,
+    backgroundColor: BG_SURFACE,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: BORDER,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  platformHintText: { flex: 1, color: TEXT_SEC, fontSize: 12, lineHeight: 18, marginLeft: 8 },
+  platformHintAction: { color: GOLD, fontSize: 13, fontWeight: '700', marginLeft: 8 },
 });
 
 export default TaskListScreen;

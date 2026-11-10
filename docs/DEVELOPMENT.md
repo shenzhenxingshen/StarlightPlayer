@@ -141,7 +141,7 @@ V1.1 新增 `scheduled_tasks_v1` MMKV schema 和双端原生调度。修改任�
 
 任务执行先由专用 Promise 链按触发顺序串行，再把 `setupPlayer / updateOptions / replaceTrack / play` 放入一次 `enqueuePlayerCommand`。不得把这些 RNTP 写操作拆到命令队列外，否则到点任务可能和用户点按、锁屏控制或 QueueEnded 交错。后到任务会在前一任务命令完成后替换当前播放，符合“新任务直接中断旧任务”的产品规则。
 
-Android 真机需分别测试通知权限、Android 12+“闹钟和提醒”、重启、改时间/时区、Doze 和厂商省电。iOS Simulator 只能验证通知/UI 基础路径，不能证明终止状态、系统调度或旧 iOS 真机行为。
+Android 真机需分别测试通知权限、Android 12+“闹钟和提醒”、授权后重建、重启/升级、改时间/时区、Doze、强行停止和厂商省电。iOS 需分开验证前台定时器、正在播放时后台定时器、同轮通知去重和挂起/终止后的通知降级；Simulator 不能证明真机挂起、终止或长期后台行为。
 
 - 两个平台各直接保存 21 首 MP3；修改音频时必须同步两份并按 `docs/AUDIO_ASSETS.md` 校验。
 - `scripts/copyAssets.js` 只复制到 Android，且默认的 `assets/audio` 当前不存在。它不能完成双端资源发布流程。

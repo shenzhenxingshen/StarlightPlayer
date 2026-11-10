@@ -1,5 +1,6 @@
 import TrackPlayer, { RepeatMode } from 'react-native-track-player';
 import { MMKV } from 'react-native-mmkv';
+import { NativeModules } from 'react-native';
 import { DEFAULT_SCHEDULED_TASKS } from '@/constants/scheduledTasks';
 import { executeScheduledTask, AUTOMATIC_TASK_WINDOW_MS } from '@/services/scheduledTaskExecutor';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -63,7 +64,23 @@ describe('定时任务执行器', () => {
     expect(mockedReplaceTrack).not.toHaveBeenCalled();
   });
 
-  it('Android超过播放窗口直接跳过，不进行补播', async () => {
+  it('Android允许系统在十五分钟窗口内延迟触发', async () => {
+    const task = { ...DEFAULT_SCHEDULED_TASKS[0], id: 'android-delayed', enabled: true };
+    saveScheduledTasks([task]);
+    const now = 10_000_000;
+    jest.spyOn(Date, 'now').mockReturnValue(now);
+    await expect(
+      executeScheduledTask({
+        taskId: task.id,
+        source: 'android-alarm',
+        scheduledAt: now - 10 * 60_000,
+      }),
+    ).resolves.toBe(true);
+    expect(mockedReplaceTrack).toHaveBeenCalled();
+    jest.restoreAllMocks();
+  });
+
+  it('Android超过十五分钟播放窗口直接跳过，不进行补播', async () => {
     const task = { ...DEFAULT_SCHEDULED_TASKS[0], enabled: true };
     saveScheduledTasks([task]);
     const now = 10_000_000;
@@ -110,6 +127,29 @@ describe('定时任务执行器', () => {
       executeScheduledTask({ taskId: task.id, source: 'manual', scheduledAt: 0 }),
     ).resolves.toBe(true);
     expect(mockedReplaceTrack).toHaveBeenCalledTimes(1);
+  });
+
+  it('同一轮iOS后台定时器和通知只执行一次，并确认后台启动成功', async () => {
+    const task = { ...DEFAULT_SCHEDULED_TASKS[2], id: 'ios-background-dedup', enabled: true };
+    saveScheduledTasks([task]);
+    const scheduledAt = 20_000_000;
+    jest.spyOn(Date, 'now').mockReturnValue(scheduledAt + 1_000);
+    await expect(
+      executeScheduledTask({ taskId: task.id, source: 'ios-background', scheduledAt }),
+    ).resolves.toBe(true);
+    await expect(
+      executeScheduledTask({
+        taskId: task.id,
+        source: 'notification-tap',
+        scheduledAt: scheduledAt + 500,
+      }),
+    ).resolves.toBe(false);
+    expect(mockedReplaceTrack).toHaveBeenCalledTimes(1);
+    expect(NativeModules.ScheduledTaskManager.markAutomaticTaskStarted).toHaveBeenCalledWith(
+      task.id,
+      scheduledAt,
+    );
+    jest.restoreAllMocks();
   });
 
   it('不存在的任务安全忽略', async () => {

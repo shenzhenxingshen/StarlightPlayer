@@ -1,6 +1,10 @@
 import { NativeModules } from 'react-native';
 import { DEFAULT_SCHEDULED_TASKS } from '@/constants/scheduledTasks';
-import { syncTaskSchedules, TaskSchedulingStatus } from '@/services/scheduledTaskScheduler';
+import {
+  openTaskBackgroundSettings,
+  syncTaskSchedules,
+  TaskSchedulingStatus,
+} from '@/services/scheduledTaskScheduler';
 
 const status: TaskSchedulingStatus = {
   platform: 'ios',
@@ -32,5 +36,10 @@ describe('定时任务原生日程同步', () => {
     finishFirst?.();
     await expect(Promise.all([first, second])).resolves.toEqual([status, status]);
     expect(syncTasks).toHaveBeenNthCalledWith(2, newTasks);
+  });
+
+  it('可从任务页进入Android应用后台设置', async () => {
+    await expect(openTaskBackgroundSettings()).resolves.toMatchObject({ platform: 'android' });
+    expect(NativeModules.ScheduledTaskManager.openBackgroundSettings).toHaveBeenCalled();
   });
 });

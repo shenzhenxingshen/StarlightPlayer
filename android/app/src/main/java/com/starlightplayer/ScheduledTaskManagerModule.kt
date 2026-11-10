@@ -70,6 +70,18 @@ class ScheduledTaskManagerModule(
     try {
       val activity = currentActivity
       if (
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        !ScheduledTaskAlarmScheduler.canScheduleExactly(reactApplicationContext)
+      ) {
+        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+          data = Uri.parse("package:${reactApplicationContext.packageName}")
+          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        reactApplicationContext.startActivity(intent)
+        promise.resolve(status())
+        return
+      }
+      if (
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
         activity != null &&
         ActivityCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -78,16 +90,23 @@ class ScheduledTaskManagerModule(
         promise.resolve(status())
         return
       }
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !ScheduledTaskAlarmScheduler.canScheduleExactly(reactApplicationContext)) {
-        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-          data = Uri.parse("package:${reactApplicationContext.packageName}")
-          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        reactApplicationContext.startActivity(intent)
-      }
       promise.resolve(status())
     } catch (error: Exception) {
       promise.reject("scheduled_task_permission_failed", error.message, error)
+    }
+  }
+
+  @ReactMethod
+  fun openBackgroundSettings(promise: Promise) {
+    try {
+      val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = Uri.parse("package:${reactApplicationContext.packageName}")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      reactApplicationContext.startActivity(intent)
+      promise.resolve(status())
+    } catch (error: Exception) {
+      promise.reject("scheduled_task_background_settings_failed", error.message, error)
     }
   }
 

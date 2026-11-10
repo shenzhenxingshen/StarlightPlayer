@@ -13,10 +13,12 @@ import {
   setSettings,
 } from '../utils/storage';
 import { playWithRetryInCommand, replaceTrackInCommand } from '../utils/trackManager';
+import { markAutomaticTaskStarted } from './scheduledTaskScheduler';
 
 export type ScheduledTaskExecutionSource =
   | 'manual'
   | 'ios-foreground'
+  | 'ios-background'
   | 'notification-tap'
   | 'android-alarm';
 
@@ -26,8 +28,12 @@ export interface ScheduledTaskExecutionPayload {
   scheduledAt?: number;
 }
 
-// 系统触发明显延迟时视为已经错过，不在稍后补播；只有任务列表的“立即播放”不受此限制。
-export const AUTOMATIC_TASK_WINDOW_MS = 60_000;
+// Doze、厂商省电和用户点击通知都可能造成合理延迟。十五分钟内仍执行，避免把系统
+// 调度抖动误判成错过；更迟的触发不补播，防止在用户意料之外突然开始播放。
+export const AUTOMATIC_TASK_WINDOW_MS = 15 * 60_000;
+const SAME_OCCURRENCE_TOLERANCE_MS = 60_000;
+
+let lastAutomaticOccurrence: { taskId: string; scheduledAt: number } | null = null;
 
 function isAlreadyInitialized(error: unknown): boolean {
   const candidate = error as { code?: string; message?: string };
@@ -56,6 +62,19 @@ async function executeScheduledTaskInSequence(
   }
   if (payload.source !== 'manual' && !task.enabled) {
     addLog('INFO', `ScheduledTask disabled, ignored: ${task.id}`);
+    return false;
+  }
+  if (
+    payload.source !== 'manual' &&
+    payload.scheduledAt != null &&
+    lastAutomaticOccurrence?.taskId === payload.taskId &&
+    Math.abs(lastAutomaticOccurrence.scheduledAt - payload.scheduledAt) <=
+      SAME_OCCURRENCE_TOLERANCE_MS
+  ) {
+    addLog(
+      'INFO',
+      `ScheduledTask duplicate occurrence ignored: ${task.id} source=${payload.source}`,
+    );
     return false;
   }
   const automaticDelay = payload.scheduledAt == null ? null : Date.now() - payload.scheduledAt;
@@ -100,6 +119,16 @@ async function executeScheduledTaskInSequence(
       'INFO',
       `ScheduledTask started: ${task.id} source=${payload.source} track=${task.trackId} repeat=${task.repeatCount} mode=${task.playMode} sync=${task.isSyncMode}`,
     );
+    if (payload.source !== 'manual' && payload.scheduledAt != null) {
+      lastAutomaticOccurrence = { taskId: payload.taskId, scheduledAt: payload.scheduledAt };
+      if (payload.source === 'ios-background') {
+        markAutomaticTaskStarted({
+          taskId: payload.taskId,
+          source: payload.source,
+          scheduledAt: payload.scheduledAt,
+        });
+      }
+    }
     return true;
   } catch (error) {
     saveExpectedPlaying(false);

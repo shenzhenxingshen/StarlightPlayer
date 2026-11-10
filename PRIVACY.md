@@ -33,7 +33,7 @@
 
 ## 网络访问
 
-21 首音频均内置于安装包，播放、重复计数、同步位置计算和每日任务不需要互联网。每日任务使用 Android 系统闹钟或 iOS 本地通知，通知内容与任务配置保存在设备本地，不经过项目服务器。当前业务代码没有后端 API、账号、支付、远程推送、广告或分析请求。
+21 首音频均内置于安装包，播放、重复计数、同步位置计算和每日任务不需要互联网。每日任务使用 Android 系统闹钟，或 iOS 设备内定时器与本地通知；通知内容与任务配置保存在设备本地，不经过项目服务器。当前业务代码没有后端 API、账号、支付、远程推送、广告或分析请求。
 
 平台工程目前仍包含 Android `INTERNET` 权限和 iOS 宽松 ATS 配置，但当前版本的业务功能没有使用它们传输用户数据。后续版本会评估是否移除这些非必要配置。
 
@@ -92,7 +92,7 @@ A diagnostic file may include the device model, OS version, diagnostic timestamp
 
 ## Network Access
 
-All 21 audio tracks are bundled with the app. Playback, repeat counting, synchronized-position calculation, and daily tasks work without an Internet connection. Scheduled tasks use Android system alarms or iOS local notifications; their content and settings remain on the device and do not pass through a project server. The current business logic has no backend API, account, payment, remote push-notification, advertising, or analytics requests.
+All 21 audio tracks are bundled with the app. Playback, repeat counting, synchronized-position calculation, and daily tasks work without an Internet connection. Scheduled tasks use Android system alarms, or an on-device iOS timer plus local notifications; their content and settings remain on the device and do not pass through a project server. The current business logic has no backend API, account, payment, remote push-notification, advertising, or analytics requests.
 
 The platform projects still contain the Android `INTERNET` permission and a permissive iOS ATS setting, but current app features do not use them to transmit user data. Future releases will evaluate removing these unnecessary settings.
 

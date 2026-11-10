@@ -48,6 +48,12 @@ NativeModules.ScheduledTaskManager = {
     notificationPermission: 'authorized',
     exactAlarmPermission: 'not-needed',
   })),
+  openBackgroundSettings: jest.fn(async () => ({
+    platform: 'android',
+    notificationPermission: 'authorized',
+    exactAlarmPermission: 'authorized',
+  })),
+  markAutomaticTaskStarted: jest.fn(),
   addListener: jest.fn(),
   removeListeners: jest.fn(),
 };
