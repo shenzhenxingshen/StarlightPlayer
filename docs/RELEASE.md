@@ -1,6 +1,6 @@
 # 双端发布手册
 
-> 最后核对：2026-11-06。发布人应逐项留下版本、commit、测试记录、签名指纹和制品 SHA-256；“构建成功”不等于“可发布”。
+> 最后核对：2026-11-10。发布人应逐项留下版本、commit、测试记录、签名指纹和制品 SHA-256；“构建成功”不等于“可发布”。
 
 现有 1.0 制品和渠道信息的事后恢复见 [`release-records/1.0.0-reconstructed.md`](release-records/1.0.0-reconstructed.md)；其中 UNKNOWN/PARTIAL 项不能当作发布通过。
 
@@ -10,8 +10,8 @@
 | --------------------- | ------------------------------------------------------- |
 | Git                   | V1.1 当前在开发分支，发布时必须记录冻结 commit          |
 | npm package           | 1.1.0                                                   |
-| Android               | `versionName 1.1`、`versionCode 4`                      |
-| iOS                   | `CFBundleShortVersionString 1.1.0`、`CFBundleVersion 5` |
+| Android               | `versionName 1.1`、`versionCode 5`                      |
+| iOS                   | `CFBundleShortVersionString 1.1.0`、`CFBundleVersion 6` |
 | App 内诊断文本        | 硬编码显示 1.1                                          |
 | Android applicationId | `com.starlightplayer`                                   |
 | iOS bundle identifier | `com.starlightplayer.app`                               |

@@ -84,7 +84,7 @@ Android、iOS 各自只需一个安装包；iOS Target 的 `TARGETED_DEVICE_FAMI
 | `react-native.config.js`                             | iOS 音频和字体资源                                              |
 | `patches/react-native-track-player+4.1.2.patch`      | 仅为 Android 定时任务前台 Service 放行短时后台 RNTP 初始化      |
 
-当前 V1.1 映射为：`package.json` 1.1.0；Android `versionName 1.1 / versionCode 4`；iOS `1.1.0 (5)`；诊断文本 1.1。版本仍分散在多个文件，每次发版必须按 [RELEASE.md](RELEASE.md) 的清单逐项更新和核验。
+当前 V1.1 映射为：`package.json` 1.1.0；Android `versionName 1.1 / versionCode 5`；iOS `1.1.0 (6)`；诊断文本 1.1。版本仍分散在多个文件，每次发版必须按 [RELEASE.md](RELEASE.md) 的清单逐项更新和核验。
 
 Android release 签名需要：
 
