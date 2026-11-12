@@ -9,15 +9,15 @@
 | 项目                  | 当前值                                                  |
 | --------------------- | ------------------------------------------------------- |
 | Git                   | V1.1 当前在开发分支，发布时必须记录冻结 commit          |
-| npm package           | 1.1.0                                                   |
+| npm package           | 1.1.1                                                   |
 | Android               | `versionName 1.1`、`versionCode 6`                      |
-| iOS                   | `CFBundleShortVersionString 1.1.0`、`CFBundleVersion 7` |
+| iOS                   | `CFBundleShortVersionString 1.1.1`、`CFBundleVersion 8` |
 | App 内诊断文本        | 硬编码显示 1.1                                          |
 | Android applicationId | `com.starlightplayer`                                   |
 | iOS bundle identifier | `com.starlightplayer.app`                               |
 | iOS Target            | iPhone/iPad Universal，`TARGETED_DEVICE_FAMILY = "1,2"` |
 
-Android 平台继续使用 `1.1`、iOS/npm 使用 `1.1.0`，App 诊断显示 `1.1`。商店可接受这种平台展示差异，但每次发布必须把这组映射作为一个整体核对，避免漏改。
+Android 平台继续使用 `1.1`、iOS/npm 使用 `1.1.1`，App 诊断显示 `1.1`。iOS `1.1.1 (8)` 是在 `1.1.0` 外部测试版本通道关闭后创建的补丁构建。商店可接受这种平台展示差异，但每次发布必须把这组映射作为一个整体核对，避免漏改。
 
 另一个关键风险：源码的 iOS deployment target 是 13.4，但已经上传成功的 `1.0.0 (4)` Archive 实际为 `MinimumOSVersion = 15.0`。因此 build 4 不能宣称支持 iOS 13/14。若产品继续承诺 iOS 13/14，下一个 build 必须在 Archive 产物层修复并用旧系统真机验证。
 
