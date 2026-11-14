@@ -1,0 +1,7 @@
+/node_modules/
+/dist/
+/generated/
+/src-tauri/target/
+/src-tauri/gen/
+/test-results/
+installers/

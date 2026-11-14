@@ -5,6 +5,7 @@
 - 最终用户请先阅读[图文用户手册](docs/USER_MANUAL.md)。
 - 开发与维护人员从[文档门户](docs/README.md)进入；新接手项目先走[新开发者上手路线](docs/ONBOARDING.md)。
 - 修改播放逻辑前必须阅读[播放架构与状态机](docs/PLAYBACK_ARCHITECTURE.md)。
+- 桌面端正在独立开发预览阶段，入口见[桌面开发与手机版对齐清单](docs/desktop/README.md)；不影响现有移动端工程，也尚非可分发正式版。
 
 ## 当前版本与兼容性
 
@@ -90,7 +91,7 @@ Android release 签名需要本地 `android/app/release.keystore` 以及 `STARLI
 
 ## 资源、本地数据与网络
 
-- Android 和 iOS 各内置同样的 21 首 MP3，每端约 114.79 MiB，运行时不下载音频。
+- Android 和 iOS 各内置同样的 21 首音频（当前 A05 为 WAV，其余为 MP3），运行时不下载音频；编码、时长和哈希以[音频资产台账](docs/AUDIO_ASSETS.md)及当前资源为准。
 - 设置、当前曲目、模式、累计遍数、每日任务、按本地日期保存的播放统计和最多 1,000 条诊断日志保存在设备 MMKV。
 - 没有业务后端、远程数据库、缓存、消息队列、登录、支付、推送、广告或分析 SDK。
 - Android 仍声明 `INTERNET`，iOS ATS 仍允许任意请求，但当前业务代码没有网络调用；这是待收紧项。

@@ -1,0 +1,7 @@
+{
+  "name": "@starlight/playback-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Platform-independent playback contract; desktop pilot, mobile migration pending",
+  "exports": "./src/index.ts"
+}

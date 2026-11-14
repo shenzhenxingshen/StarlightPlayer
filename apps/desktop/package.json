@@ -1,0 +1,30 @@
+{
+  "name": "@starlight/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:runtime": "node scripts/prepare.mjs",
+    "dev": "npm run prepare:runtime && tauri dev",
+    "web:dev": "vite --host 127.0.0.1",
+    "build": "npm run prepare:runtime && tsc --noEmit && vite build",
+    "build:native": "tauri build --no-bundle",
+    "bundle:prepare": "npm run prepare:runtime && node scripts/bundle-runtime.mjs",
+    "bundle": "npm run bundle:prepare && tauri build --config generated/bundle.config.json",
+    "test": "npm run prepare:runtime && node --test tests/*.test.mjs",
+    "test:native": "npm run prepare:runtime && cargo test --manifest-path src-tauri/Cargo.toml --no-default-features"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.12.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4",
+    "@types/react": "18.3.27",
+    "@types/react-dom": "18.3.7",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "vite": "8.3.8"
+  }
+}

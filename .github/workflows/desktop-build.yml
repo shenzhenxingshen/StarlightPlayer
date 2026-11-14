@@ -1,0 +1,106 @@
+name: Desktop offline installers
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/desktop-mvp]
+    paths:
+      - '.github/workflows/desktop-build.yml'
+      - 'apps/desktop/**'
+      - 'packages/playback-core/**'
+      - 'src/constants/**'
+      - 'src/assets/images/starlight-logo.png'
+      - 'ios/StarlightPlayer/audio/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  installers:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            name: macos-arm64
+            bundles: dmg
+          - os: macos-15-intel
+            name: macos-x64
+            bundles: dmg
+          - os: windows-2022
+            name: windows-x64
+            bundles: nsis
+          - os: ubuntu-24.04
+            name: linux-x64
+            bundles: appimage
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: apps/desktop
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - name: Rust toolchain
+        run: rustup toolchain install 1.100.0 --profile minimal && rustup default 1.100.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+          key: ${{ matrix.name }}
+      - name: macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install mpv
+      - name: Windows playback libraries
+        id: msys
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-mpv
+      - name: Windows runtime paths and static MSVC runtime
+        if: runner.os == 'Windows'
+        env:
+          MSYS_ROOT: ${{ steps.msys.outputs.msys2-location }}
+        run: |
+          printf 'STARLIGHT_MINGW_ROOT=%s/ucrt64\n' "$MSYS_ROOT" >> "$GITHUB_ENV"
+          printf 'RUSTFLAGS=-C target-feature=+crt-static\n' >> "$GITHUB_ENV"
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgtk-3-dev libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev patchelf libmpv2 \
+            libfuse2t64 xvfb
+      - run: npm ci
+      - name: Core tests and UI build
+        run: npm test && npm run build
+      - name: Stage offline audio and native runtime
+        run: npm run bundle:prepare
+      - name: Native contracts
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features
+      - name: Decode all bundled tracks and verify persistence
+        run: cargo run --locked --manifest-path src-tauri/Cargo.toml --no-default-features --example bundle_smoke -- "$PWD/generated"
+      - name: Build installer
+        env:
+          NO_STRIP: 'true'
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: npx tauri build --config generated/bundle.config.json --bundles "${{ matrix.bundles }}" --no-sign
+      - name: Collect installers and hash inventory
+        run: node scripts/collect-installers.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.name }}
+          path: apps/desktop/installers/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30

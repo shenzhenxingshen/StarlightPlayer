@@ -54,6 +54,8 @@ ios/fastlane/test_output
 
 # testing
 /coverage
+__pycache__/
+/.audio-engine-spike/
 
 # MacOS
 .DS_Store
@@ -78,3 +80,7 @@ release/
 
 # Generated document intermediates and rendered PDF inspection pages
 /tmp/
+
+# Desktop UI test artifacts (not release documentation)
+/.playwright-cli/
+/output/playwright/
