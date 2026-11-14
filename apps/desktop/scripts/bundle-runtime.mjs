@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { copyFile, cp, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { copyDebianCopyright } from './package-licenses.mjs';
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = resolve(desktop, '../..');
@@ -130,7 +131,7 @@ if (process.platform === 'darwin') {
       if (!packages.has(pkg)) {
         packages.add(pkg);
         const clean = pkg.split(':')[0];
-        await cp(`/usr/share/doc/${clean}`, join(licenses, clean), { recursive: true, dereference: true });
+        await copyDebianCopyright(`/usr/share/doc/${clean}`, join(licenses, clean));
       }
     } catch (error) { throw Error(`License inventory failed for ${name}: ${error}`); }
   }

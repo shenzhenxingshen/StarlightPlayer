@@ -23,6 +23,8 @@ macOS 使用系统 WebKit；Windows 使用附带安装程序安装 WebView2；Li
 - `bundle-runtime.mjs`：复制音频、递归收集库、修正加载路径、保留许可证及版本清单。
 - `src-tauri/src/runtime.rs`：release 只认 `$RESOURCE/runtime`，不回退开发环境；debug 模式仍可使用源码和开发者指定的 libmpv。
 - `src-tauri/examples/bundle_smoke.rs`：指定解包后的资源根目录，逐首启动全部 21 首并检查进度；使用独立临时数据和静音输出。
+- `verify-runtime.mjs`：对安装后的资源复核 21 首音频及所有库的大小、SHA-256、平台和架构。
+- `verify-installer.mjs`：macOS 只读挂载 DMG、Windows 在一次性 CI runner 内静默安装、Linux 解包 AppImage，再执行资源检查及包内引擎冒烟；清除开发库环境变量并将 PATH 限制为系统目录。
 - `.github/workflows/desktop-build.yml`：各平台原生编译、测试和 artifact 上传。
 - `collect-installers.mjs`：收集本平台安装包、`SHA256SUMS.txt`、`runtime-manifest.json` 和第三方说明。
 
@@ -43,16 +45,21 @@ cargo run --locked --manifest-path src-tauri/Cargo.toml --no-default-features \
 # macOS
 npx tauri build --config generated/bundle.config.json --bundles dmg --no-sign
 # Windows 使用 --bundles nsis；Linux 使用 --bundles appimage
+node scripts/verify-installer.mjs
 node scripts/collect-installers.mjs
 ```
 
 本地构建需要工具链和依赖下载；这是开发机要求，不是用户安装要求。Windows 默认依赖目录 `C:/msys64/ucrt64`，可用 `STARLIGHT_MINGW_ROOT` 修改。macOS / Linux 构建机可用 `STARLIGHT_LIBMPV` 指定绝对路径。
 
+`verify-installer.mjs` 的 Windows 安装步骤只允许在 `CI=true` 的一次性环境执行，不应为了绕过检查在个人电脑设置此变量。脚本不清除个人播放器数据。可用 `CARGO_TARGET_DIR` 将打包输出与正在运行的旧预览隔离；构建、冒烟示例编译、验收和制品收集必须使用同一个 target 目录。
+
+桌面 TypeScript 编译只能依赖桌面自己的 `npm ci`。共享 `ScheduledTask` 使用 `src/types/playMode.ts` 的纯类型；手机存储保留原 `PlayMode` 导出以兼容既有调用方。`dependency-boundary.test.mjs` 检查完整类型依赖图，防止 `import type` 间接把 RN/MMKV 带入桌面构建。不要通过在桌面 CI 安装手机版依赖来掩盖类型边界问题。
+
 ## 验证与回退
 
 1. 类型/核心/手机契约回归通过。
 2. staging 资源检查 21 首哈希，并以**包内库**逐首加载。
-3. 安装包解包复核路径、库依赖和音频清单；尽可能对解包后的资源再次运行 `bundle_smoke`。
+3. 安装包解包复核路径、库依赖和音频清单；必须对解包后的资源再次运行 `bundle_smoke`，通过后才上传 artifact。
 4. 在干净目标系统断网安装，检查首次启动、全部曲目、同步/模式/计数、任务、托盘、系统媒体键。静音输出不能证明真实声卡无吞音。
 5. 保留旧安装包和用户数据。回退时正常退出新程序再安装旧测试包；不要同时启动两个版本写同一数据目录，不删除用户计数。
 
