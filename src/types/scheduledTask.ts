@@ -1,4 +1,4 @@
-import type { PlayMode } from '../utils/storage';
+import type { PlayMode } from './playMode';
 
 export interface ScheduledTask {
   id: string;

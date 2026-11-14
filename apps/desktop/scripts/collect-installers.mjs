@@ -6,7 +6,10 @@ import { fileURLToPath } from 'node:url';
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = join(desktop, 'installers');
 await mkdir(output, { recursive: true });
-const bundle = join(desktop, 'src-tauri/target/release/bundle');
+const target = process.env.CARGO_TARGET_DIR
+  ? resolve(desktop, process.env.CARGO_TARGET_DIR)
+  : join(desktop, 'src-tauri/target');
+const bundle = join(target, 'release/bundle');
 const ext = process.platform === 'darwin' ? '.dmg' : process.platform === 'win32' ? '.exe' : '.AppImage';
 const files = [];
 async function scan(path) {

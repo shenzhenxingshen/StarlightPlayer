@@ -2,6 +2,9 @@ import { MMKV } from 'react-native-mmkv';
 import { DEFAULT_SCHEDULED_TASKS, sortScheduledTasks } from '../constants/scheduledTasks';
 import { TRACKS } from '../constants/tracks';
 import { ScheduledTask } from '../types/scheduledTask';
+import type { PlayMode } from '../types/playMode';
+
+export type { PlayMode } from '../types/playMode';
 
 const storage = new MMKV();
 
@@ -26,8 +29,6 @@ export function normalizeRepeatCount(value: unknown): number {
 }
 
 // --- Player State 持久化 ---
-export type PlayMode = 'play-one' | 'repeat-one' | 'play-all' | 'repeat-all';
-
 export interface PlayerState {
   trackIndex: number;
   playMode: PlayMode;

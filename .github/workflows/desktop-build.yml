@@ -9,6 +9,8 @@ on:
       - 'apps/desktop/**'
       - 'packages/playback-core/**'
       - 'src/constants/**'
+      - 'src/types/**'
+      - 'src/utils/numberFormat.ts'
       - 'src/assets/images/starlight-logo.png'
       - 'ios/StarlightPlayer/audio/**'
 
@@ -95,6 +97,8 @@ jobs:
           NO_STRIP: 'true'
           APPIMAGE_EXTRACT_AND_RUN: '1'
         run: npx tauri build --config generated/bundle.config.json --bundles "${{ matrix.bundles }}" --no-sign
+      - name: Verify extracted installer and bundled playback
+        run: node scripts/verify-installer.mjs
       - name: Collect installers and hash inventory
         run: node scripts/collect-installers.mjs
       - uses: actions/upload-artifact@v4
