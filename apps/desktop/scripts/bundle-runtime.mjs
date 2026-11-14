@@ -6,6 +6,7 @@ import { copyFile, cp, mkdir, readFile, readdir, realpath, rm, writeFile } from 
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { copyDebianCopyright } from './package-licenses.mjs';
+import { maxVersion, minimumMacOSFromLoadCommands } from './macos-version.mjs';
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = resolve(desktop, '../..');
@@ -29,6 +30,7 @@ for (const track of tracks) {
 const origins = {};
 const sourceByName = new Map();
 const queue = [];
+let minimumMacOS = '10.13';
 async function add(source, name = basename(source)) {
   source = await realpath(source);
   const prior = sourceByName.get(name);
@@ -63,6 +65,7 @@ if (process.platform === 'darwin') {
   const packages = new Set();
   for (let index = 0; index < queue.length; index++) {
     const { source, name } = queue[index];
+    minimumMacOS = maxVersion([minimumMacOS, minimumMacOSFromLoadCommands(run('otool', ['-l', source]))]);
     const target = join(lib, name);
     const changes = [];
     for (const dep of dependencies(source)) {
@@ -145,6 +148,7 @@ for (const name of await readdir(lib)) {
 }
 await writeFile(join(runtime, 'manifest.json'), JSON.stringify({
   platform: process.platform, arch: process.arch,
+  ...(process.platform === 'darwin' ? { minimumMacOS } : {}),
   commit: run('git', ['-C', repo, 'rev-parse', 'HEAD']),
   tracks: tracks.map(({ id, audioUrl, bytes, sha256 }) => ({ id, audioUrl, bytes, sha256 })),
   libraries, origins,
@@ -154,6 +158,9 @@ const config = {
   bundle: {
     active: true,
     resources: { '../generated/runtime/': 'runtime/' },
+    ...(process.platform === 'darwin' ? {
+      macOS: { minimumSystemVersion: minimumMacOS },
+    } : {}),
     ...(process.platform === 'win32' ? {
       windows: { webviewInstallMode: { type: 'offlineInstaller', silent: true } },
     } : {}),

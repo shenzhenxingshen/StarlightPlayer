@@ -6,7 +6,7 @@
 
 | 平台 | 安装包 | 构建基线 |
 | --- | --- | --- |
-| macOS Apple Silicon | ARM64 DMG | macOS 15 runner；实际最低版本还取决于包内动态库 |
+| macOS Apple Silicon | ARM64 DMG | macOS 15 runner；自动读取包内动态库的最低系统版本 |
 | macOS Intel | x64 DMG | macOS 15 Intel runner；不是 Universal |
 | Windows | x64 NSIS EXE | Windows 2022 runner / MSYS2 UCRT64；面向 Windows 10/11 x64 |
 | Linux | x64 AppImage | Ubuntu 24.04 / glibc 2.39；不承诺兼容更老的发行版 |
@@ -14,6 +14,8 @@
 安装包应内置全部 21 首原始音频、libmpv 及其非系统动态库。Windows 嵌入完整 WebView2 离线安装程序，禁止以 bootstrapper 下载方式代替；Linux AppImage 收集 WebKit/GTK 等运行依赖。操作系统、显示/音频驱动等基础环境仍需存在；“无需另下资源”不等于支持任意旧系统。
 
 macOS 使用系统 WebKit；Windows 使用附带安装程序安装 WebView2；Linux 保留宿主 glibc 和 ELF loader，不尝试替换系统基础库。AppImage 在无 FUSE 环境可尝试 `APPIMAGE_EXTRACT_AND_RUN=1 ./<文件名>.AppImage`，不必为挂载它安装 FUSE。
+
+Mac 打包从每个 Mach-O 库的部署版本中取最高值，写入生成配置的 `bundle.macOS.minimumSystemVersion` 及资源清单；验收时核对最终 `Info.plist`，不沿用 Tauri 默认的 10.13。当前 CI 库要求 macOS 15。该要求只属于电脑版，不改手机版 iOS 13/14 部署设置。
 
 本阶段测试包未做 Developer ID 公证和 Windows 代码签名。请仅使用可信来源、核对 SHA-256；不要全局关闭系统安全保护。生产发布前需要补齐签名、公证、干净系统的离线安装验收和第三方源码归档/许可证审查。
 

@@ -1,7 +1,7 @@
 // Run on the native CI runner after packaging. Windows performs a per-user
 // silent test installation only on CI; never installs into a developer's profile.
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readdir, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,6 +43,15 @@ try {
   const manifests = await findFiles(scratch, p => p.endsWith(join('runtime', 'manifest.json')));
   assert.equal(manifests.length, 1, 'Missing or duplicated installed resources');
   const resources = dirname(dirname(manifests[0]));
+  if (process.platform === 'darwin') {
+    const manifest = JSON.parse(await readFile(manifests[0], 'utf8'));
+    const declared = execFileSync('plutil', [
+      '-extract', 'LSMinimumSystemVersion', 'raw', '-o', '-',
+      join(dirname(resources), 'Info.plist'),
+    ], { encoding: 'utf8' }).trim();
+    assert.equal(declared, manifest.minimumMacOS, 'App must declare bundled libraries macOS requirement');
+    console.log(`PASS macOS minimum version declaration: ${declared}`);
+  }
   run(process.execPath, [join(desktop, 'scripts/verify-runtime.mjs'), resources]);
   const smoke = join(target, 'debug/examples', process.platform === 'win32' ? 'bundle_smoke.exe' : 'bundle_smoke');
   assert((await stat(smoke)).isFile());
