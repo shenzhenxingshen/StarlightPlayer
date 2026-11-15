@@ -76,3 +76,5 @@ macOS 预览用户数据：`~/Library/Application Support/org.starlightplayer.de
 修订仅对 Windows release 声明 `windows_subsystem = "windows"`，保留 debug 控制台。播放状态机、同步、计数、任务及 Mac/Linux 构建行为不变。增加 PE32/PE32+ 与损坏文件测试，并检查**安装后的主程序**，不把 NSIS 安装器的子系统误当应用验收。下载站以 `0.1.0 Windows 修订版` 和源码提交号区分，不修改手机版本；服务器替换前保留旧 ZIP 与校验清单，更新后复核哈希和下载入口。
 
 Windows 安装与 GUI 探针统一使用 GitHub runner 的 `RUNNER_TEMP`，避免 Node 与 .NET 对用户临时目录/短路径解析不一致导致误拒绝。仍要求 `CI=true` 且应用位于该临时目录内，不应在个人机器上通过设置这些变量来绕过保护。
+
+GUI 探针使用一次性新配置，等待前端首次偏好保存（`initialized=true`）确认 UI 与原生 IPC 已就绪，再检查无控制台和关闭到后台。仅有 HWND 出现不代表初始化完成；失败时输出退出码、窗口标题及应用自己的有限诊断日志，不修改个人数据。
