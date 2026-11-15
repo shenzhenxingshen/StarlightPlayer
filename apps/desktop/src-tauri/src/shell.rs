@@ -10,17 +10,51 @@ use std::{
 };
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::TrayIconBuilder,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager,
 };
 
 pub fn show(app: &tauri::AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
+    let handle = app.clone();
+    // Single-instance/media callbacks may arrive off the UI thread. Every entry
+    // point restores the same window; none recreates the Host or sends playback commands.
+    if let Err(error) = app.run_on_main_thread(move || {
+        #[cfg(target_os = "macos")]
+        if let Err(error) = handle.show() {
+            eprintln!("Cannot unhide desktop application: {error}");
+        }
+        if let Some(window) = handle.get_webview_window("main") {
+            for (operation, result) in [
+                ("show", window.show()),
+                ("unminimize", window.unminimize()),
+                ("focus", window.set_focus()),
+            ] {
+                if let Err(error) = result {
+                    eprintln!("Cannot {operation} desktop window: {error}");
+                }
+            }
+        } else {
+            eprintln!("Cannot restore desktop window: main window is unavailable");
+        }
+    }) {
+        eprintln!("Cannot schedule desktop window restore: {error}");
     }
 }
+
+fn opens_window(event: &TrayIconEvent) -> bool {
+    matches!(
+        event,
+        TrayIconEvent::Click {
+            button: MouseButton::Left,
+            button_state: MouseButtonState::Up,
+            ..
+        } | TrayIconEvent::DoubleClick {
+            button: MouseButton::Left,
+            ..
+        }
+    )
+}
+
 pub fn send(host: Arc<Host>, action: RemoteAction) {
     tauri::async_runtime::spawn_blocking(move || {
         if let Err(error) = host.remote(action) {
@@ -47,6 +81,14 @@ pub fn install(app: &mut tauri::App, host: Arc<Host>) -> tauri::Result<()> {
     let mut tray = TrayIconBuilder::with_id("starlight")
         .tooltip("星光播放器 · 后台播放与任务")
         .menu(&menu)
+        // Windows/macOS: left click opens; right click keeps all menu actions.
+        // Linux does not expose tray click events, so its menu remains the fallback.
+        .show_menu_on_left_click(false)
+        .on_tray_icon_event(|tray, event| {
+            if opens_window(&event) {
+                show(tray.app_handle());
+            }
+        })
         .on_menu_event(move |app, event| {
             let action = match event.id.as_ref() {
                 "show" => {
@@ -201,3 +243,69 @@ fn remote_capabilities(care: bool, sync: bool) {
 }
 #[cfg(not(target_os = "macos"))]
 fn remote_capabilities(_care: bool, _sync: bool) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tauri::{PhysicalPosition, PhysicalSize, Rect};
+
+    fn rect() -> Rect {
+        Rect {
+            position: PhysicalPosition::new(0, 0).into(),
+            size: PhysicalSize::new(24, 24).into(),
+        }
+    }
+
+    #[test]
+    fn only_left_release_or_double_click_opens_the_window() {
+        for button in [MouseButton::Left, MouseButton::Right, MouseButton::Middle] {
+            for button_state in [MouseButtonState::Up, MouseButtonState::Down] {
+                let event = TrayIconEvent::Click {
+                    id: "starlight".into(),
+                    position: PhysicalPosition::new(12.0, 12.0),
+                    rect: rect(),
+                    button,
+                    button_state,
+                };
+                assert_eq!(
+                    opens_window(&event),
+                    button == MouseButton::Left && button_state == MouseButtonState::Up
+                );
+            }
+            assert_eq!(
+                opens_window(&TrayIconEvent::DoubleClick {
+                    id: "starlight".into(),
+                    position: PhysicalPosition::new(12.0, 12.0),
+                    rect: rect(),
+                    button,
+                }),
+                button == MouseButton::Left
+            );
+        }
+    }
+
+    #[test]
+    fn hover_does_not_open_or_focus_the_window() {
+        let id = "starlight".into();
+        let position = PhysicalPosition::new(12.0, 12.0);
+        for event in [
+            TrayIconEvent::Enter {
+                id,
+                position,
+                rect: rect(),
+            },
+            TrayIconEvent::Move {
+                id: "starlight".into(),
+                position,
+                rect: rect(),
+            },
+            TrayIconEvent::Leave {
+                id: "starlight".into(),
+                position,
+                rect: rect(),
+            },
+        ] {
+            assert!(!opens_window(&event));
+        }
+    }
+}

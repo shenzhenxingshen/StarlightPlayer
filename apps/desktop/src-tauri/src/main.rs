@@ -48,6 +48,12 @@ async fn control(
 
 fn main() {
     tauri::Builder::default()
+        // Register first: a shortcut relaunch must activate the existing window
+        // before another Host tries to acquire playback.lock or open libmpv.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // Relaunch arguments are not playback commands or file/URL requests.
+            shell::show(app);
+        }))
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // Debug builds may use the development checkout. Release builds must be
@@ -77,6 +83,14 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![snapshot, control])
-        .run(tauri::generate_context!())
-        .expect("Desktop host initialization failed");
+        .build(tauri::generate_context!())
+        .expect("Desktop host initialization failed")
+        .run(|_app, _event| {
+            // macOS delivers Dock/Finder relaunches to the existing process,
+            // without starting a second executable. Handle minimized windows too.
+            #[cfg(target_os = "macos")]
+            if matches!(_event, tauri::RunEvent::Reopen { .. }) {
+                shell::show(_app);
+            }
+        });
 }

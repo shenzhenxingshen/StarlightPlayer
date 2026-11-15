@@ -21,6 +21,12 @@ public static class StarlightWindowsProbe {
     public static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")]
     public static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")]
+    public static extern bool IsIconic(IntPtr window);
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
 }
 '@
 
@@ -31,6 +37,62 @@ $preferencesFile = Join-Path $dataDirectory 'desktop-v1.json'
 # the native host are ready. Never overwrite or remove a developer's saved data.
 if (Test-Path -LiteralPath $preferencesFile) { throw 'Expected a fresh CI application profile' }
 $window = [IntPtr]::Zero
+function Assert-RelaunchRestores([string]$LaunchPath, [string]$Label) {
+    $secondary = $null
+    $savedPreferences = (Get-FileHash -LiteralPath $preferencesFile -Algorithm SHA256).Hash
+    try {
+        $secondary = Start-Process -FilePath $LaunchPath -WorkingDirectory (Split-Path $resolved) -PassThru
+        if ($null -eq $secondary) { throw "$Label did not return a launch process" }
+        if (-not $secondary.WaitForExit(15000)) { throw "$Label left a second application running" }
+        if ($secondary.ExitCode -ne 0) { throw "$Label failed with exit code $($secondary.ExitCode)" }
+        $deadline = [DateTime]::UtcNow.AddSeconds(10)
+        $restored = $false
+        do {
+            Start-Sleep -Milliseconds 100
+            $app.Refresh()
+            if ($app.HasExited) { throw "$Label terminated the original process" }
+            [uint32]$foregroundProcess = 0
+            [void][StarlightWindowsProbe]::GetWindowThreadProcessId(
+                [StarlightWindowsProbe]::GetForegroundWindow(), [ref]$foregroundProcess)
+            $restored = [StarlightWindowsProbe]::IsWindowVisible($window) -and
+                -not [StarlightWindowsProbe]::IsIconic($window) -and
+                $foregroundProcess -eq $app.Id
+        } while (-not $restored -and [DateTime]::UtcNow -lt $deadline)
+        if (-not $restored) { throw "$Label did not restore and foreground the original window" }
+        if ($app.MainWindowHandle -ne $window) { throw "$Label replaced the original main window" }
+        if ((Get-FileHash -LiteralPath $preferencesFile -Algorithm SHA256).Hash -ne $savedPreferences) {
+            throw "$Label unexpectedly changed saved tasks/preferences"
+        }
+        $starts = @(Get-Content -LiteralPath (Join-Path $dataDirectory 'playback.jsonl') |
+            ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { $_.kind -eq 'host-start' })
+        if ($starts.Count -ne 1) { throw "$Label reinitialized the playback host" }
+        Write-Output "PASS $Label restores original foreground window; PID=$($app.Id); no host restart"
+    } finally {
+        if ($null -ne $secondary) {
+            $secondary.Refresh()
+            if (-not $secondary.HasExited) {
+                $secondary.Kill($true)
+                [void]$secondary.WaitForExit(10000)
+            }
+            $secondary.Dispose()
+        }
+    }
+}
+
+function Hide-OriginalWindow {
+    if (-not [StarlightWindowsProbe]::PostMessage($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) {
+        throw 'Could not send WM_CLOSE to the release GUI'
+    }
+    $deadline = [DateTime]::UtcNow.AddSeconds(10)
+    do {
+        Start-Sleep -Milliseconds 250
+        $app.Refresh()
+        if ($app.HasExited) { throw "Closing the GUI unexpectedly terminated the application: $($app.ExitCode)" }
+        $visible = [StarlightWindowsProbe]::IsWindowVisible($window)
+    } while ($visible -and [DateTime]::UtcNow -lt $deadline)
+    if ($visible) { throw 'GUI did not hide on close' }
+}
+
 try {
     # Detach this probe, so a successful AttachConsole below can only mean the
     # application owns/uses a console. Keep stdout/stderr pipes for CI reporting.
@@ -66,21 +128,34 @@ try {
     Write-Output 'PASS installed release GUI starts and has no console'
 
     # Exercise the real CloseRequested handler with default background mode.
-    if (-not [StarlightWindowsProbe]::PostMessage($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) {
-        throw 'Could not send WM_CLOSE to the release GUI'
-    }
-    $deadline = [DateTime]::UtcNow.AddSeconds(10)
-    do {
-        Start-Sleep -Milliseconds 250
-        $app.Refresh()
-        if ($app.HasExited) { throw "Closing the GUI unexpectedly terminated the application: $($app.ExitCode)" }
-        $visible = [StarlightWindowsProbe]::IsWindowVisible($window)
-    } while ($visible -and [DateTime]::UtcNow -lt $deadline)
-    if ($visible) { throw 'GUI did not hide on close' }
+    Hide-OriginalWindow
     Start-Sleep -Seconds 2
     $app.Refresh()
     if ($app.HasExited) { throw 'Background application exited after hiding' }
     Write-Output 'PASS installed release GUI closes to background and remains alive'
+
+    Assert-RelaunchRestores $resolved 'EXE relaunch while hidden'
+    # Exercise a real shell shortcut without touching the user's Desktop/taskbar.
+    $shortcutPath = Join-Path (Split-Path $resolved) 'Starlight activation test.lnk'
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = $resolved
+    $shortcut.WorkingDirectory = Split-Path $resolved
+    $shortcut.Save()
+    Hide-OriginalWindow
+    Assert-RelaunchRestores $shortcutPath 'Shortcut relaunch while hidden'
+
+    # WM_SYSCOMMAND / SC_MINIMIZE: the window still exists, unlike a cold start.
+    if (-not [StarlightWindowsProbe]::PostMessage($window, 0x0112, [IntPtr]0xF020, [IntPtr]::Zero)) {
+        throw 'Could not minimize the release GUI'
+    }
+    $deadline = [DateTime]::UtcNow.AddSeconds(10)
+    while (-not [StarlightWindowsProbe]::IsIconic($window) -and [DateTime]::UtcNow -lt $deadline) {
+        Start-Sleep -Milliseconds 100
+    }
+    if (-not [StarlightWindowsProbe]::IsIconic($window)) { throw 'GUI did not minimize' }
+    Assert-RelaunchRestores $shortcutPath 'Shortcut relaunch while minimized'
+    Assert-RelaunchRestores $shortcutPath 'Repeated shortcut relaunch while visible'
 } catch {
     # Bounded, application-owned diagnostics only; do not dump runner environment.
     if ($null -ne $app) {
