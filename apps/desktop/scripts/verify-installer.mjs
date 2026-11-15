@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import { assertWindowsGui } from './windows-executable.mjs';
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const target = process.env.CARGO_TARGET_DIR
@@ -43,6 +44,14 @@ try {
   const manifests = await findFiles(scratch, p => p.endsWith(join('runtime', 'manifest.json')));
   assert.equal(manifests.length, 1, 'Missing or duplicated installed resources');
   const resources = dirname(dirname(manifests[0]));
+  if (process.platform === 'win32') {
+    const executables = await findFiles(scratch, p => p.endsWith('starlight-desktop.exe'));
+    assert.equal(executables.length, 1, 'Expected one installed Windows application');
+    assertWindowsGui(await readFile(executables[0]));
+    console.log('PASS installed Windows release PE subsystem: WINDOWS_GUI (2)');
+    run('pwsh', ['-NoProfile', '-NonInteractive', '-File',
+      join(desktop, 'scripts/verify-windows-launch.ps1'), '-Executable', executables[0]]);
+  }
   if (process.platform === 'darwin') {
     const manifest = JSON.parse(await readFile(manifests[0], 'utf8'));
     const declared = execFileSync('plutil', [

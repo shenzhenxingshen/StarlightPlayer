@@ -28,6 +28,7 @@ Mac 打包从每个 Mach-O 库的部署版本中取最高值，写入生成配�
 - `src-tauri/examples/bundle_smoke.rs`：指定解包后的资源根目录，逐首启动全部 21 首并检查进度，再连续 5 次销毁/重建引擎、恢复偏好并播放 A05；使用独立临时数据和静音输出。
 - `verify-runtime.mjs`：对安装后的资源复核 21 首音频及所有库的大小、SHA-256、平台和架构。
 - `verify-installer.mjs`：macOS 只读挂载 DMG、Windows 在一次性 CI runner 内静默安装、Linux 解包 AppImage，再执行资源检查及包内引擎冒烟；清除开发库环境变量并将 PATH 限制为系统目录。
+- `windows-executable.mjs` / `verify-windows-launch.ps1`：Windows 安装后检查主程序 PE Subsystem 必须为 `WINDOWS_GUI (2)`，实际启动 release GUI 并验证无控制台、关闭窗口后仍留在后台。只允许对一次性 Windows CI 的临时安装运行；不等于托盘点击、真实声卡和定时任务全场景验收。
 - `.github/workflows/desktop-build.yml`：各平台原生编译、测试和 artifact 上传。
 - `collect-installers.mjs`：收集本平台安装包、`SHA256SUMS.txt`、`runtime-manifest.json` 和第三方说明。
 
@@ -67,3 +68,9 @@ node scripts/collect-installers.mjs
 5. 保留旧安装包和用户数据。回退时正常退出新程序再安装旧测试包；不要同时启动两个版本写同一数据目录，不删除用户计数。
 
 macOS 预览用户数据：`~/Library/Application Support/org.starlightplayer.desktop.preview/`。构建与冒烟测试不得覆盖此目录。长时间换遍、蓝牙、硬件输出、睡眠唤醒和多机同步需另行实测；流水线成功不代表这些全部通过。
+
+## Windows 启动控制台修订（2026-11-15）
+
+初版 `0.1.0` 的 `src/main.rs` 缺少 `windows_subsystem` 属性，Windows 默认生成控制台应用，导致从安装入口启动时同时出现终端；关闭终端会结束关联进程，绕过 Tauri 主窗口的后台隐藏逻辑。libmpv 已设置 `terminal=no`，该选项不能更改宿主 EXE 的子系统。
+
+修订仅对 Windows release 声明 `windows_subsystem = "windows"`，保留 debug 控制台。播放状态机、同步、计数、任务及 Mac/Linux 构建行为不变。增加 PE32/PE32+ 与损坏文件测试，并检查**安装后的主程序**，不把 NSIS 安装器的子系统误当应用验收。下载站以 `0.1.0 Windows 修订版` 和源码提交号区分，不修改手机版本；服务器替换前保留旧 ZIP 与校验清单，更新后复核哈希和下载入口。

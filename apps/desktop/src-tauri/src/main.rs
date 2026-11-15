@@ -1,3 +1,9 @@
+// Release builds are GUI applications on Windows; keep the console for debugging.
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions)),
+    windows_subsystem = "windows"
+)]
+
 use serde_json::Value;
 use starlight_desktop::host::{Command, Host};
 use starlight_desktop::runtime::RuntimePaths;
