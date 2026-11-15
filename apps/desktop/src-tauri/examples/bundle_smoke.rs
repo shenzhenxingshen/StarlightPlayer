@@ -10,6 +10,29 @@ use std::{
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
+
+fn play_track(host: &Host, track: &serde_json::Value) {
+    host.command(Command::Start {
+        config: json!({
+            "trackId":track["id"],"repeatCount":1,"mode":"play-one","sync":false
+        }),
+    })
+    .expect("start bundled track");
+    let start = Instant::now();
+    loop {
+        let state = host.snapshot()["state"].clone();
+        if state["status"] == "playing" && state["positionMs"].as_f64().unwrap_or(0.) > 50. {
+            println!("PASS {} bundled decode + playback progress", track["code"]);
+            break;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(15),
+            "track failed: {state}"
+        );
+        thread::sleep(Duration::from_millis(50));
+    }
+}
+
 fn main() {
     let resources = PathBuf::from(
         std::env::args()
@@ -31,25 +54,7 @@ fn main() {
     let tracks = host.snapshot()["tracks"].as_array().unwrap().clone();
     assert_eq!(tracks.len(), 21);
     for track in &tracks {
-        host.command(Command::Start {
-            config: json!({
-                "trackId":track["id"],"repeatCount":1,"mode":"play-one","sync":false
-            }),
-        })
-        .expect("start bundled track");
-        let start = Instant::now();
-        loop {
-            let state = host.snapshot()["state"].clone();
-            if state["status"] == "playing" && state["positionMs"].as_f64().unwrap_or(0.) > 50. {
-                println!("PASS {} bundled decode + playback progress", track["code"]);
-                break;
-            }
-            assert!(
-                start.elapsed() < Duration::from_secs(15),
-                "track failed: {state}"
-            );
-            thread::sleep(Duration::from_millis(50));
-        }
+        play_track(&host, track);
     }
     host.command(Command::Pause {}).unwrap();
     host.command(Command::Preferences {
@@ -58,11 +63,20 @@ fn main() {
     })
     .unwrap();
     drop(host);
-    let restored = Host::spawn_with_runtime(data.clone(), true, runtime).unwrap();
-    assert_eq!(
-        restored.snapshot()["preferences"]["closeToBackground"],
-        false
-    );
-    assert_ne!(restored.snapshot()["state"]["status"], "playing");
-    println!("PASS isolated restart; logs retained at {}", data.display());
+    // Repeat handle teardown/recreation in the same process. A single playback pass
+    // missed Windows dependency initialization failures during DLL unload/reload.
+    let a05 = tracks.iter().find(|track| track["code"] == "A05").unwrap();
+    for iteration in 1..=5 {
+        let restored = Host::spawn_with_runtime(data.clone(), true, runtime.clone()).unwrap();
+        assert_eq!(
+            restored.snapshot()["preferences"]["closeToBackground"],
+            false
+        );
+        assert_ne!(restored.snapshot()["state"]["status"], "playing");
+        play_track(&restored, a05);
+        restored.command(Command::Pause {}).unwrap();
+        drop(restored);
+        println!("PASS isolated restart {iteration}/5");
+    }
+    println!("PASS logs retained at {}", data.display());
 }

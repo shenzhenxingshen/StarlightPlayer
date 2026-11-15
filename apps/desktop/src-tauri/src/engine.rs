@@ -89,12 +89,20 @@ impl Engine {
             let library = Library::new(library_path).map_err(|e| e.to_string())?;
             // Resolve the DLL's siblings without adding CWD/PATH to the search path.
             #[cfg(target_os = "windows")]
-            let library: Library = libloading::os::windows::Library::load_with_flags(
-                library_path,
-                0x00000100 | 0x00001000, // DLL_LOAD_DIR | DEFAULT_DIRS
-            )
-            .map_err(|e| e.to_string())?
-            .into();
+            let library: Library = {
+                let module = libloading::os::windows::Library::load_with_flags(
+                    library_path,
+                    0x00000100 | 0x00001000, // DLL_LOAD_DIR | DEFAULT_DIRS
+                )
+                .map_err(|e| e.to_string())?;
+                // Keep the native module (and its dependency graph) for the process lifetime.
+                // The Windows FFmpeg/GGML stack installs process-wide C++ handlers: unloading
+                // and reloading it caused GGML_ASSERT during the installed-runtime restart test.
+                // Engine::drop still destroys each mpv handle and releases its playback resources.
+                // Pinning does not accumulate modules when the same trusted path is reopened.
+                module.pin().map_err(|e| e.to_string())?;
+                module.into()
+            };
             let version = library
                 .get::<unsafe extern "C" fn() -> c_ulong>(b"mpv_client_api_version\0")
                 .map_err(|e| e.to_string())?();
