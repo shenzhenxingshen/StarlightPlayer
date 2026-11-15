@@ -78,3 +78,5 @@ macOS 预览用户数据：`~/Library/Application Support/org.starlightplayer.de
 Windows 安装与 GUI 探针统一使用 GitHub runner 的 `RUNNER_TEMP`，避免 Node 与 .NET 对用户临时目录/短路径解析不一致导致误拒绝。仍要求 `CI=true` 且应用位于该临时目录内，不应在个人机器上通过设置这些变量来绕过保护。
 
 GUI 探针使用一次性新配置，等待前端首次偏好保存（`initialized=true`）确认 UI 与原生 IPC 已就绪，再检查无控制台和关闭到后台。仅有 HWND 出现不代表初始化完成；失败时输出退出码、窗口标题及应用自己的有限诊断日志，不修改个人数据。
+
+修订制品的构建身份、安装后 GUI 验证、离线资源检查和发布回退记录见 [Windows f838255-r02 验收报告](../test-runs/2026-11-15-v0.1.0-windows-x64-f838255-r02.md)。该报告明确区分 CI 静音解码、实际 GUI 检查与尚未完成的 Windows 10/11 真机验收，不应把流水线通过等同于全部功能测试完成。
