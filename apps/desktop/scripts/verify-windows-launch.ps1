@@ -2,10 +2,11 @@
 param([Parameter(Mandatory = $true)][string]$Executable)
 $ErrorActionPreference = 'Stop'
 if ($env:CI -ne 'true') { throw 'GUI smoke test is restricted to disposable CI runners' }
+if (-not $env:RUNNER_TEMP) { throw 'GUI smoke test requires RUNNER_TEMP' }
 $resolved = (Resolve-Path -LiteralPath $Executable).Path
-$temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+$temporaryRoot = (Resolve-Path -LiteralPath $env:RUNNER_TEMP).Path.TrimEnd('\', '/') + '\'
 if (-not $resolved.StartsWith($temporaryRoot, [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'Expected an installation under the CI temporary directory'
+    throw 'Expected an installation under RUNNER_TEMP'
 }
 
 Add-Type @'

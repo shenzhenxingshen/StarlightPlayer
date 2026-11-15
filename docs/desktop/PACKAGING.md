@@ -74,3 +74,5 @@ macOS 预览用户数据：`~/Library/Application Support/org.starlightplayer.de
 初版 `0.1.0` 的 `src/main.rs` 缺少 `windows_subsystem` 属性，Windows 默认生成控制台应用，导致从安装入口启动时同时出现终端；关闭终端会结束关联进程，绕过 Tauri 主窗口的后台隐藏逻辑。libmpv 已设置 `terminal=no`，该选项不能更改宿主 EXE 的子系统。
 
 修订仅对 Windows release 声明 `windows_subsystem = "windows"`，保留 debug 控制台。播放状态机、同步、计数、任务及 Mac/Linux 构建行为不变。增加 PE32/PE32+ 与损坏文件测试，并检查**安装后的主程序**，不把 NSIS 安装器的子系统误当应用验收。下载站以 `0.1.0 Windows 修订版` 和源码提交号区分，不修改手机版本；服务器替换前保留旧 ZIP 与校验清单，更新后复核哈希和下载入口。
+
+Windows 安装与 GUI 探针统一使用 GitHub runner 的 `RUNNER_TEMP`，避免 Node 与 .NET 对用户临时目录/短路径解析不一致导致误拒绝。仍要求 `CI=true` 且应用位于该临时目录内，不应在个人机器上通过设置这些变量来绕过保护。

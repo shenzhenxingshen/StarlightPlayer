@@ -12,7 +12,14 @@ const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const target = process.env.CARGO_TARGET_DIR
   ? resolve(desktop, process.env.CARGO_TARGET_DIR)
   : join(desktop, 'src-tauri/target');
-const scratch = await mkdtemp(join(tmpdir(), 'starlight-installer-'));
+// Node and .NET can resolve the Windows user TEMP differently (including 8.3
+// aliases). Use the same runner-owned root in both the installer and GUI probe.
+const scratchRoot = process.platform === 'win32' ? process.env.RUNNER_TEMP : tmpdir();
+if (process.platform === 'win32') {
+  assert.equal(process.env.CI, 'true', 'Silent installation is restricted to disposable CI runners');
+  assert(scratchRoot, 'Windows installer verification requires RUNNER_TEMP');
+}
+const scratch = await mkdtemp(join(scratchRoot, 'starlight-installer-'));
 const run = (exe, args, options = {}) =>
   execFileSync(exe, args, { stdio: 'inherit', timeout: 600_000, ...options });
 const ext = process.platform === 'darwin' ? '.dmg' : process.platform === 'win32' ? '.exe' : '.AppImage';
