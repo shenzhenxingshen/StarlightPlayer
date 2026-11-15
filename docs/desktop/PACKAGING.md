@@ -24,7 +24,8 @@ Mac 打包从每个 Mach-O 库的部署版本中取最高值，写入生成配�
 - `apps/desktop/scripts/prepare.mjs`：生成手机同源曲目清单、哈希、共享核心和圆角图标。
 - `bundle-runtime.mjs`：复制音频、递归收集库、修正加载路径、保留许可证及版本清单。
 - `src-tauri/src/runtime.rs`：release 只认 `$RESOURCE/runtime`，不回退开发环境；debug 模式仍可使用源码和开发者指定的 libmpv。
-- `src-tauri/examples/bundle_smoke.rs`：指定解包后的资源根目录，逐首启动全部 21 首并检查进度；使用独立临时数据和静音输出。
+- `src-tauri/src/engine.rs`：Windows 安全加载同目录 DLL，并将库模块固定到进程生命周期，防止 FFmpeg/GGML 依赖卸载重载时重复注册进程级异常处理器；mpv 实例仍逐个正常释放。
+- `src-tauri/examples/bundle_smoke.rs`：指定解包后的资源根目录，逐首启动全部 21 首并检查进度，再连续 5 次销毁/重建引擎、恢复偏好并播放 A05；使用独立临时数据和静音输出。
 - `verify-runtime.mjs`：对安装后的资源复核 21 首音频及所有库的大小、SHA-256、平台和架构。
 - `verify-installer.mjs`：macOS 只读挂载 DMG、Windows 在一次性 CI runner 内静默安装、Linux 解包 AppImage，再执行资源检查及包内引擎冒烟；清除开发库环境变量并将 PATH 限制为系统目录。
 - `.github/workflows/desktop-build.yml`：各平台原生编译、测试和 artifact 上传。
