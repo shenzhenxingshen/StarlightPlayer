@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星光播放器 - 手机版与电脑版下载统计</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; min-height: 100vh; }
+        .header { color: white; padding: 40px 20px; text-align: center; }
+        h1 { font-size: 32px; margin: 0 0 30px 0; font-weight: 600; }
+        .stats { display: flex; justify-content: center; flex-wrap: wrap; gap: 24px 60px; }
+        .stat { text-align: center; }
+        .num { font-size: 48px; font-weight: bold; color: white; margin-bottom: 8px; }
+        .label { font-size: 16px; opacity: 0.9; }
+        .back { display: inline-block; margin: 20px; padding: 12px 24px; background: white; color: #667eea; text-decoration: none; border-radius: 8px; font-weight: 500; }
+        .back:hover { background: #f0f0f0; }
+        .time { text-align: center; padding: 20px; color: white; opacity: 0.8; }
+        .chart-box { background: white; border-radius: 16px; padding: 30px; margin: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .chart-box h3 { margin-top: 0; color: #333; font-size: 20px; }
+        #worldMap { width: 100%; height: 600px; }
+        #map { width: 100%; height: 600px; }
+        #brandChart { width: 100%; height: 400px; }
+        .subtitle { margin: -12px 0 28px; }
+        .note { color: #555; line-height: 1.8; }
+        .error { color: #8b2100; background: #fff0e9; padding: 14px; border-radius: 8px; }
+        .error:empty { display: none; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 14px 8px; border-bottom: 1px solid #eee; text-align: left; }
+        th:last-child, td:last-child { text-align: right; }
+        a:focus-visible { outline: 3px solid #f2ac31; outline-offset: 3px; }
+        @media (max-width: 600px) {
+            h1 { font-size: 25px; }
+            .num { font-size: 36px; }
+            .stats { gap: 22px; }
+            .label { font-size: 14px; }
+            .chart-box { margin: 12px; padding: 18px; }
+            #map, #worldMap { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>✨ 星光播放器 · 下载统计</h1>
+        <p class="subtitle">Android v1.1 · 电脑版测试预览 v0.1.0</p>
+        <div class="stats">
+            <div class="stat">
+                <div class="num" id="totalDownloads">-</div>
+                <div class="label">合计下载请求（去重）</div>
+            </div>
+            <div class="stat">
+                <div class="num" id="androidDownloads">-</div>
+                <div class="label">Android APK</div>
+            </div>
+            <div class="stat">
+                <div class="num" id="desktopDownloads">-</div>
+                <div class="label">电脑版 ZIP</div>
+            </div>
+        </div>
+    </div>
+    <a href="/starlight/v1.1/" class="back">← 返回下载页</a>
+    <a href="/starlight/desktop/v0.1.0/" class="back">电脑版下载页 →</a>
+    <div class="time" id="updateTime"></div>
+    <section class="chart-box" aria-labelledby="desktopTitle">
+        <h3 id="desktopTitle">💻 电脑版下载明细</h3>
+        <div id="dataError" class="error" role="status" aria-live="polite"></div>
+        <table>
+            <thead><tr><th scope="col">系统 / 芯片</th><th scope="col">下载请求（去重）</th></tr></thead>
+            <tbody>
+                <tr><th scope="row">Mac · Apple 芯片</th><td id="macos-arm64">-</td></tr>
+                <tr><th scope="row">Mac · Intel</th><td id="macos-x64">-</td></tr>
+                <tr><th scope="row">Windows · x64</th><td id="windows-x64">-</td></tr>
+                <tr><th scope="row">Linux · x64</th><td id="linux-x64">-</td></tr>
+            </tbody>
+        </table>
+        <div class="note">
+            <p>统计来自本站服务器下载日志，每 5 分钟更新；本页面每 5 分钟自动刷新数据。</p>
+            <p>Android 保留原口径：同一 IP 在同一个 5 分钟时间段内的成功 APK 请求计一次。电脑版按同一 IP、同一安装包合并连续请求，间隔不足 30 分钟的重试和分段续传计一次；排除 HEAD、明确标记的校验请求及不超过 1KB 的电脑版响应。</p>
+            <p>这些数字表示去重后的下载请求，不代表完整下载或安装人数。共同网络出口可能合并不同用户；长时间中断后的续传可能另计。iOS App Store / TestFlight 下载发生在 Apple 服务器，<strong>不计入本站统计</strong>。</p>
+            <p>地域图包含 Android 和电脑版，按 IP 库估算，不保证反映用户实际所在地；品牌图仅统计 APK 请求的浏览器标识。数据范围为服务器保留的日志，新版下载不会自动归入旧版本。</p>
+        </div>
+        <div id="chartError" class="error" role="status"></div>
+    </section>
+    <div class="chart-box"><h3>🗺️ 全国下载热力图 · Android + 电脑版</h3><div id="map"></div></div>
+    <div class="chart-box"><h3>📱 APK 下载设备 / 浏览器分布</h3><div id="brandChart"></div></div>
+    <div class="chart-box"><h3>🌍 全球下载热力图 · Android + 电脑版</h3><div id="worldMap"></div></div>    <script>
+        var statsData;
+        var platformKeys = ["macos-arm64", "macos-x64", "windows-x64", "linux-x64"];
+        function getJson(url) {
+            return fetch(url, {cache: "no-store"}).then(function(response) {
+                if (!response.ok) throw new Error("HTTP " + response.status);
+                return response.json();
+            });
+        }
+        function displayCount(id, value) {
+            document.getElementById(id).textContent = value.toLocaleString("zh-CN");
+        }
+        function validCount(value) {
+            return Number.isSafeInteger(value) && value >= 0;
+        }
+        function chartFor(id) {
+            var element = document.getElementById(id);
+            return echarts.getInstanceByDom(element) || echarts.init(element);
+        }
+        function chartFailure() {
+            document.getElementById("chartError").textContent = "图表暂时无法加载，以上下载数字仍然有效。";
+        }
+        function refreshStats() {
+            return getJson("/starlight/v1.1/api/stats.json?" + Date.now())
+            .then(data => {
+                if (data.schema_version !== 2 ||
+                    !validCount(data.total_downloads) || !validCount(data.android_downloads) ||
+                    !validCount(data.desktop_downloads) || !validCount(data.last_updated) ||
+                    !platformKeys.every(key => data.desktop_platforms &&
+                        data.desktop_platforms[key] && validCount(data.desktop_platforms[key].downloads)) ||
+                    data.total_downloads !== data.android_downloads + data.desktop_downloads ||
+                    data.desktop_downloads !== platformKeys.reduce((sum, key) => sum + data.desktop_platforms[key].downloads, 0)) {
+                    throw new Error("统计数据格式不完整");
+                }
+                statsData = data;
+                displayCount("totalDownloads", data.total_downloads);
+                displayCount("androidDownloads", data.android_downloads);
+                displayCount("desktopDownloads", data.desktop_downloads);
+                platformKeys.forEach(key => displayCount(key, data.desktop_platforms[key].downloads));
+                var date = new Date(data.last_updated * 1000);
+                document.getElementById("updateTime").textContent = "统计生成时间: " + date.toLocaleString('zh-CN');
+                document.getElementById("dataError").textContent = Date.now() - date.getTime() > 15 * 60 * 1000
+                    ? "统计已超过 15 分钟未更新，当前显示最后一次成功数据。" : "";
+                document.getElementById("chartError").textContent = "";
+                try {
+                    if (typeof echarts === "undefined") throw new Error("图表组件不可用");
+                    loadWorldMap(); loadMap(); renderBrandChart();
+                } catch (error) { chartFailure(); }
+            })
+            .catch(() => {
+                document.getElementById("dataError").textContent = statsData
+                    ? "更新失败，保留上次成功数据；稍后自动重试。"
+                    : "统计数据暂时无法加载，请稍后刷新；不能将此状态视为下载量为零。";
+            });
+        }
+        refreshStats();
+        setInterval(refreshStats, 5 * 60 * 1000);
+        window.addEventListener("resize", function() {
+            if (typeof echarts === "undefined") return;
+            ["worldMap", "map", "brandChart"].forEach(function(id) {
+                var chart = echarts.getInstanceByDom(document.getElementById(id));
+                if (chart) chart.resize();
+            });
+        });
+
+        function loadWorldMap() {
+            getJson("/world.json").then(g => { echarts.registerMap("world", g); renderWorldMap(); }).catch(chartFailure);
+        }
+        function renderWorldMap() {
+            if (!statsData || !statsData.countries) return;
+            var chart = chartFor("worldMap");
+            var countryMap = {"中国":"China","美国":"United States","加拿大":"Canada","日本":"Japan","澳大利亚":"Australia","英国":"United Kingdom","德国":"Germany","意大利":"Italy","新加坡":"Singapore","马来西亚":"Malaysia","韩国":"South Korea","法国":"France","西班牙":"Spain","泰国":"Thailand","印度":"India"};
+            var mapData = [], maxVal = 0;
+            for (var c in statsData.countries) { var en = countryMap[c]||c, v = statsData.countries[c]; mapData.push({name:en,value:v}); if(v>maxVal) maxVal=v; }
+            chart.setOption({tooltip:{trigger:'item',formatter:function(p){return p.name+'<br/>下载: '+(p.value||0)}},visualMap:{min:0,max:maxVal||100,text:['高','低'],inRange:{color:['#e0f3f8','#abd9e9','#74add1','#4575b4','#313695']}},series:[{type:'map',map:'world',roam:true,label:{show:false},emphasis:{label:{show:true}},data:mapData}]});
+        }
+        function loadMap() {
+            getJson("/china-provinces.json").then(g => { echarts.registerMap("china", g); renderMap(); }).catch(chartFailure);
+        }
+        function renderMap() {
+            if (!statsData || !statsData.provinces) return;
+            var chart = chartFor("map");
+            var mapData = [];
+            for (var p in statsData.provinces) mapData.push({name:p,value:statsData.provinces[p]});
+            chart.setOption({tooltip:{trigger:'item',formatter:'{b}<br/>下载: {c}'},visualMap:{min:0,max:Math.max(...mapData.map(d=>d.value))||10,text:['高','低'],inRange:{color:['#e0f3f8','#abd9e9','#74add1','#4575b4','#313695']}},series:[{type:'map',map:'china',roam:true,label:{show:true,fontSize:10},data:mapData}]});
+        }
+        function renderBrandChart() {
+            if (!statsData || !statsData.brands) return;
+            var chart = chartFor("brandChart");
+            var data = [];
+            for (var b in statsData.brands) data.push({name:b,value:statsData.brands[b]});
+            data.sort((a,b) => b.value-a.value);
+            chart.setOption({tooltip:{trigger:'item',formatter:'{b}: {c} ({d}%)'},legend:{orient:'vertical',left:'left'},series:[{type:'pie',radius:'60%',data:data,emphasis:{itemStyle:{shadowBlur:10,shadowColor:'rgba(0,0,0,0.5)'}}}]});
+        }
+    </script>
+</body>
+</html>
