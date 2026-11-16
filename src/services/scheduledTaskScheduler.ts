@@ -17,6 +17,7 @@ export interface TaskSchedulingStatus {
   platform: 'android' | 'ios' | 'unsupported';
   notificationPermission: 'authorized' | 'denied' | 'not-determined' | 'unsupported';
   exactAlarmPermission: 'authorized' | 'denied' | 'not-needed' | 'unsupported';
+  notificationCapacityExceeded?: boolean;
 }
 
 export interface ScheduledTaskTrigger {
@@ -36,7 +37,7 @@ export const UNSUPPORTED_SCHEDULING_STATUS: TaskSchedulingStatus = {
 
 export function syncTaskSchedules(tasks: readonly ScheduledTask[]): Promise<TaskSchedulingStatus> {
   if (!nativeManager) return Promise.resolve(UNSUPPORTED_SCHEDULING_STATUS);
-  const snapshot = [...tasks];
+  const snapshot = tasks.map(task => ({ ...task, weekdays: [...task.weekdays] }));
   const operation = scheduleSyncTail.then(
     () => nativeManager.syncTasks(snapshot),
     () => nativeManager.syncTasks(snapshot),
@@ -49,6 +50,7 @@ export function syncTaskSchedules(tasks: readonly ScheduledTask[]): Promise<Task
 
 export async function getTaskSchedulingStatus(): Promise<TaskSchedulingStatus> {
   if (!nativeManager) return UNSUPPORTED_SCHEDULING_STATUS;
+  await scheduleSyncTail;
   return nativeManager.getSchedulingStatus();
 }
 

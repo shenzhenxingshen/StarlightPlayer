@@ -2,6 +2,7 @@
 #import <React/RCTEventEmitter.h>
 #import <UIKit/UIKit.h>
 #import <UserNotifications/UserNotifications.h>
+#import "ScheduledTaskCalendar.h"
 
 static NSString *const StarlightScheduledTaskNotification = @"StarlightScheduledTaskDueNotification";
 static NSString *const StarlightPendingTaskIdKey = @"starlight_pending_task_id";
@@ -15,6 +16,7 @@ static NSString *const StarlightLastAutomaticTaskScheduledAtKey = @"starlight_la
 @property(nonatomic, assign) BOOL hasListeners;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, id> *backgroundTimers;
 @property(nonatomic, copy) NSArray<NSDictionary *> *scheduledTasks;
+@property(nonatomic, assign) NSUInteger timerGeneration;
 @end
 
 @implementation ScheduledTaskManager
@@ -58,13 +60,7 @@ RCT_EXPORT_MODULE();
 
 - (NSDate *)nextDateForTask:(NSDictionary *)task
 {
-  NSDateComponents *components = [NSDateComponents new];
-  components.hour = [task[@"hour"] integerValue];
-  components.minute = [task[@"minute"] integerValue];
-  components.second = [task[@"second"] integerValue];
-  return [[NSCalendar currentCalendar] nextDateAfterDate:[NSDate date]
-                                      matchingComponents:components
-                                                 options:NSCalendarMatchNextTime];
+  return STNextTaskDate(task, [NSDate date], [NSCalendar currentCalendar]);
 }
 
 - (void)publishTask:(NSString *)taskId source:(NSString *)source scheduledAt:(NSNumber *)scheduledAt
@@ -100,9 +96,12 @@ RCT_EXPORT_MODULE();
                             DISPATCH_TIME_FOREVER,
                             (uint64_t)(0.25 * NSEC_PER_SEC));
   __weak __typeof__(self) weakSelf = self;
+  NSUInteger generation = self.timerGeneration;
   dispatch_source_set_event_handler(timer, ^{
     __strong __typeof__(weakSelf) strongSelf = weakSelf;
-    if (strongSelf == nil) return;
+    if (strongSelf == nil || strongSelf.timerGeneration != generation) return;
+    id finishedTimer = strongSelf.backgroundTimers[taskId];
+    if (finishedTimer != nil) dispatch_source_cancel((dispatch_source_t)finishedTimer);
     [strongSelf.backgroundTimers removeObjectForKey:taskId];
     // A dispatch timer cannot wake a suspended or terminated process. While the process is still
     // executable it is the primary trigger, including when legitimate audio playback keeps the App
@@ -119,6 +118,7 @@ RCT_EXPORT_MODULE();
 
 - (void)replaceBackgroundTimersWithTasks:(NSArray<NSDictionary *> *)tasks
 {
+  self.timerGeneration++;
   for (id timerObject in self.backgroundTimers.allValues) {
     dispatch_source_cancel((dispatch_source_t)timerObject);
   }
@@ -180,7 +180,9 @@ RCT_EXPORT_MODULE();
         }
         resolve(@{ @"platform": @"ios",
                    @"notificationPermission": permission,
-                   @"exactAlarmPermission": @"not-needed" });
+                   @"exactAlarmPermission": @"not-needed",
+                   @"notificationCapacityExceeded": @([NSUserDefaults.standardUserDefaults
+                       boolForKey:@"starlight_task_notification_capacity_exceeded"]) });
       }];
 }
 
@@ -203,6 +205,7 @@ RCT_REMAP_METHOD(syncTasks,
     [center removePendingNotificationRequestsWithIdentifiers:identifiers];
 
     BOOL hasEnabledTask = NO;
+    NSMutableArray<UNNotificationRequest *> *planned = [NSMutableArray new];
     dispatch_group_t group = dispatch_group_create();
     __block NSError *scheduleError = nil;
     for (NSDictionary *task in tasks) {
@@ -216,18 +219,38 @@ RCT_REMAP_METHOD(syncTasks,
                                                 task[@"name"] ?: @"播放任务"];
       content.sound = UNNotificationSound.defaultSound;
       content.userInfo = @{ @"starlightTaskId": taskId };
-      NSDateComponents *components = [NSDateComponents new];
-      components.hour = [task[@"hour"] integerValue];
-      components.minute = [task[@"minute"] integerValue];
-      components.second = [task[@"second"] integerValue];
-      UNCalendarNotificationTrigger *trigger =
-        [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:components repeats:YES];
-      NSString *identifier = [StarlightTaskRequestPrefix stringByAppendingString:taskId];
-      UNNotificationRequest *request =
-        [UNNotificationRequest requestWithIdentifier:identifier content:content trigger:trigger];
+      NSArray<NSNumber *> *weekdays = STTaskWeekdays(task);
+      // Daily tasks still need just one request. A subset requires one weekly request per day.
+      NSArray<NSNumber *> *notificationDays = weekdays.count == 7 ? @[@0] : weekdays;
+      for (NSNumber *weekday in notificationDays) {
+        NSDateComponents *components = STTaskClock(task);
+        if (components == nil) continue;
+        if (weekday.integerValue != 0) components.weekday = weekday.integerValue % 7 + 1;
+        UNCalendarNotificationTrigger *trigger =
+          [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:components repeats:YES];
+        NSString *identifier = [NSString stringWithFormat:@"%@%@-weekday-%@",
+                                                          StarlightTaskRequestPrefix, taskId, weekday];
+        [planned addObject:[UNNotificationRequest requestWithIdentifier:identifier content:content trigger:trigger]];
+      }
+    }
+    // Reserve space for other notifications. Do not silently exceed the system pending-request
+    // budget when weekly selections multiply requests. Prefer the nearest upcoming reminders.
+    [planned sortUsingComparator:^NSComparisonResult(UNNotificationRequest *left, UNNotificationRequest *right) {
+      NSDate *a = [(UNCalendarNotificationTrigger *)left.trigger nextTriggerDate] ?: NSDate.distantFuture;
+      NSDate *b = [(UNCalendarNotificationTrigger *)right.trigger nextTriggerDate] ?: NSDate.distantFuture;
+      NSComparisonResult result = [a compare:b];
+      return result == NSOrderedSame ? [left.identifier compare:right.identifier] : result;
+    }];
+    NSInteger otherCount = (NSInteger)requests.count - (NSInteger)identifiers.count;
+    NSUInteger budget = (NSUInteger)MAX(0, 60 - otherCount);
+    [NSUserDefaults.standardUserDefaults setBool:planned.count > budget
+                                         forKey:@"starlight_task_notification_capacity_exceeded"];
+    for (UNNotificationRequest *request in [planned subarrayWithRange:NSMakeRange(0, MIN(budget, planned.count))]) {
       dispatch_group_enter(group);
       [center addNotificationRequest:request withCompletionHandler:^(NSError *error) {
-        if (error != nil && scheduleError == nil) scheduleError = error;
+        @synchronized (planned) {
+          if (error != nil && scheduleError == nil) scheduleError = error;
+        }
         dispatch_group_leave(group);
       }];
     }
@@ -302,8 +325,12 @@ RCT_EXPORT_METHOD(markAutomaticTaskStarted:(NSString *)taskId
   [defaults setObject:taskId forKey:StarlightLastAutomaticTaskIdKey];
   [defaults setObject:scheduledAt forKey:StarlightLastAutomaticTaskScheduledAtKey];
   NSString *identifier = [StarlightTaskRequestPrefix stringByAppendingString:taskId];
+  NSMutableArray<NSString *> *identifiers = [NSMutableArray arrayWithObject:identifier];
+  for (NSInteger day = 0; day <= 7; day++) {
+    [identifiers addObject:[NSString stringWithFormat:@"%@-weekday-%ld", identifier, (long)day]];
+  }
   [UNUserNotificationCenter.currentNotificationCenter
-      removeDeliveredNotificationsWithIdentifiers:@[identifier]];
+      removeDeliveredNotificationsWithIdentifiers:identifiers];
 }
 
 @end

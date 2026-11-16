@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   NEW_SCHEDULED_TASK,
   formatTaskTime,
+  formatTaskWeekdays,
   sortScheduledTasks,
   validateTask,
   type ScheduledTask,
@@ -40,7 +41,7 @@ export function TaskPanel({
     <main className="page tasks">
       <h1>任务</h1>
       <p className="muted">
-        每天按本机时间启动。启用开关只控制定时，播放按钮始终可以立即开始新任务。
+        按任务的重复日期和本机时间启动。启用开关只控制定时，播放按钮始终可以立即开始新任务。
       </p>
       <div className="task-list">
         {sortScheduledTasks(tasks).map(task => (
@@ -62,7 +63,9 @@ export function TaskPanel({
                 setCreating(false);
                 setEditing(task);
               }}>
-              <time>{formatTaskTime(task)}</time>
+              <time>
+                {formatTaskTime(task)} · {formatTaskWeekdays(task)}
+              </time>
               <span>
                 {task.name}，{formatRepeatCount(task.repeatCount)} 遍
               </span>

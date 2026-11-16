@@ -1,14 +1,15 @@
 # 测试手册
 
-> 最后核对：2026-10-16；自动化数字对应源码 commit `0698f629376c73b8daee3aa7fbdaf2af1c63b29c`。本文说明测试代码如何运行、覆盖率如何解释、mock 能证明什么，以及失败时如何排查。发布候选的人工步骤见 [QA 执行手册](QA_PLAYBOOK.md)，设备覆盖见 [设备与发布候选测试矩阵](DEVICE_TEST_MATRIX.md)，每次执行结果写入 [`test-runs/`](test-runs/README.md)。
+> 最后核对：2026-11-16；本次自动化数字对应[任务拨轮与星期扩展开发记录](test-runs/2026-11-16-task-weekdays.md)，不是已发布版本的验收结论。本文说明测试代码如何运行、覆盖率如何解释、mock 能证明什么，以及失败时如何排查。发布候选的人工步骤见 [QA 执行手册](QA_PLAYBOOK.md)，设备覆盖见 [设备与发布候选测试矩阵](DEVICE_TEST_MATRIX.md)，每次执行结果写入 [`test-runs/`](test-runs/README.md)。
 
 ## 1. 测试分层与结论边界
 
 | 层级                        | 当前实现                                           | 能证明                                                   | 不能证明                                                         |
 | --------------------------- | -------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------- |
-| TypeScript/Jest/RNTL        | 32 suites、324 tests；Node 环境和内存 mock         | 业务决策、持久化协议、组件交互、异常分支、响应式布局计算 | RNTP 原生状态机、真实解码、系统后台策略、硬件/系统事件           |
+| TypeScript/Jest/RNTL        | 34 suites、361 tests；Node 环境和内存 mock         | 业务决策、持久化协议、组件交互、异常分支、响应式布局计算 | RNTP 原生状态机、真实解码、系统后台策略、硬件/系统事件           |
 | iOS XCTest                  | `StarlightPlayerTests` 中 1 个根控制器 smoke test  | App 能在指定 Simulator/设备上启动并创建根控制器          | 播放、锁屏、后台、来电、蓝牙、同步听感和完整 UI 流程             |
-| Android JVM/instrumentation | **尚未建立**                                       | 无                                                       | 即使 Gradle task 显示成功，也不能在 0 个测试时视为原生回归 PASS  |
+| Java / Foundation 原生纯逻辑 | `tests/native/`：Java 30、Foundation 22 个断言     | 日历与 DST 边界、ISO 星期映射、Android 桥接字段转换       | AlarmManager、通知注册/送达、React Native 桥的实际运行          |
+| Android instrumentation    | **尚未建立**                                       | 无                                                       | 即使 Gradle task 显示成功，也不能在 0 个测试时视为原生回归 PASS  |
 | Simulator/Emulator 人工回归 | 可执行页面、布局、基础流程和部分进程恢复测试       | 指定 build 在指定模拟环境中的实际行为                    | 真机后台保活、锁屏硬件链路、电话、蓝牙、厂商省电和多设备听感同步 |
 | 真机、长时和多设备测试      | 按发布候选逐次执行，仓库当前没有完整的正式执行记录 | 指定制品、设备、系统和条件下的端到端行为                 | 不能外推到未测试机型、系统或另一个 build                         |
 
@@ -81,8 +82,10 @@ npm test -- --runInBand --findRelatedTests src/utils/playbackDecision.ts
 | `utils/repeatDisplay.spec.ts` / `utils/numberFormat.spec.ts`       | 遍数显示矩阵、安全大数和千分位                                                         |
 | `components/*.spec.tsx`                                            | 五按钮、进度拖动与无障碍动作、曲目信息、黑胶动画清理                                   |
 | `screens/*.spec.tsx`                                               | 播放、列表、“我的”、自定义遍数、诊断导出和异常路径                                     |
-| `screens/TaskScreens.spec.tsx` / `utils/scheduledTasks.spec.ts`    | 默认关闭任务、排序/校验/持久化、左滑删除、同一时刻启用冲突、新增修改启停与大遍数       |
-| `services/scheduledTaskExecutor.spec.ts`                           | 四项配置原子应用、启用状态、Android/iOS 15 分钟窗口、同轮去重、立即播放与播放器复用    |
+| `screens/TaskScreens.spec.tsx` / `utils/scheduledTasks.spec.ts`    | 默认关闭/每天、星期迁移与空值校验、127 种非空星期组合及 16,129 对交集判断、持久化、同日同刻冲突、增删改启停 |
+| `components/TaskTimePicker.spec.tsx`                               | 9 项：短拖动兜底、惯性结束、两列并发、大字体、受控偏移与卸载清理；真实手势需另测       |
+| `services/scheduledTaskExecutor.spec.ts`                           | 四项配置原子应用、日期/时刻失配拒绝、未来和 15 分钟窗口、跨午夜原计划日、同轮去重、手动播放无日期限制 |
+| `services/scheduledTaskScheduler.spec.ts`                          | 原生桥接调用、星期数组快照、串行同步/等待状态、权限与 iOS 通知容量状态                  |
 | `store/*.spec.ts` / `utils/diagnosticsAndLogger.spec.ts`           | 设置/统计 store、日志上限、格式和诊断失败                                              |
 
 ## 3. 覆盖率：分母、阈值和发布口径
@@ -95,16 +98,16 @@ npm test -- --runInBand --findRelatedTests src/utils/playbackDecision.ts
 - `src/types/**`；
 - `src/constants/**`。
 
-V1.1 新增任务页面、服务和 store 后，当前分母是其余 31 个 TypeScript/TSX 文件。Jest 按 Istanbul 插桩后分别计算：
+2026-11-16 新增拨轮后，当前分母是其余 32 个 TypeScript/TSX 文件。Jest 按 Istanbul 插桩后分别计算：
 
-| 指标       | 分母含义                                   | 2026-11-07 命中/总数 | 报告值 |
+| 指标       | 分母含义                                   | 2026-11-16 命中/总数 | 报告值 |
 | ---------- | ------------------------------------------ | -------------------- | ------ |
-| statements | 可执行语句                                 | 1,395 / 1,458        | 95.67% |
-| branches   | `if`、条件表达式、默认分支等生成的分支出口 | 954 / 1,059          | 90.08% |
-| functions  | 函数、回调等可调用单元                     | 321 / 348            | 92.24% |
-| lines      | 至少包含一个可执行语句的源码行             | 1,283 / 1,329        | 96.53% |
+| statements | 可执行语句                                 | 1,499 / 1,572        | 95.35% |
+| branches   | `if`、条件表达式、默认分支等生成的分支出口 | 1,005 / 1,116        | 90.05% |
+| functions  | 函数、回调等可调用单元                     | 349 / 380            | 91.84% |
+| lines      | 至少包含一个可执行语句的源码行             | 1,376 / 1,428        | 96.35% |
 
-分母**不包括**：`ios/`、`android/` 原生代码，MP3 解码路径，第三方依赖，测试代码和 mock，资源文件，以及操作系统后台/锁屏/蓝牙实现。因此 95% 不能解释为“整个 App 95% 已验证”，branches 90.06% 也不表示所有产品边界都已覆盖。
+分母**不包括**：`ios/`、`android/` 原生代码，音频解码路径，第三方依赖，测试代码和 mock，资源文件，以及操作系统后台/锁屏/蓝牙实现。因此 95% 不能解释为“整个 App 95% 已验证”，branches 90.05% 也不表示所有产品边界都已覆盖。相比 2026-11-07 历史值（95.67% / 90.08% / 92.24% / 96.53%）分母增加，百分比略降；未改变覆盖率排除项或降低阈值。新增组件的未覆盖 UI 回调及原生集成缺口见本次记录，不能据此直接批准发布。
 
 覆盖率报告默认生成到被 Git 忽略的 `coverage/`；HTML 入口为 `coverage/lcov-report/index.html`。每次比较必须使用相同 commit、Node/Jest 版本和全量覆盖率命令。
 
@@ -233,9 +236,17 @@ xcodebuild \
 
 iOS 13/14 兼容测试必须选真实的旧 runtime/真机，并且候选 Archive 的 `MinimumOSVersion` 确实允许安装。当前 1.0.0 (4) Archive 最低为 iOS 15.0，不能用当前 XCTest 结果宣称支持 iOS 13/14。
 
-## 7. Android 原生测试缺口
+## 7. 原生日历测试与 Android 集成缺口
 
-仓库当前没有 `android/app/src/test` 或 `android/app/src/androidTest` 测试，也没有已配置的 instrumentation runner。下列 Gradle task 即使构建成功或报告 0 tests，也**不能**记作 Android 原生测试 PASS：
+仓库已有 `tests/native/TaskCalendarTest.java`、`ScheduledTaskPayloadTest.java` 和 `ScheduledTaskCalendarTest.m`，执行实际生产日历函数和 Android 桥接字段投影，不 mock 这些函数：
+
+```bash
+bash scripts/test-task-calendars.sh
+```
+
+Java 覆盖 ISO 星期、下一选中日、跨午夜/年界、DST 缺失和重复时刻、半小时 DST、非法时分秒，以及桥接的星期保留/快照/缺失与空值区分。Foundation 使用同一个 iOS 头文件，覆盖星期和时刻校验、下一次发生日期、通知原计划时刻重建。macOS 需已安装 JDK 和 Xcode；非 macOS 明确跳过 Foundation。这些测试不加载 Android Service，不发送通知，也不运行 RN 桥。
+
+仓库仍没有 `android/app/src/test` 或 `android/app/src/androidTest` 测试，也没有已配置的 instrumentation runner。下列 Gradle task 即使构建成功或报告 0 tests，也**不能**记作 Android 原生测试 PASS：
 
 ```bash
 ./android/gradlew -p android :app:testDebugUnitTest

@@ -9,7 +9,7 @@ import android.os.Build
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Calendar
+import java.util.TimeZone
 
 object ScheduledTaskAlarmScheduler {
   private const val PREFS = "starlight_scheduled_tasks"
@@ -33,6 +33,26 @@ object ScheduledTaskAlarmScheduler {
   fun reschedule(context: Context, taskId: String) {
     readTasks(context).firstOrNull { it.optString("id") == taskId && it.optBoolean("enabled", false) }
       ?.let { schedule(context, it) }
+  }
+
+  fun isCurrentOccurrence(context: Context, taskId: String, scheduledAt: Long): Boolean {
+    val task = readTasks(context).firstOrNull {
+      it.optString("id") == taskId && it.optBoolean("enabled", false)
+    } ?: return false
+    return TaskCalendar.matches(scheduledAt, TimeZone.getDefault(),
+      task.optInt("hour", -1), task.optInt("minute", -1), task.optInt("second", -1), weekdays(task))
+  }
+
+  private fun weekdays(task: JSONObject): Set<Int> {
+    if (!task.has("weekdays")) return (1..7).toSet() // Legacy daily tasks.
+    val days = task.optJSONArray("weekdays") ?: return emptySet()
+    val result = mutableSetOf<Int>()
+    for (index in 0 until days.length()) {
+      val value = days.opt(index) as? Number ?: return emptySet()
+      if (value.toDouble() != value.toInt().toDouble() || value.toInt() !in 1..7) return emptySet()
+      result.add(value.toInt())
+    }
+    return result
   }
 
   fun canScheduleExactly(context: Context): Boolean {
@@ -67,22 +87,14 @@ object ScheduledTaskAlarmScheduler {
     )
   }
 
-  private fun nextTrigger(task: JSONObject): Long {
-    val now = System.currentTimeMillis()
-    val calendar = Calendar.getInstance().apply {
-      set(Calendar.HOUR_OF_DAY, task.optInt("hour", 0))
-      set(Calendar.MINUTE, task.optInt("minute", 0))
-      set(Calendar.SECOND, task.optInt("second", 0))
-      set(Calendar.MILLISECOND, 0)
-      if (timeInMillis <= now) add(Calendar.DAY_OF_YEAR, 1)
-    }
-    return calendar.timeInMillis
-  }
+  private fun nextTrigger(task: JSONObject): Long? =
+    TaskCalendar.next(System.currentTimeMillis(), TimeZone.getDefault(),
+      task.optInt("hour", -1), task.optInt("minute", -1), task.optInt("second", -1), weekdays(task))
 
   private fun schedule(context: Context, task: JSONObject) {
     val taskId = task.optString("id")
     if (taskId.isBlank()) return
-    val triggerAt = nextTrigger(task)
+    val triggerAt = nextTrigger(task) ?: return
     val manager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     val operation = pendingIntent(context, taskId, triggerAt)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

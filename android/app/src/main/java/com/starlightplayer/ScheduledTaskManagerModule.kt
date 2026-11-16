@@ -46,14 +46,9 @@ class ScheduledTaskManagerModule(
       val json = JSONArray()
       for (index in 0 until tasks.size()) {
         val task = tasks.getMap(index)
-        json.put(JSONObject().apply {
-          put("id", task.getString("id"))
-          put("name", task.getString("name"))
-          put("hour", task.getInt("hour"))
-          put("minute", task.getInt("minute"))
-          put("second", task.getInt("second"))
-          put("enabled", task.getBoolean("enabled"))
-        })
+        // Keep the scheduling projection executable in JVM tests. Omitting weekdays here
+        // would silently turn every selected-day schedule into a legacy daily schedule.
+        json.put(JSONObject(ScheduledTaskPayload.fromMap(task.toHashMap())))
       }
       ScheduledTaskAlarmScheduler.sync(reactApplicationContext, json.toString())
       promise.resolve(status())

@@ -1,5 +1,9 @@
 import { MMKV } from 'react-native-mmkv';
-import { DEFAULT_SCHEDULED_TASKS, sortScheduledTasks } from '../constants/scheduledTasks';
+import {
+  DEFAULT_SCHEDULED_TASKS,
+  normalizeTaskWeekdays,
+  sortScheduledTasks,
+} from '../constants/scheduledTasks';
 import { TRACKS } from '../constants/tracks';
 import { ScheduledTask } from '../types/scheduledTask';
 import type { PlayMode } from '../types/playMode';
@@ -91,7 +95,7 @@ export function setSettings(settings: {
   );
 }
 
-// --- 每日定时任务 ---
+// --- 按星期重复的定时任务（无 weekdays 的旧存档按每天迁移） ---
 function normalizeClockPart(value: unknown, maximum: number): number | null {
   const part = Number(value);
   return Number.isInteger(part) && part >= 0 && part <= maximum ? part : null;
@@ -103,6 +107,7 @@ export function normalizeScheduledTask(value: unknown): ScheduledTask | null {
   const hour = normalizeClockPart(candidate.hour, 23);
   const minute = normalizeClockPart(candidate.minute, 59);
   const second = normalizeClockPart(candidate.second, 59);
+  const weekdays = normalizeTaskWeekdays(candidate.weekdays);
   const name = typeof candidate.name === 'string' ? candidate.name.trim().slice(0, 30) : '';
   if (
     typeof candidate.id !== 'string' ||
@@ -111,6 +116,7 @@ export function normalizeScheduledTask(value: unknown): ScheduledTask | null {
     hour == null ||
     minute == null ||
     second == null ||
+    weekdays == null ||
     !TRACKS.some(track => track.id === candidate.trackId)
   ) {
     return null;
@@ -121,6 +127,7 @@ export function normalizeScheduledTask(value: unknown): ScheduledTask | null {
     hour,
     minute,
     second,
+    weekdays,
     trackId: candidate.trackId as string,
     repeatCount: normalizeRepeatCount(candidate.repeatCount),
     playMode: normalizePlayMode(candidate.playMode),
@@ -146,9 +153,14 @@ export function loadScheduledTasks(): ScheduledTask[] {
     if (data == null) return saveScheduledTasks(DEFAULT_SCHEDULED_TASKS);
     const parsed = JSON.parse(data);
     if (!Array.isArray(parsed)) return saveScheduledTasks(DEFAULT_SCHEDULED_TASKS);
-    return sortScheduledTasks(
+    const tasks = sortScheduledTasks(
       parsed.map(normalizeScheduledTask).filter((task): task is ScheduledTask => task != null),
     );
+    // Persist the additive migration without reseeding deleted tasks or changing enabled switches.
+    if (parsed.some(task => task && typeof task === 'object' && task.weekdays === undefined)) {
+      storage.set(SCHEDULED_TASKS_KEY, JSON.stringify(tasks));
+    }
+    return tasks;
   } catch {
     return saveScheduledTasks(DEFAULT_SCHEDULED_TASKS);
   }

@@ -6,7 +6,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { TaskStackParamList } from '../navigation/TaskNavigator';
 import { useScheduledTaskStore } from '../store/scheduledTaskStore';
-import { formatTaskTime } from '../constants/scheduledTasks';
+import { formatTaskTime, formatTaskWeekdays } from '../constants/scheduledTasks';
 import {
   BG_GROUND,
   BG_RECESS,
@@ -39,6 +39,9 @@ const TASK_MODE_LABEL = {
 
 function permissionMessage(status: TaskSchedulingStatus | null): string | null {
   if (!status) return null;
+  if (status.notificationCapacityExceeded) {
+    return '重复日期产生的提醒数量过多，部分系统通知未排入。请减少启用的任务或重复日期；App 运行中的定时不受此限制。';
+  }
   if (status.platform === 'ios' && status.notificationPermission !== 'authorized') {
     return '请允许通知；iOS 被系统挂起或关闭时，需要通过通知继续启动任务。';
   }
@@ -83,7 +86,7 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
       if (conflict) {
         Alert.alert(
           '启动时刻冲突',
-          `“${conflict.name}”已在 ${formatTaskTime(conflict)} 启用。同一时刻只能启用一个任务，请先关闭原任务。`,
+          `“${conflict.name}”已在 ${formatTaskTime(conflict)} 启用。同一天的同一时刻只能启用一个任务，请调整时间或重复日期。`,
         );
         return;
       }
@@ -201,7 +204,10 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
                 accessibilityLabel={`修改任务${item.name}`}
                 style={styles.taskInfo}
                 onPress={() => navigation.navigate('TaskEdit', { taskId: item.id })}>
-                <Text style={styles.time}>{formatTaskTime(item)}</Text>
+                <View style={styles.timeRow}>
+                  <Text style={styles.time}>{formatTaskTime(item)}</Text>
+                  <Text style={styles.weekdays}>{formatTaskWeekdays(item)}</Text>
+                </View>
                 <View style={styles.nameRow}>
                   <Text style={styles.name} numberOfLines={1}>
                     {item.name}
@@ -265,6 +271,8 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   taskInfo: { flex: 1, minWidth: 0, marginRight: 10 },
+  timeRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  weekdays: { color: TEXT_SEC, fontSize: 12 },
   time: { color: INK, fontSize: 24, fontWeight: '400', fontVariant: ['tabular-nums'] },
   nameRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 4 },
   name: { color: INK, fontSize: 16, fontWeight: '600', flexShrink: 1 },

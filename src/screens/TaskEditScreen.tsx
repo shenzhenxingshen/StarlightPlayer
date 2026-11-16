@@ -16,7 +16,14 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { TaskStackParamList } from '../navigation/TaskNavigator';
 import { useScheduledTaskStore } from '../store/scheduledTaskStore';
-import { NEW_SCHEDULED_TASK } from '../constants/scheduledTasks';
+import {
+  ALL_TASK_WEEKDAYS,
+  NEW_SCHEDULED_TASK,
+  normalizeTaskWeekdays,
+  TASK_WEEKDAY_LABELS,
+} from '../constants/scheduledTasks';
+import TaskTimePicker from '../components/TaskTimePicker';
+import { TaskWeekday } from '../types/scheduledTask';
 import { TRACKS } from '../constants/tracks';
 import { PlayMode } from '../utils/storage';
 import { MODE_CONFIG } from '../components/Controls';
@@ -36,12 +43,6 @@ type Props = NativeStackScreenProps<TaskStackParamList, 'TaskEdit'>;
 
 const PLAY_MODES: readonly PlayMode[] = ['play-one', 'repeat-one', 'play-all', 'repeat-all'];
 
-function clockPart(text: string, maximum: number): number | null {
-  if (!/^\d{1,2}$/.test(text)) return null;
-  const value = Number(text);
-  return value >= 0 && value <= maximum ? value : null;
-}
-
 const TaskEditScreen: React.FC<Props> = ({ navigation, route }) => {
   const taskId = route.params?.taskId;
   const existing = useScheduledTaskStore(state => state.tasks.find(task => task.id === taskId));
@@ -50,9 +51,15 @@ const TaskEditScreen: React.FC<Props> = ({ navigation, route }) => {
   const deleteTask = useScheduledTaskStore(state => state.deleteTask);
   const initial = existing ?? NEW_SCHEDULED_TASK;
   const [name, setName] = useState(initial.name);
-  const [hour, setHour] = useState(String(initial.hour).padStart(2, '0'));
-  const [minute, setMinute] = useState(String(initial.minute).padStart(2, '0'));
-  const [second, setSecond] = useState(String(initial.second).padStart(2, '0'));
+  const [clock, setClock] = useState({
+    hour: initial.hour,
+    minute: initial.minute,
+    second: initial.second,
+  });
+  const [weekdays, setWeekdays] = useState<TaskWeekday[]>(
+    normalizeTaskWeekdays(initial.weekdays) ?? [],
+  );
+  const [timeScrolling, setTimeScrolling] = useState(false);
   const [trackId, setTrackId] = useState(initial.trackId);
   const [repeatText, setRepeatText] = useState(String(initial.repeatCount));
   const [playMode, setPlayMode] = useState<PlayMode>(initial.playMode);
@@ -61,23 +68,18 @@ const TaskEditScreen: React.FC<Props> = ({ navigation, route }) => {
   const selectedTrack = useMemo(() => TRACKS.find(track => track.id === trackId), [trackId]);
 
   const save = () => {
+    if (timeScrolling) return;
     const normalizedName = name.trim();
-    const parsedHour = clockPart(hour, 23);
-    const parsedMinute = clockPart(minute, 59);
-    const parsedSecond = clockPart(second, 59);
     const parsedRepeat = Number(unformatRepeatCount(repeatText));
     if (!normalizedName) return Alert.alert('无法保存', '请输入任务名称');
-    if (parsedHour == null || parsedMinute == null || parsedSecond == null) {
-      return Alert.alert('无法保存', '请输入有效的启动时刻');
-    }
+    if (weekdays.length === 0) return Alert.alert('无法保存', '请至少选择一个重复日期');
     if (!Number.isSafeInteger(parsedRepeat) || parsedRepeat <= 0) {
       return Alert.alert('无法保存', '每首重复遍数必须是大于 0 的整数');
     }
     const draft = {
       name: normalizedName,
-      hour: parsedHour,
-      minute: parsedMinute,
-      second: parsedSecond,
+      ...clock,
+      weekdays,
       trackId,
       repeatCount: parsedRepeat,
       playMode,
@@ -91,7 +93,7 @@ const TaskEditScreen: React.FC<Props> = ({ navigation, route }) => {
           '启动时刻冲突',
           `“${conflict.name}”已在 ${[conflict.hour, conflict.minute, conflict.second]
             .map(value => String(value).padStart(2, '0'))
-            .join(':')} 启用。同一时刻只能启用一个任务。`,
+            .join(':')} 启用。同一天的同一时刻只能启用一个任务，请调整时间或重复日期。`,
         );
       }
     } else addTask(draft);
@@ -115,7 +117,10 @@ const TaskEditScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        scrollEnabled={!timeScrolling}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled">
         <Text style={styles.label}>任务名称</Text>
         <TextInput
           accessibilityLabel="任务名称"
@@ -128,29 +133,31 @@ const TaskEditScreen: React.FC<Props> = ({ navigation, route }) => {
         />
 
         <Text style={styles.label}>启动时刻</Text>
-        <View style={styles.timeRow}>
-          {[
-            [hour, setHour, '时'],
-            [minute, setMinute, '分'],
-            [second, setSecond, '秒'],
-          ].map(([value, setter, suffix], index) => (
-            <React.Fragment key={suffix as string}>
-              {index > 0 && <Text style={styles.colon}>:</Text>}
-              <View style={styles.timeField}>
-                <TextInput
-                  accessibilityLabel={suffix as string}
-                  value={value as string}
-                  onChangeText={setter as (text: string) => void}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  selectTextOnFocus
-                  style={styles.timeInput}
-                />
-                <Text style={styles.timeSuffix}>{suffix as string}</Text>
-              </View>
-            </React.Fragment>
+        <TaskTimePicker value={clock} onChange={setClock} onScrollingChange={setTimeScrolling} />
+        <Text style={styles.label}>重复</Text>
+        <View style={styles.weekdayRow}>
+          {ALL_TASK_WEEKDAYS.map(day => (
+            <Pressable
+              key={day}
+              accessibilityRole="checkbox"
+              accessibilityLabel={`星期${TASK_WEEKDAY_LABELS[day - 1]}`}
+              accessibilityState={{ checked: weekdays.includes(day) }}
+              onPress={() =>
+                setWeekdays(previous =>
+                  previous.includes(day)
+                    ? previous.filter(item => item !== day)
+                    : [...previous, day].sort((a, b) => a - b),
+                )
+              }
+              style={[styles.weekdayButton, weekdays.includes(day) && styles.weekdayActive]}>
+              <Text
+                style={[styles.weekdayText, weekdays.includes(day) && styles.weekdayTextActive]}>
+                {TASK_WEEKDAY_LABELS[day - 1]}
+              </Text>
+            </Pressable>
           ))}
         </View>
+        <Text style={styles.weekdayHint}>至少选择一天，仅影响自动启动；手动播放始终可用。</Text>
 
         <Text style={styles.label}>歌曲名称</Text>
         <Pressable
@@ -205,7 +212,12 @@ const TaskEditScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         </View>
 
-        <Pressable accessibilityRole="button" style={styles.saveButton} onPress={save}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: timeScrolling }}
+          disabled={timeScrolling}
+          style={[styles.saveButton, timeScrolling && styles.disabled]}
+          onPress={save}>
           <Text style={styles.saveText}>保存</Text>
         </Pressable>
         {existing && (
@@ -263,26 +275,24 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: BORDER,
   },
-  timeRow: { flexDirection: 'row', alignItems: 'center' },
-  timeField: {
-    flex: 1,
-    flexDirection: 'row',
+  weekdayRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  weekdayButton: {
+    flexGrow: 1,
+    minWidth: 40,
+    minHeight: 44,
+    padding: 8,
     alignItems: 'center',
-    backgroundColor: BG_SURFACE,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
+    borderWidth: 1,
     borderColor: BORDER,
+    borderRadius: 10,
+    backgroundColor: BG_SURFACE,
   },
-  timeInput: {
-    flex: 1,
-    color: INK,
-    textAlign: 'center',
-    fontSize: 22,
-    paddingVertical: 10,
-    fontVariant: ['tabular-nums'],
-  },
-  timeSuffix: { color: TEXT_TER, marginRight: 8, fontSize: 12 },
-  colon: { color: TEXT_SEC, fontSize: 24, marginHorizontal: 5 },
+  weekdayActive: { backgroundColor: GOLD, borderColor: GOLD },
+  weekdayText: { color: TEXT_SEC, fontSize: 16 },
+  weekdayTextActive: { color: '#FFFFFF', fontWeight: '600' },
+  weekdayHint: { color: TEXT_TER, fontSize: 12, marginTop: 8 },
+  disabled: { opacity: 0.5 },
   select: {
     flexDirection: 'row',
     alignItems: 'center',

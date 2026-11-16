@@ -2,6 +2,7 @@ import { NativeModules } from 'react-native';
 import { DEFAULT_SCHEDULED_TASKS } from '@/constants/scheduledTasks';
 import {
   openTaskBackgroundSettings,
+  getTaskSchedulingStatus,
   syncTaskSchedules,
   TaskSchedulingStatus,
 } from '@/services/scheduledTaskScheduler';
@@ -13,6 +14,7 @@ const status: TaskSchedulingStatus = {
 };
 
 describe('定时任务原生日程同步', () => {
+  beforeEach(() => jest.clearAllMocks());
   it('快速连续保存时严格串行，最终提交最新快照', async () => {
     const syncTasks = NativeModules.ScheduledTaskManager.syncTasks as jest.Mock;
     let finishFirst: (() => void) | undefined;
@@ -41,5 +43,30 @@ describe('定时任务原生日程同步', () => {
   it('可从任务页进入Android应用后台设置', async () => {
     await expect(openTaskBackgroundSettings()).resolves.toMatchObject({ platform: 'android' });
     expect(NativeModules.ScheduledTaskManager.openBackgroundSettings).toHaveBeenCalled();
+  });
+
+  it('快照深拷贝星期数组，查询状态等待最后一次同步', async () => {
+    const manager = NativeModules.ScheduledTaskManager;
+    let finish: ((value: TaskSchedulingStatus) => void) | undefined;
+    manager.syncTasks.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finish = resolve;
+        }),
+    );
+    const task = {
+      ...DEFAULT_SCHEDULED_TASKS[0],
+      weekdays: [...DEFAULT_SCHEDULED_TASKS[0].weekdays],
+    };
+    const sync = syncTaskSchedules([task]);
+    task.weekdays.pop();
+    const statusPromise = getTaskSchedulingStatus();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(manager.syncTasks.mock.calls[0][0][0].weekdays).toHaveLength(7);
+    expect(manager.getSchedulingStatus).not.toHaveBeenCalled();
+    finish?.(status);
+    await sync;
+    await statusPromise;
+    expect(manager.getSchedulingStatus).toHaveBeenCalledTimes(1);
   });
 });

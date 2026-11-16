@@ -137,13 +137,24 @@ git diff
 
 ## 6. 资源与本地数据注意事项
 
-V1.1 新增 `scheduled_tasks_v1` MMKV schema 和双端原生调度。修改任务字段时必须同时检查：TypeScript 类型/归一化、Android `ScheduledTaskManagerModule` 的 JSON 镜像、iOS `ScheduledTaskManager.mm` 的通知 payload、冷启动 pending trigger、权限文案和 `__tests__/utils/scheduledTasks.spec.ts`。原生调度只保存 task ID 与时刻，完整配置仍以 MMKV 为准。
+V1.1 新增 `scheduled_tasks_v1` MMKV schema 和双端原生调度。修改任务字段时必须同时检查：TypeScript 类型/归一化、Android `ScheduledTaskManagerModule` / `ScheduledTaskPayload` 的 JSON 镜像、iOS `ScheduledTaskManager.mm` / `ScheduledTaskCalendar.h`、冷启动 pending trigger、权限文案和 `__tests__/utils/scheduledTasks.spec.ts`。原生调度保存 ID、名称、时分秒、星期和启用状态等调度信息，完整播放配置仍以 MMKV 为准。
+
+时间选择由 `TaskTimePicker` 的三列 RN ScrollView 实现，不增加原生依赖；小时 0～23、分秒 0～59。任一列仍在拖动或惯性滚动时禁用保存；短拖动无 momentum-end 时用空闲兜底完成吸附，卸载时清除计时器。修改该控件需复测并发滚动、首尾值、受控回写、大字体以及 VoiceOver/TalkBack；Jest 事件测试不能证明真机惯性手感。星期统一用 ISO 1～7，旧存档缺字段按每天迁移，显式空选择不可保存。
+
+纯 Java / Foundation 日历和 Android 桥接字段转换测试无需新增依赖：
+
+```bash
+# 使用本机已安装的 JDK；如不在 PATH 中，先设置 JAVA_HOME。
+bash scripts/test-task-calendars.sh
+```
+
+该脚本在 macOS 上另用 Xcode clang 运行 Foundation 测试；其他系统仅执行 Java 部分并明确提示跳过 Foundation。产物写入独立临时目录，不是 AlarmManager/通知投递的设备集成测试。调整任务 schema 时还需同步 `packages/playback-core/src/tasks.ts` 与桌面 Rust 调度，并执行 `npm --prefix apps/desktop test` 和 `npm --prefix apps/desktop run test:native`。
 
 任务执行先由专用 Promise 链按触发顺序串行，再把 `setupPlayer / updateOptions / replaceTrack / play` 放入一次 `enqueuePlayerCommand`。不得把这些 RNTP 写操作拆到命令队列外，否则到点任务可能和用户点按、锁屏控制或 QueueEnded 交错。后到任务会在前一任务命令完成后替换当前播放，符合“新任务直接中断旧任务”的产品规则。
 
 Android 真机需分别测试通知权限、Android 12+“闹钟和提醒”、授权后重建、重启/升级、改时间/时区、Doze、强行停止和厂商省电。iOS 需分开验证前台定时器、正在播放时后台定时器、同轮通知去重和挂起/终止后的通知降级；Simulator 不能证明真机挂起、终止或长期后台行为。
 
-- 两个平台各直接保存 21 首 MP3；修改音频时必须同步两份并按 `docs/AUDIO_ASSETS.md` 校验。
+- 两个平台各直接保存 21 首音频（当前 A05 为 WAV，其余为 MP3）；修改音频时必须同步两份并按 `docs/AUDIO_ASSETS.md` 校验。
 - `scripts/copyAssets.js` 只复制到 Android，且默认的 `assets/audio` 当前不存在。它不能完成双端资源发布流程。
 - `android/link-assets-manifest.json` 与 `ios/link-assets-manifest.json` 已知过时，不得作为音频完整性的依据。
 - 设置、计数、播放任务和日志保存在 MMKV。验证“首次安装”时应卸载 App 或明确清空应用数据；普通重装/升级测试不得误删用于验证迁移的数据。

@@ -9,7 +9,9 @@ import com.facebook.react.HeadlessJsTaskService
 class ScheduledTaskReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     val taskId = intent.getStringExtra("taskId") ?: return
-    val scheduledAt = intent.getLongExtra("scheduledAt", System.currentTimeMillis())
+    if (!intent.hasExtra("scheduledAt")) return
+    val scheduledAt = intent.getLongExtra("scheduledAt", 0)
+    if (!ScheduledTaskAlarmScheduler.isCurrentOccurrence(context, taskId, scheduledAt)) return
     ScheduledTaskAlarmScheduler.reschedule(context, taskId)
     HeadlessJsTaskService.acquireWakeLockNow(context)
     val serviceIntent = Intent(context, ScheduledTaskExecutionService::class.java).apply {

@@ -1,6 +1,6 @@
 # MMKV 本地数据模型与恢复协议
 
-> 适用于 1.1 源码，依据 2026-11-06 的 `src/utils/storage.ts`、`src/utils/logger.ts` 及全部调用方核对。本文是持久化 schema 的维护契约；新增、改名或删除 key 时必须同步更新本文和相关测试。
+> 适用于 1.1 源码；任务星期扩展于 2026-11-16 核对，其余字段基于 2026-11-06。本文是持久化 schema 的维护契约；新增、改名或删除 key 时必须同步更新本文和相关测试。
 
 ## 1. 存储实现与约束
 
@@ -29,7 +29,7 @@
 | `track_generation`       | number   | 逻辑换曲代次                                 | `0`                                     | 识别迟到原生事件          |
 | `session_count`          | number   | 当前曲本轮已完成的有效遍数                   | `0`                                     | 达到 N 后执行播放模式     |
 | `playback_task_progress` | string   | JSON：当前播放任务累计完成遍数               | `null`                                  | UI 跨重启累计显示         |
-| `scheduled_tasks_v1`     | string   | JSON：用户的每日定时任务数组                 | 首次生成三条默认关闭任务                | 任务列表与原生调度来源    |
+| `scheduled_tasks_v1`     | string   | JSON：用户的按星期重复定时任务数组           | 首次生成三条默认关闭、每天重复的任务    | 任务列表与原生调度来源    |
 | `cycle_eligible`         | boolean  | 当前周期是否具备结尾计数资格                 | 回退旧 key，最终 `false`                | 单周期计数资格            |
 | `started_from_zero`      | boolean  | 旧版周期资格                                 | `false`                                 | 只读兼容                  |
 | `expected_playing`       | boolean  | 用户/系统是否仍期望持续播放                  | `false`                                 | watchdog 是否可自动恢复   |
@@ -214,15 +214,19 @@
 ### 3.15 `scheduled_tasks_v1`
 
 - **值类型**：JSON string，内容是 `ScheduledTask[]`。
-- **字段**：`id`、最长 30 字符的 `name`、`hour/minute/second`、有效 `trackId`、正安全整数 `repeatCount`、四种 `playMode`、`isSyncMode`、`enabled`。
+- **字段**：`id`、最长 30 字符的 `name`、`hour/minute/second`、`weekdays`、有效 `trackId`、正安全整数 `repeatCount`、四种 `playMode`、`isSyncMode`、`enabled`。
+- **星期**：`weekdays` 为非空 ISO 星期数组，`1=周一` 至 `7=周日`，仅接受整数，去重并升序保存。新任务默认 `[1,2,3,4,5,6,7]`。缺少字段的旧任务按每天补齐并写回，保留 ID、启用状态和播放配置；显式 `null`、空数组、字符串、越界或小数不是旧数据，整条非法任务被过滤，不能回退成每天。
 - **默认值**：仅在 key 缺失或 JSON 整体损坏时写入三条默认关闭任务；合法空数组表示用户已删除全部任务，不能再次生成预置项。
 - **读取/写入方**：`scheduledTaskStore` 经 `loadScheduledTasks` / `saveScheduledTasks` 读写；保存时过滤非法项、按 ID 去重，并按时刻和 ID 排序。
-- **原生镜像**：Android `SharedPreferences(starlight_scheduled_tasks)` 只镜像调度所需的 ID、名称、时分秒、启用状态，授权/开机/升级/改时间后恢复闹钟；iOS 同时维护进程内日历定时器和 `UNCalendarNotificationTrigger`。两者不是任务完整配置的权威，真正执行时仍按 task ID 回到 MMKV 读取完整任务。
+- **原生镜像**：Android `SharedPreferences(starlight_scheduled_tasks)` 镜像 ID、名称、时分秒、星期、启用状态，桥接转换由 `ScheduledTaskPayload` 负责；授权/开机/升级/改时间后恢复闹钟。iOS 同时维护进程内日历定时器和 `UNCalendarNotificationTrigger`，周日会从 ISO 7 转换为 Foundation 1。两者不是任务完整配置的权威，真正执行时仍按 task ID 回到 MMKV 读取完整任务。
 - **临时触发**：iOS `NSUserDefaults` 中的 `starlight_pending_task_*` 只用于把通知 task ID、来源和原计划时间跨冷启动交给 JS，消费后删除；这些 key 不是用户配置。
 - **后台成功标记**：iOS `starlight_last_automatic_task_*` 记录最近一次真正启动成功的后台任务，用于移除/忽略同轮本地通知；它不是任务配置，也不能用于恢复计数。
-- **执行窗口**：系统触发超过计划时刻 15 分钟即跳过；同一 task ID 且计划时刻相差不超过 60 秒的自动触发视为同一轮。任务列表的手动播放不受限制。执行任务会重写 settings/player_state，并通过正常换曲协议创建新的播放任务。
-- **同刻启用约束**：相同 `HH:mm:ss` 可保存多条任务，但 store 只允许其中一条为启用状态。列表开关和已启用任务的编辑保存都会先检查其他已启用任务；冲突时不写 MMKV、不重建原生日程，并由 UI 提示先关闭原任务。
+- **执行窗口**：自动触发必须提供有效的原计划时刻，匹配任务当前的星期与时分秒，且不在未来、不超过 15 分钟；跨午夜延迟按原计划日校验，不按送达日校验。同一 task ID 且计划时刻相差不超过 60 秒的自动触发视为同一轮。任务列表手动播放忽略日期、启用开关和时间窗口。执行任务会重写 settings/player_state，并通过正常换曲协议创建新的播放任务。
+- **同刻启用约束**：相同 `HH:mm:ss` 的任务仅在星期有交集、且同时启用时冲突。例如周一 08:00 与周二 08:00 可同时启用；周一与工作日 08:00 不可同时启用。列表开关和已启用任务的编辑保存都会先检查其他已启用任务；冲突时不写 MMKV、不重建原生日程，并由 UI 提示先关闭原任务。
 - **兼容性**：V1.0 没有此 key，升级到 V1.1 等同首次缺失，生成默认关闭任务，不会突然自动播放。
+- **桌面契约**：`packages/playback-core/src/tasks.ts` 使用同一星期定义与旧数据默认值；Rust 调度按本地星期过滤。桌面 UI 当前只保留/显示星期，未增加移动端拨轮和星期编辑器。
+
+iOS 另有 `starlight_task_notification_capacity_exceeded` 状态标志，用于任务页提示本地通知注册预算不足；它不是用户配置，不改变已保存的任务或进程内定时器。
 
 ## 4. RNTP 原生队列与 MMKV 的权威边界
 

@@ -5,11 +5,20 @@ import {
   findEnabledTaskTimeConflict,
   formatTaskTime,
   sortScheduledTasks,
+  normalizeTaskWeekdays,
+  isTaskScheduledOn,
+  formatTaskWeekdays,
 } from '../../../src/constants/scheduledTasks';
 import type { ScheduledTask } from '../../../src/types/scheduledTask';
 import { validateConfig, type Config, type Track } from './index';
 
-export { DEFAULT_SCHEDULED_TASKS, NEW_SCHEDULED_TASK, formatTaskTime, sortScheduledTasks };
+export {
+  DEFAULT_SCHEDULED_TASKS,
+  NEW_SCHEDULED_TASK,
+  formatTaskTime,
+  sortScheduledTasks,
+  formatTaskWeekdays,
+};
 export type { ScheduledTask };
 export const AUTOMATIC_TASK_WINDOW_MS = 15 * 60_000;
 export interface TaskBook {
@@ -53,6 +62,7 @@ export function validateTask(raw: unknown, tracks: readonly Track[]): ScheduledT
     'hour',
     'minute',
     'second',
+    'weekdays',
     'trackId',
     'repeatCount',
     'playMode',
@@ -77,13 +87,15 @@ export function validateTask(raw: unknown, tracks: readonly Track[]): ScheduledT
       throw new Error('启动时刻须为 00:00:00～23:59:59');
   }
   if (typeof t.enabled !== 'boolean') throw new Error('无效的启用状态');
+  const weekdays = normalizeTaskWeekdays(t.weekdays);
+  if (!weekdays) throw new Error('请至少选择一个有效的重复星期');
   validateConfig(taskConfig(t), tracks);
-  return { ...t, name: t.name.trim() };
+  return { ...t, name: t.name.trim(), weekdays };
 }
 export function initialTaskBook(): TaskBook {
   return {
     version: 1,
-    tasks: DEFAULT_SCHEDULED_TASKS.map(t => ({ ...t })),
+    tasks: DEFAULT_SCHEDULED_TASKS.map(t => ({ ...t, weekdays: [...t.weekdays] })),
     handled: {},
     notBefore: {},
   };
@@ -153,7 +165,12 @@ export function editTaskBook(
   const previous = next.tasks.find(t => t.id === candidate.id);
   next.tasks = sortScheduledTasks([...next.tasks.filter(t => t.id !== candidate.id), candidate]);
   // Editing or enabling never retrospectively starts an earlier occurrence.
-  if (!previous || !previous.enabled || formatTaskTime(previous) !== formatTaskTime(candidate))
+  if (
+    !previous ||
+    !previous.enabled ||
+    formatTaskTime(previous) !== formatTaskTime(candidate) ||
+    previous.weekdays.join(',') !== candidate.weekdays.join(',')
+  )
     next.notBefore[candidate.id] = nowMs;
   return next;
 }
@@ -164,11 +181,12 @@ export function dueOccurrences(
   nowMs: number,
 ): Occurrence[] {
   if (nowMs < previousMs) return []; // clock rollback: reset cursor, keep durable dedup
-  const enabled = new Set(book.tasks.filter(t => t.enabled).map(t => t.id));
+  const enabled = new Map(book.tasks.filter(t => t.enabled).map(t => [t.id, t]));
   return candidates
     .filter(
       o =>
         enabled.has(o.taskId) &&
+        isTaskScheduledOn(enabled.get(o.taskId)!, o.scheduledAt) &&
         !Object.prototype.hasOwnProperty.call(book.handled, o.key) &&
         o.scheduledAt > previousMs &&
         o.scheduledAt <= nowMs &&

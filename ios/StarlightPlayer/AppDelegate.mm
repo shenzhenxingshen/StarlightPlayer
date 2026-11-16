@@ -2,6 +2,7 @@
 
 #import <React/RCTBundleURLProvider.h>
 #import <math.h>
+#import "ScheduledTaskCalendar.h"
 
 static NSString *const StarlightScheduledTaskNotification = @"StarlightScheduledTaskDueNotification";
 static NSString *const StarlightPendingTaskIdKey = @"starlight_pending_task_id";
@@ -10,6 +11,14 @@ static NSString *const StarlightPendingTaskScheduledAtKey = @"starlight_pending_
 static NSString *const StarlightLastAutomaticTaskIdKey = @"starlight_last_automatic_task_id";
 static NSString *const StarlightLastAutomaticTaskScheduledAtKey = @"starlight_last_automatic_task_scheduled_at";
 static NSTimeInterval const StarlightAutomaticNotificationDedupWindowMs = 12.0 * 60.0 * 60.0 * 1000.0;
+
+static NSNumber *STPlannedNotificationTime(UNNotification *notification)
+{
+  if (![notification.request.trigger isKindOfClass:UNCalendarNotificationTrigger.class]) return nil;
+  UNCalendarNotificationTrigger *trigger = (UNCalendarNotificationTrigger *)notification.request.trigger;
+  NSDate *planned = STDeliveredTaskDate(trigger.dateComponents, notification.date, NSCalendar.currentCalendar);
+  return planned == nil ? nil : @(planned.timeIntervalSince1970 * 1000.0);
+}
 
 @implementation AppDelegate
 
@@ -68,8 +77,8 @@ static NSTimeInterval const StarlightAutomaticNotificationDedupWindowMs = 12.0 *
 {
   NSString *taskId = notification.request.content.userInfo[@"starlightTaskId"];
   if (taskId.length > 0) {
-    NSNumber *scheduledAt = @(notification.date.timeIntervalSince1970 * 1000.0);
-    [self storeAndPublishScheduledTask:taskId source:@"ios-foreground" scheduledAt:scheduledAt];
+    NSNumber *scheduledAt = STPlannedNotificationTime(notification);
+    if (scheduledAt != nil) [self storeAndPublishScheduledTask:taskId source:@"ios-foreground" scheduledAt:scheduledAt];
     completionHandler(UNNotificationPresentationOptionNone);
     return;
   }
@@ -85,7 +94,11 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
          withCompletionHandler:(void (^)(void))completionHandler
 {
   NSString *taskId = response.notification.request.content.userInfo[@"starlightTaskId"];
-  NSNumber *scheduledAt = @(response.notification.date.timeIntervalSince1970 * 1000.0);
+  NSNumber *scheduledAt = STPlannedNotificationTime(response.notification);
+  if (scheduledAt == nil) {
+    completionHandler();
+    return;
+  }
   NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
   NSString *lastAutomaticTaskId = [defaults stringForKey:StarlightLastAutomaticTaskIdKey];
   NSNumber *lastAutomaticScheduledAt = [defaults objectForKey:StarlightLastAutomaticTaskScheduledAtKey];

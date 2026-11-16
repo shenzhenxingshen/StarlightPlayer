@@ -23,6 +23,10 @@ const mockedReplaceTrack = replaceTrackInCommand as jest.MockedFunction<
 const mockedPlayWithRetry = playWithRetryInCommand as jest.MockedFunction<
   typeof playWithRetryInCommand
 >;
+const mondayOccurrence = (task: { hour: number; minute: number; second: number }) =>
+  new Date(2026, 10, 16, task.hour, task.minute, task.second).getTime();
+
+afterEach(() => jest.restoreAllMocks());
 
 beforeEach(() => {
   (new MMKV() as any).clearAll();
@@ -67,7 +71,7 @@ describe('定时任务执行器', () => {
   it('Android允许系统在十五分钟窗口内延迟触发', async () => {
     const task = { ...DEFAULT_SCHEDULED_TASKS[0], id: 'android-delayed', enabled: true };
     saveScheduledTasks([task]);
-    const now = 10_000_000;
+    const now = mondayOccurrence(task) + 10 * 60_000;
     jest.spyOn(Date, 'now').mockReturnValue(now);
     await expect(
       executeScheduledTask({
@@ -83,7 +87,7 @@ describe('定时任务执行器', () => {
   it('Android超过十五分钟播放窗口直接跳过，不进行补播', async () => {
     const task = { ...DEFAULT_SCHEDULED_TASKS[0], enabled: true };
     saveScheduledTasks([task]);
-    const now = 10_000_000;
+    const now = mondayOccurrence(task) + AUTOMATIC_TASK_WINDOW_MS + 1;
     jest.spyOn(Date, 'now').mockReturnValue(now);
     await expect(
       executeScheduledTask({
@@ -99,7 +103,7 @@ describe('定时任务执行器', () => {
   it('iOS用户在有效窗口内点击通知会执行', async () => {
     const task = { ...DEFAULT_SCHEDULED_TASKS[2], enabled: true };
     saveScheduledTasks([task]);
-    const now = 10_000_000;
+    const now = mondayOccurrence(task) + 30_000;
     jest.spyOn(Date, 'now').mockReturnValue(now);
     await expect(
       executeScheduledTask({
@@ -114,7 +118,7 @@ describe('定时任务执行器', () => {
   it('iOS通知点击超过播放窗口不补播，但立即播放仍可用', async () => {
     const task = { ...DEFAULT_SCHEDULED_TASKS[2], enabled: true };
     saveScheduledTasks([task]);
-    const now = 10_000_000;
+    const now = mondayOccurrence(task) + AUTOMATIC_TASK_WINDOW_MS + 1;
     jest.spyOn(Date, 'now').mockReturnValue(now);
     await expect(
       executeScheduledTask({
@@ -132,7 +136,7 @@ describe('定时任务执行器', () => {
   it('同一轮iOS后台定时器和通知只执行一次，并确认后台启动成功', async () => {
     const task = { ...DEFAULT_SCHEDULED_TASKS[2], id: 'ios-background-dedup', enabled: true };
     saveScheduledTasks([task]);
-    const scheduledAt = 20_000_000;
+    const scheduledAt = mondayOccurrence(task);
     jest.spyOn(Date, 'now').mockReturnValue(scheduledAt + 1_000);
     await expect(
       executeScheduledTask({ taskId: task.id, source: 'ios-background', scheduledAt }),
@@ -157,6 +161,55 @@ describe('定时任务执行器', () => {
     await expect(executeScheduledTask({ taskId: 'missing', source: 'manual' })).resolves.toBe(
       false,
     );
+  });
+
+  it.each([
+    ['未选中的星期', [2], 5, 0],
+    ['修改时刻后到达的旧事件', [1], 6, 0],
+    ['未来事件', [1], 5, -1],
+  ])('自动忽略%s，手动不受星期或时刻限制', async (_label, weekdays, hour, delay) => {
+    const task = {
+      ...DEFAULT_SCHEDULED_TASKS[0],
+      id: `rejected-${_label}`,
+      enabled: true,
+      weekdays,
+      hour,
+    } as (typeof DEFAULT_SCHEDULED_TASKS)[number];
+    saveScheduledTasks([task]);
+    const scheduledAt = mondayOccurrence(DEFAULT_SCHEDULED_TASKS[0]);
+    jest.spyOn(Date, 'now').mockReturnValue(scheduledAt + (delay as number));
+    await expect(
+      executeScheduledTask({ taskId: task.id, source: 'android-alarm', scheduledAt }),
+    ).resolves.toBe(false);
+    expect(mockedReplaceTrack).not.toHaveBeenCalled();
+    await expect(executeScheduledTask({ taskId: task.id, source: 'manual' })).resolves.toBe(true);
+  });
+
+  it('启用任务收到没有计划时间的事件时也不误启动', async () => {
+    const task = { ...DEFAULT_SCHEDULED_TASKS[0], enabled: true };
+    saveScheduledTasks([task]);
+    await expect(executeScheduledTask({ taskId: task.id, source: 'android-alarm' })).resolves.toBe(
+      false,
+    );
+    expect(mockedReplaceTrack).not.toHaveBeenCalled();
+  });
+
+  it('周日23:59:59任务跨午夜延迟15分钟仍按周日执行', async () => {
+    const task = {
+      ...DEFAULT_SCHEDULED_TASKS[0],
+      id: 'sunday-midnight',
+      enabled: true,
+      weekdays: [7] as const,
+      hour: 23,
+      minute: 59,
+      second: 59,
+    };
+    saveScheduledTasks([{ ...task, weekdays: [...task.weekdays] }]);
+    const scheduledAt = new Date(2026, 10, 15, 23, 59, 59).getTime();
+    jest.spyOn(Date, 'now').mockReturnValue(scheduledAt + AUTOMATIC_TASK_WINDOW_MS);
+    await expect(
+      executeScheduledTask({ taskId: task.id, source: 'notification-tap', scheduledAt }),
+    ).resolves.toBe(true);
   });
 
   it('已初始化播放器错误可复用原生实例', async () => {

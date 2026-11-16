@@ -1,6 +1,7 @@
 import { DeviceEventEmitter } from 'react-native';
 import TrackPlayer, { RepeatMode } from 'react-native-track-player';
 import { TRACKS } from '../constants/tracks';
+import { matchesTaskOccurrence } from '../constants/scheduledTasks';
 import { useSettingsStore } from '../store/settingsStore';
 import { buildPlayerOptions } from '../utils/playerOptions';
 import { enqueuePlayerCommand } from '../utils/playerCommandQueue';
@@ -66,6 +67,13 @@ async function executeScheduledTaskInSequence(
   }
   if (
     payload.source !== 'manual' &&
+    (payload.scheduledAt == null || !matchesTaskOccurrence(task, payload.scheduledAt))
+  ) {
+    addLog('INFO', `ScheduledTask stale or invalid schedule, ignored: ${task.id}`);
+    return false;
+  }
+  if (
+    payload.source !== 'manual' &&
     payload.scheduledAt != null &&
     lastAutomaticOccurrence?.taskId === payload.taskId &&
     Math.abs(lastAutomaticOccurrence.scheduledAt - payload.scheduledAt) <=
@@ -81,7 +89,7 @@ async function executeScheduledTaskInSequence(
   if (
     payload.source !== 'manual' &&
     automaticDelay != null &&
-    automaticDelay > AUTOMATIC_TASK_WINDOW_MS
+    (automaticDelay < 0 || automaticDelay > AUTOMATIC_TASK_WINDOW_MS)
   ) {
     addLog(
       'WARN',
