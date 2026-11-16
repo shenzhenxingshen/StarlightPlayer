@@ -117,6 +117,30 @@ test('automatic candidates honor selected weekday, manual settings ignore it', (
   assert.equal(core.dueOccurrences(b, [occurrence(monday)], monday - 1, monday).length, 0);
   assert.equal(core.taskConfig(b.tasks[0]).trackId, 'a05');
 });
+test('all 127 nonempty weekday selections survive save/restore and filter all seven days', () => {
+  for (let mask = 1; mask < 128; mask++) {
+    const weekdays = Array.from({ length: 7 }, (_, i) => i + 1).filter(
+      day => mask & (1 << (day - 1)),
+    );
+    let book = edit(core.initialTaskBook(), { type: 'task-save', task: task({ weekdays }) });
+    book = core.restoreTaskBook(enable(book), tracks);
+    assert.deepEqual(plain(book.tasks[0].weekdays), weekdays);
+    for (let day = 1; day <= 7; day++) {
+      const at = new Date(2026, 10, 15 + day, 5, 30, 0).getTime();
+      const occurrence = { taskId: 'default-morning', scheduledAt: at, key: `day-${day}@${at}` };
+      assert.equal(
+        core.dueOccurrences(book, [occurrence], at - 1, at).length,
+        weekdays.includes(day) ? 1 : 0,
+        `mask=${mask}, day=${day}`,
+      );
+    }
+    // The task schedule never changes the immediate playback configuration.
+    assert.deepEqual(plain(core.taskConfig(book.tasks[0])), plain(core.taskConfig(task())));
+  }
+  assert.equal(core.formatTaskWeekdays(task()), '每天');
+  assert.equal(core.formatTaskWeekdays(task({ weekdays: [1, 2, 3, 4, 5] })), '周一至周五');
+  assert.equal(core.formatTaskWeekdays(task({ weekdays: [6, 7] })), '周末');
+});
 test('create/save/delete preserve switch and never imply playback; empty book stays empty on restore', () => {
   const before = core.initialTaskBook();
   const added = edit(before, {

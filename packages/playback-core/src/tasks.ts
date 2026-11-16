@@ -120,7 +120,7 @@ export function restoreTaskBook(raw: unknown, tracks: readonly Track[]): TaskBoo
     new Set(tasks.map(t => t.id)).size !== tasks.length ||
     tasks.some(t => findEnabledTaskTimeConflict(tasks, t))
   )
-    throw new Error('任务存档包含重复标识或同一时刻的启用任务');
+    throw new Error('任务存档包含重复标识或同一时刻且星期重叠的启用任务');
   if (
     Object.entries(b.handled).some(([k, v]) => k.length > 120 || !validInstant(v)) ||
     Object.entries(b.notBefore).some(([k, v]) => !validId(k) || !validInstant(v))
@@ -161,7 +161,8 @@ export function editTaskBook(
     if (!existing && next.tasks.length >= 1000) throw new Error('任务数量已达本机安全上限 1000');
   }
   const conflict = findEnabledTaskTimeConflict(next.tasks, candidate);
-  if (conflict) throw new Error(`启动时刻与“${conflict.name}”冲突，请选择其他时刻`);
+  if (conflict)
+    throw new Error(`启动时刻和重复星期与“${conflict.name}”冲突，请调整时刻或星期，或先关闭该任务`);
   const previous = next.tasks.find(t => t.id === candidate.id);
   next.tasks = sortScheduledTasks([...next.tasks.filter(t => t.id !== candidate.id), candidate]);
   // Editing or enabling never retrospectively starts an earlier occurrence.

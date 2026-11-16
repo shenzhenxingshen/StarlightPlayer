@@ -770,7 +770,7 @@ impl Actor {
     }
     fn publish(&self, snapshot: &Arc<Mutex<Value>>) {
         *snapshot.lock().unwrap_or_else(|e| e.into_inner()) = json!({
-            "state":self.state,"tracks":self.catalog,"engine":"libmpv · shared TS / QuickJS","preview":true,
+            "state":self.state,"tracks":self.catalog,"engine":"libmpv · shared TS / QuickJS",
             "tasks":self.task_book["tasks"],"preferences":self.preferences,"recentLogs":self.recent_logs,
             "platform":format!("{} {}",std::env::consts::OS,std::env::consts::ARCH),
             "dayKey":clock()["dayKey"],"recovering":self.retry_at.is_some()

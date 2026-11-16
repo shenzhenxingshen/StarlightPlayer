@@ -234,6 +234,64 @@ fn native_tasks_preferences_remote_and_exports() {
     println!("Tasks evidence: {}", dir.display());
 }
 
+#[test]
+#[ignore = "Requires local libmpv/assets; isolated data, real clock and null output"]
+fn native_weekdays_persist_and_dispatch_only_matching_day() {
+    use chrono::{Datelike, Timelike};
+    let dir = directory("native-weekdays");
+    let host = Host::spawn(dir.clone(), true).unwrap();
+    let today = chrono::Local::now().weekday().number_from_monday();
+    let mut skipped = host.snapshot()["tasks"][0].clone();
+    skipped["id"] = json!("other-day");
+    skipped["weekdays"] = json!([today % 7 + 1]);
+    skipped["isSyncMode"] = json!(false);
+    skipped["trackId"] = json!("a04");
+    host.command(Command::TaskSave {
+        task: skipped.clone(),
+    })
+    .unwrap();
+    // The manual button must work even on an unselected weekday and with the switch off.
+    host.command(Command::TaskPlay {
+        id: "other-day".into(),
+    })
+    .unwrap();
+    playing(&host, "a04");
+    host.remote(RemoteAction::Stop).unwrap();
+
+    let target = chrono::Local::now() + chrono::Duration::seconds(4);
+    let selected_day = target.weekday().number_from_monday();
+    skipped["weekdays"] = json!([selected_day % 7 + 1]);
+    skipped["hour"] = json!(target.hour());
+    skipped["minute"] = json!(target.minute());
+    skipped["second"] = json!(target.second());
+    let mut selected = skipped.clone();
+    selected["id"] = json!("selected-day");
+    selected["weekdays"] = json!([selected_day]);
+    selected["trackId"] = json!("a05");
+    for task in [skipped, selected] {
+        let id = task["id"].as_str().unwrap().to_owned();
+        host.command(Command::TaskSave { task }).unwrap();
+        host.command(Command::TaskEnable { id, enabled: true })
+            .unwrap();
+    }
+    // Two enabled tasks can share a clock time when their weekdays are disjoint.
+    playing(&host, "a05");
+    thread::sleep(Duration::from_millis(400));
+    let saved: Value =
+        serde_json::from_slice(&std::fs::read(dir.join("desktop-v1.json")).unwrap()).unwrap();
+    let claims = saved["tasks"]["handled"].as_object().unwrap();
+    assert_eq!(claims.len(), 1);
+    assert!(claims.keys().next().unwrap().starts_with("selected-day@"));
+    assert_eq!(host.snapshot()["state"]["config"]["trackId"], "a05");
+    let before = host.snapshot()["tasks"].clone();
+    drop(host);
+    let restored = Host::spawn(dir.clone(), true).unwrap();
+    assert_eq!(restored.snapshot()["tasks"], before);
+    assert_eq!(restored.snapshot()["state"]["status"], "idle");
+    drop(restored);
+    println!("Weekday persistence/dispatch evidence: {}", dir.display());
+}
+
 fn live(track_id: &str) {
     let repeats: u64 = std::env::var("STARLIGHT_TEST_CYCLES")
         .unwrap_or("3".into())

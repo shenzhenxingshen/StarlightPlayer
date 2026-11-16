@@ -1,6 +1,6 @@
 {
   "identifier": "main",
-  "description": "Local preview window, no filesystem, shell, HTTP or process plugin access",
+  "description": "Local player window, no filesystem, shell, HTTP or process plugin access",
   "windows": ["main"],
   "permissions": []
 }

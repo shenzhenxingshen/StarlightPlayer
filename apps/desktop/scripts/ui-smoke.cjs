@@ -28,7 +28,14 @@ async page => {
       { id: 'default-morning', name: '早自习', hour: 5, minute: 30, second: 0, trackId: 'a05', repeatCount: 49, playMode: 'play-one', isSyncMode: true, enabled: false },
       { id: 'default-opportunity', name: '见缝插针', hour: 6, minute: 30, second: 0, trackId: 'a05', repeatCount: 500, playMode: 'repeat-one', isSyncMode: true, enabled: false },
       { id: 'default-evening', name: '晚自习', hour: 20, minute: 0, second: 0, trackId: 'a05', repeatCount: 98, playMode: 'play-one', isSyncMode: true, enabled: false },
-    ];
+    ].map(task => ({ ...task, weekdays: [1, 2, 3, 4, 5, 6, 7] }));
+    // IPC mock mirrors the conflict boundary; real rules are exercised by core/native tests.
+    const checkConflict = task => {
+      if (task.enabled && tasks.some(t => t.id !== task.id && t.enabled &&
+        t.hour === task.hour && t.minute === task.minute && t.second === task.second &&
+        t.weekdays.some(day => task.weekdays.includes(day))))
+        throw Error('启动时刻和重复星期冲突');
+    };
     const start = config => {
       state.config = { ...config };
       state.completedCount = state.sessionCount = 0;
@@ -56,12 +63,11 @@ async page => {
           } else if (command.type === 'task-save') {
             const old = tasks.find(t => t.id === command.task.id);
             const value = { ...command.task, enabled: old?.enabled ?? false };
+            checkConflict(value);
             tasks = [...tasks.filter(t => t.id !== value.id), value];
           } else if (command.type === 'task-enable') {
             const task = tasks.find(t => t.id === command.id);
-            if (command.enabled && tasks.some(t => t.id !== task.id && t.enabled &&
-              t.hour === task.hour && t.minute === task.minute && t.second === task.second))
-              throw Error('同一启动时刻已有启用的任务');
+            checkConflict({ ...task, enabled: command.enabled });
             task.enabled = command.enabled;
           } else if (command.type === 'task-delete') tasks = tasks.filter(t => t.id !== command.id);
           else if (command.type === 'task-play') {
@@ -86,8 +92,9 @@ async page => {
   });
   await page.reload();
   await page.getByRole('heading', { name: '大悲咒（共修版）' }).waitFor();
-  if ((await page.locator('.app-header > span').first().innerText()) !== '星光播放器 电脑版')
-    throw Error('App header must use 电脑版');
+  if ((await page.locator('.app-header > span').first().innerText()) !== '星光播放器' ||
+    await page.title() !== '星光播放器' || await page.getByText(/技术预览/).count())
+    throw Error('App name/title must be 星光播放器, without a preview label');
   if ((await page.locator('.record').textContent()).trim() !== '')
     throw Error('Record artwork must not contain text');
   const results = [];
@@ -247,12 +254,47 @@ async page => {
   await dialog.getByLabel('每首重复遍数').fill('5000000');
   await dialog.getByRole('button', { name: '列表循环', exact: true }).click();
   await dialog.getByLabel('同步播放').uncheck();
+  const weekdayButtons = dialog.locator('.weekday-options button');
+  if (await weekdayButtons.count() !== 7 ||
+    await dialog.locator('.weekday-options [aria-pressed=true]').count() !== 7)
+    throw Error('New tasks must select every weekday');
+  for (const button of await weekdayButtons.all()) await button.click();
+  await dialog.getByRole('button', { name: '保存', exact: true }).click();
+  await dialog.getByRole('alert').filter({ hasText: '重复星期' }).waitFor();
+  if (await page.locator('.task-card').count() !== 3) throw Error('Empty weekday selection saved');
+  await dialog.getByRole('button', { name: '周六', exact: true }).click();
+  const sunday = dialog.getByRole('button', { name: '周日', exact: true });
+  await sunday.focus();
+  await sunday.press('Space');
+  await page.waitForTimeout(800);
+  if (await sunday.getAttribute('aria-pressed') !== 'true' ||
+    await dialog.locator('.weekday-options [aria-pressed=true]').count() !== 2)
+    throw Error('Keyboard toggle or weekday draft retention failed');
+  await dialog.locator('#task-weekday-help').filter({ hasText: '周末' }).waitFor();
+  const weekdayLayout = await dialog.locator('.weekday-options').evaluate(el => {
+    const bounds = el.getBoundingClientRect();
+    return [...el.querySelectorAll('button')].every(button => {
+      const rect = button.getBoundingClientRect();
+      return rect.x >= bounds.x && rect.right <= bounds.right + 1 && rect.height >= 44;
+    }) && el.scrollWidth <= el.clientWidth;
+  });
+  if (!weekdayLayout) throw Error('Weekday buttons overflow at minimum window width');
+  results.push({ name: 'weekdays', selection: 'weekend', width: 420, keyboard: true, noOverflow: true });
   await page.screenshot({ path: 'output/playwright/desktop-task-editor-narrow.png', fullPage: true });
   await dialog.getByRole('button', { name: '保存', exact: true }).click();
   await dialog.waitFor({ state: 'hidden' });
   const taskInfo = page.getByRole('button', { name: '修改任务 桌面任务验证' });
   await taskInfo.waitFor();
   if (!(await taskInfo.innerText()).includes('5,000,000')) throw Error('Task count not formatted');
+  if (!(await taskInfo.innerText()).includes('周末')) throw Error('Weekday summary not saved');
+  await taskInfo.click();
+  if (await dialog.locator('.weekday-options [aria-pressed=true]').count() !== 2)
+    throw Error('Saved weekdays not restored to editor');
+  await page.screenshot({ path: 'output/playwright/desktop-task-editor-narrow.png', fullPage: true });
+  await dialog.getByRole('button', { name: '周一', exact: true }).click();
+  await dialog.getByRole('button', { name: '取消', exact: true }).click();
+  await dialog.waitFor({ state: 'hidden' });
+  if (!(await taskInfo.innerText()).includes('周末')) throw Error('Cancel modified saved weekdays');
   if (await page.getByRole('switch', { name: '定时启用 桌面任务验证' }).getAttribute('aria-checked') !== 'false')
     throw Error('New task should be disabled');
   if ((await page.evaluate(() => window.__UI_TEST_STATE__.config.trackId)) !== 'a05')
@@ -270,6 +312,44 @@ async page => {
   await dialog.waitFor({ state: 'hidden' });
   if (await page.getByRole('switch', { name: '定时启用 已修改' }).getAttribute('aria-checked') !== 'true')
     throw Error('Task editing changed enabled state');
+  // Exercise error presentation and retained drafts with the same-time weekday boundary.
+  await page.getByRole('button', { name: '＋增加任务' }).click();
+  await name.fill('同刻星期验证');
+  await dialog.getByLabel('启动时', { exact: true }).selectOption('23');
+  await dialog.getByLabel('启动分', { exact: true }).selectOption('59');
+  await dialog.getByLabel('启动秒', { exact: true }).selectOption('59');
+  await dialog.getByRole('button', { name: '保存', exact: true }).click();
+  await dialog.waitFor({ state: 'hidden' });
+  const otherSwitch = page.getByRole('switch', { name: '定时启用 同刻星期验证' });
+  await otherSwitch.click();
+  await page.getByRole('alert').filter({ hasText: '星期冲突' }).waitFor();
+  if (await otherSwitch.getAttribute('aria-checked') !== 'false')
+    throw Error('Conflicting task became enabled');
+  const otherInfo = page.getByRole('button', { name: '修改任务 同刻星期验证' });
+  await otherInfo.click();
+  for (const label of ['周二', '周三', '周四', '周五', '周六', '周日'])
+    await dialog.getByRole('button', { name: label, exact: true }).click();
+  await dialog.getByRole('button', { name: '保存', exact: true }).click();
+  await dialog.waitFor({ state: 'hidden' });
+  await otherSwitch.click();
+  if (await otherSwitch.getAttribute('aria-checked') !== 'true')
+    throw Error('Disjoint weekdays must allow the same clock time');
+  await otherInfo.click();
+  await dialog.getByRole('button', { name: '周日', exact: true }).click();
+  await dialog.getByRole('button', { name: '保存', exact: true }).click();
+  await dialog.getByRole('alert').filter({ hasText: '星期冲突' }).waitFor();
+  if (await dialog.getByRole('button', { name: '周日', exact: true }).getAttribute('aria-pressed') !== 'true')
+    throw Error('Failed save discarded the weekday draft');
+  await dialog.getByRole('button', { name: '取消', exact: true }).click();
+  await dialog.waitFor({ state: 'hidden' });
+  await otherInfo.click();
+  if (await dialog.getByRole('button', { name: '周日', exact: true }).getAttribute('aria-pressed') !== 'false')
+    throw Error('Failed save modified the persisted weekday selection');
+  await dialog.getByRole('button', { name: '删除任务', exact: true }).click();
+  await dialog.getByRole('button', { name: '确认删除', exact: true }).click();
+  await dialog.waitFor({ state: 'hidden' });
+  results.push({ name: 'weekday-conflicts', enableOverlapRejected: true,
+    disjointAllowed: true, editOverlapRejected: true, failedDraftRetained: true });
   await page.setViewportSize({ width: 1120, height: 780 });
   await page.screenshot({ path: 'output/playwright/desktop-tasks-wide.png', fullPage: true });
   await page.getByRole('button', { name: '修改任务 已修改' }).click();
@@ -285,6 +365,7 @@ async page => {
   if (await page.evaluate(() => window.__UI_TEST_STATE__.status) !== 'playing')
     throw Error('Deleting task stopped playback');
   await page.getByRole('button', { name: '我的', exact: true }).click();
+  await page.getByText('星光播放器 · v0.1.1', { exact: false }).waitFor();
   const background = page.getByLabel('关闭窗口后留在后台');
   if (!(await background.isChecked())) throw Error('Background must default to enabled');
   await background.uncheck();

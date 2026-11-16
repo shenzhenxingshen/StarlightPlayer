@@ -71,18 +71,6 @@ h2 {
   font-size: 19px;
   min-height: 36px;
 }
-.app-header small {
-  color: var(--text-sec);
-  font-size: 12px;
-  margin-left: 7px;
-}
-.preview-badge {
-  font-size: 11px;
-  color: var(--text-sec);
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  padding: 4px 8px;
-}
 .error {
   background: #fff0ed;
   color: #943527;
@@ -544,6 +532,30 @@ dd {
 .editor-actions .primary { background: var(--gold); }
 .mode-options { display: grid; grid-template-columns: 1fr 1fr; }
 .mode-options [aria-pressed=true] { background: var(--gold-faint); color: var(--gold); border-color: var(--gold); }
+.weekday-options {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.weekday-options button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-recess);
+  color: var(--text-sec);
+}
+.weekday-options [aria-pressed='true'] {
+  background: var(--gold-faint);
+  color: var(--ink);
+  border-color: var(--gold);
+  font-weight: 600;
+}
+.weekday-options button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
 .time-fields label { flex: 1; text-align: center; margin: 0 0 8px; }
 .task-editor .sync-choice { display: flex; align-items: center; gap: 8px; }
 .sync-choice input, .background-setting input { width: 20px; height: 20px; accent-color: var(--gold); }

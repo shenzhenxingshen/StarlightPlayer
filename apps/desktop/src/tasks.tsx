@@ -11,6 +11,7 @@ import {
   type Mode,
 } from '../../../packages/playback-core/src';
 import { formatRepeatCount } from '../../../src/utils/numberFormat';
+import { ALL_TASK_WEEKDAYS, TASK_WEEKDAY_LABELS } from '../../../src/constants/scheduledTasks';
 
 export type TaskCommand = TaskEdit | { type: 'task-play'; id: string };
 const modes: Record<Mode, string> = {
@@ -93,7 +94,11 @@ export function TaskPanel({
         disabled={busy}
         onClick={() => {
           setCreating(true);
-          setEditing({ ...NEW_SCHEDULED_TASK, id: `task-${crypto.randomUUID()}` });
+          setEditing({
+            ...NEW_SCHEDULED_TASK,
+            weekdays: [...ALL_TASK_WEEKDAYS],
+            id: `task-${crypto.randomUUID()}`,
+          });
         }}>
         ＋增加任务
       </button>
@@ -146,7 +151,10 @@ function TaskEditor({
   close: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [task, setTask] = useState(initial);
+  const [task, setTask] = useState(() => ({
+    ...initial,
+    weekdays: [...(initial.weekdays ?? ALL_TASK_WEEKDAYS)],
+  }));
   const [repeat, setRepeat] = useState(formatRepeatCount(initial.repeatCount));
   const [invalid, setInvalid] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -221,6 +229,32 @@ function TaskEditor({
               {label}
             </label>
           ))}
+        </fieldset>
+        <fieldset aria-describedby="task-weekday-help">
+          <legend>重复</legend>
+          <div className="weekday-options">
+            {ALL_TASK_WEEKDAYS.map(day => (
+              <button
+                key={day}
+                type="button"
+                aria-label={`周${TASK_WEEKDAY_LABELS[day - 1]}`}
+                aria-pressed={task.weekdays.includes(day)}
+                disabled={busy}
+                onClick={() =>
+                  setTask(current => ({
+                    ...current,
+                    weekdays: current.weekdays.includes(day)
+                      ? current.weekdays.filter(selected => selected !== day)
+                      : [...current.weekdays, day].sort((a, b) => a - b),
+                  }))
+                }>
+                {TASK_WEEKDAY_LABELS[day - 1]}
+              </button>
+            ))}
+          </div>
+          <p id="task-weekday-help" className="muted">
+            {formatTaskWeekdays(task)} · 至少选择一天，仅影响定时启动，不限制立即播放。
+          </p>
         </fieldset>
         <label>
           歌曲名称

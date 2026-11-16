@@ -9,6 +9,8 @@ import { formatRepeatCount as format } from '../../../src/utils/numberFormat';
 import './style.css';
 import { TaskPanel, type TaskCommand } from './tasks';
 import type { ScheduledTask } from '../../../packages/playback-core/src';
+import { version as desktopVersion } from '../package.json';
+import { productName as appName } from '../src-tauri/tauri.conf.json';
 
 type DesktopCommand =
   | Command
@@ -326,10 +328,7 @@ function App() {
   return (
     <div className={`app${care ? ' care' : ''}`} style={theme}>
       <header className="app-header">
-        <span>
-          星光播放器 <small>电脑版</small>
-        </span>
-        <span className="preview-badge">技术预览</span>
+        <span>{appName}</span>
       </header>
       {error && (
         <p className="error" role="alert">
@@ -655,11 +654,11 @@ function App() {
                 </>
               )}
               <p className="about">
-                桌面技术预览 · 0.1.0
+                {appName} · v{desktopVersion}
                 <br />
                 播放器最小化后仍可播放；关闭行为可在后台运行设置中选择。
                 <br />
-                电脑睡眠、关机或完全退出后不能定时播放。当前仍为本机技术预览。
+                电脑睡眠、关机或完全退出后不能定时播放。
               </p>
             </main>
           )}
