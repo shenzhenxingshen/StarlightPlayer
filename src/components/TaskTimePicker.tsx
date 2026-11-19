@@ -19,7 +19,7 @@ const PARTS = [
   ['second', '秒', 60],
 ] as const;
 
-/** Three bounded wheels: unlike a native time picker this also supports seconds on both OSes. */
+/** Independent circular wheels. Seconds/minutes wrap without carrying into other columns. */
 export default function TaskTimePicker({
   value,
   onChange,
@@ -74,8 +74,12 @@ function TimeWheel({
   const { fontScale } = useWindowDimensions();
   const rowHeight = Math.ceil(48 * Math.max(1, Math.min(fontScale, 2)));
   const scroll = useRef<ScrollView>(null);
-  const initialOffset = useRef({ x: 0, y: value * rowHeight });
-  const offset = useRef(value * rowHeight);
+  // Five copies provide room in both directions. Recenter only after settling,
+  // so native inertia is not interrupted at 23→00 or 59→00.
+  const center = (n: number) => count * 2 + n;
+  const wrap = (n: number) => ((n % count) + count) % count;
+  const initialOffset = useRef({ x: 0, y: center(value) * rowHeight });
+  const offset = useRef(initialOffset.current.y);
   const dragging = useRef(false);
   const moving = useRef(false);
   const idleTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -83,7 +87,6 @@ function TimeWheel({
   // Event/timer callbacks always use the most recent parent value and handlers.
   const latest = useRef({ value, onChange, onMoving, rowHeight });
   latest.current = { value, onChange, onMoving, rowHeight };
-  const clamp = (n: number) => Math.max(0, Math.min(count - 1, n));
   const clearIdle = () => clearTimeout(idleTimer.current);
   const choose = (n: number) => {
     setSelected(n);
@@ -92,8 +95,8 @@ function TimeWheel({
   const settle = () => {
     clearIdle();
     const height = latest.current.rowHeight;
-    const n = clamp(Math.round(offset.current / height));
-    offset.current = n * height;
+    const n = wrap(Math.round(offset.current / height));
+    offset.current = center(n) * height;
     scroll.current?.scrollTo({ y: offset.current, animated: false });
     choose(n);
     moving.current = false;
@@ -108,21 +111,21 @@ function TimeWheel({
   useEffect(() => {
     if (!moving.current) {
       setSelected(value);
-      offset.current = value * rowHeight;
+      offset.current = (count * 2 + value) * rowHeight;
       scroll.current?.scrollTo({ y: offset.current, animated: false });
     }
-  }, [value, rowHeight]);
+  }, [value, rowHeight, count]);
 
   const jump = (n: number) => {
     clearIdle();
     dragging.current = false;
-    offset.current = n * latest.current.rowHeight;
+    offset.current = center(wrap(n)) * latest.current.rowHeight;
     settle();
   };
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!moving.current) return;
     offset.current = event.nativeEvent.contentOffset.y;
-    choose(clamp(Math.round(offset.current / latest.current.rowHeight)));
+    choose(wrap(Math.round(offset.current / latest.current.rowHeight)));
     armIdle();
   };
   return (
@@ -132,13 +135,13 @@ function TimeWheel({
         accessible
         accessibilityRole="adjustable"
         accessibilityLabel={`启动${label}`}
-        accessibilityHint="上下轻扫调整，也可滑动或点击数字"
+        accessibilityHint="上下轻扫调整，首尾循环；也可滑动或点击数字，各列独立不进位"
         accessibilityValue={{ min: 0, max: count - 1, now: selected, text: `${selected}${label}` }}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
         onAccessibilityAction={event => {
           const action = event.nativeEvent.actionName;
-          if (action === 'increment') jump(clamp(latest.current.value + 1));
-          if (action === 'decrement') jump(clamp(latest.current.value - 1));
+          if (action === 'increment') jump(latest.current.value + 1);
+          if (action === 'decrement') jump(latest.current.value - 1);
         }}
         style={[styles.wheel, { height: rowHeight * 3 }]}>
         <View
@@ -162,7 +165,10 @@ function TimeWheel({
           contentContainerStyle={{ paddingVertical: rowHeight }}
           onLayout={() => {
             if (!moving.current)
-              scroll.current?.scrollTo({ y: latest.current.value * rowHeight, animated: false });
+              scroll.current?.scrollTo({
+                y: center(latest.current.value) * rowHeight,
+                animated: false,
+              });
           }}
           onScrollBeginDrag={() => {
             clearIdle();
@@ -182,19 +188,22 @@ function TimeWheel({
             offset.current = event.nativeEvent.contentOffset.y;
             settle();
           }}>
-          {Array.from({ length: count }, (_, n) => (
-            <Pressable
-              key={n}
-              accessible={false}
-              onPress={() => jump(n)}
-              style={[styles.numberRow, { height: rowHeight }]}>
-              <Text
-                maxFontSizeMultiplier={2}
-                style={[styles.number, n === selected && styles.selectedNumber]}>
-                {String(n).padStart(2, '0')}
-              </Text>
-            </Pressable>
-          ))}
+          {Array.from({ length: count * 5 }, (_, index) => {
+            const n = wrap(index);
+            return (
+              <Pressable
+                key={index}
+                accessible={false}
+                onPress={() => jump(n)}
+                style={[styles.numberRow, { height: rowHeight }]}>
+                <Text
+                  maxFontSizeMultiplier={2}
+                  style={[styles.number, n === selected && styles.selectedNumber]}>
+                  {String(n).padStart(2, '0')}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
       </View>
     </View>

@@ -41,9 +41,11 @@ describe('任务列表', () => {
     await waitFor(() =>
       expect(NativeModules.ScheduledTaskManager.getSchedulingStatus).toHaveBeenCalled(),
     );
-    expect(getByText('05:30:00')).toBeTruthy();
+    expect(getAllByText('05:30:00')).toHaveLength(2);
     expect(getByText('06:30:00')).toBeTruthy();
-    expect(getByText('20:00:00')).toBeTruthy();
+    expect(getAllByText('20:00:00')).toHaveLength(2);
+    expect(getByText('音频任务')).toBeTruthy();
+    expect(getByText('视频任务')).toBeTruthy();
     expect(getByText('早自习')).toBeTruthy();
     expect(getByText('，49遍')).toBeTruthy();
     expect(getAllByText('单曲，同步')).toHaveLength(2);
@@ -284,18 +286,18 @@ describe('任务编辑', () => {
     expect(loadScheduledTasks()[0].second).toBe(59);
   });
 
-  it('三列拨轮保持各自值，边界夹紧且支持读屏调整', () => {
+  it('三列拨轮保持各自值，首尾循环且支持读屏调整', () => {
     const screen = render(
       <TaskEditScreen
         navigation={navigation as any}
         route={route({ taskId: 'default-morning' }) as any}
       />,
     );
-    selectWheel(screen, 'hour', -3);
-    selectWheel(screen, 'minute', 80);
-    selectWheel(screen, 'second', 60);
+    selectWheel(screen, 'hour', 48 + 23);
+    selectWheel(screen, 'minute', 120 + 59);
+    selectWheel(screen, 'second', 120 + 60);
     fireEvent(screen.getByLabelText('启动时'), 'accessibilityAction', {
-      nativeEvent: { actionName: 'decrement' },
+      nativeEvent: { actionName: 'increment' },
     });
     fireEvent(screen.getByLabelText('启动分'), 'accessibilityAction', {
       nativeEvent: { actionName: 'increment' },
@@ -304,9 +306,9 @@ describe('任务编辑', () => {
       nativeEvent: { actionName: 'decrement' },
     });
     expect(screen.getByLabelText('启动时').props.accessibilityValue.now).toBe(0);
-    expect(screen.getByLabelText('启动分').props.accessibilityValue.now).toBe(59);
-    expect(screen.getByLabelText('启动秒').props.accessibilityValue.now).toBe(58);
+    expect(screen.getByLabelText('启动分').props.accessibilityValue.now).toBe(0);
+    expect(screen.getByLabelText('启动秒').props.accessibilityValue.now).toBe(59);
     fireEvent.press(screen.getByText('保存'));
-    expect(loadScheduledTasks()[0]).toMatchObject({ hour: 0, minute: 59, second: 58 });
+    expect(loadScheduledTasks()[0]).toMatchObject({ hour: 0, minute: 0, second: 59 });
   });
 });

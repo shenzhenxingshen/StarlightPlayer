@@ -98,3 +98,8 @@ xcodebuild -workspace ios/StarlightPlayer.xcworkspace -scheme StarlightPlayer \
 
 构建日志与原始事件目前仅在本机，不是长期制品存档。发布前应锁定提交/制品hash，
 转存脱敏证据并补齐上述NOT RUN项目。本记录描述提交前的验证结果，不代表商店发布。
+
+## 后续记录
+
+2026-11-19：环形拨轮、全屏常驻进度和去二维码素材 revision v2 的接续结果见
+[视频界面回归记录](2026-11-19-video-ui.md)。本文件的 v1 素材与原验证结果保留，不用 v2 结果覆盖。

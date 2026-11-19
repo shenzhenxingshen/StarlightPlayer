@@ -19,6 +19,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import TrackPlayer, { RepeatMode } from 'react-native-track-player';
 import PlayerScreen from './screens/PlayerScreen';
+import { setVideoPlayerFocused, useVideoPresentation } from './video/presentation';
 import PlaylistScreen from './screens/PlaylistScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import TaskNavigator from './navigation/TaskNavigator';
@@ -263,6 +264,7 @@ const App: React.FC = () => {
 };
 
 const AppTabs: React.FC = () => {
+  const videoFullscreen = useVideoPresentation(state => state.fullscreen);
   const { isCareMode } = useSettingsStore();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -294,8 +296,13 @@ const AppTabs: React.FC = () => {
       <Tab.Screen
         name="Player"
         component={PlayerScreen}
+        listeners={{
+          focus: () => setVideoPlayerFocused(true),
+          blur: () => setVideoPlayerFocused(false),
+        }}
         options={{
           title: '播放',
+          ...(videoFullscreen ? { tabBarStyle: { display: 'none' as const } } : {}),
           tabBarIcon: ({ color }) => (
             <Icon name="play-circle-outline" size={layout.tabIconSize} color={color} />
           ),

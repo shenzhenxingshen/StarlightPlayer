@@ -27,6 +27,7 @@ import {
 } from '../services/scheduledTaskScheduler';
 import { formatRepeatCount } from '../utils/numberFormat';
 import { addLog } from '../utils/logger';
+import { VideoTaskSection } from '../video/TaskScreens';
 
 type Props = NativeStackScreenProps<TaskStackParamList, 'TaskList'>;
 
@@ -126,15 +127,6 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
   const warning = hasEnabledTasks ? permissionMessage(status) : null;
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="视频任务"
-        style={styles.platformHint}
-        onPress={() => navigation.navigate('VideoTasks')}>
-        <Icon name="movie" size={24} color={GOLD} />
-        <Text style={styles.platformHintText}>视频任务 · 49 / 98遍完整流程</Text>
-        <Icon name="chevron-right" size={24} color={GOLD} />
-      </Pressable>
       {warning && (
         <Pressable
           accessibilityRole="button"
@@ -176,6 +168,23 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
       )}
       <FlatList
         data={tasks}
+        ListHeaderComponent={
+          <Text accessibilityRole="header" style={styles.sectionTitle}>
+            音频任务
+          </Text>
+        }
+        ListFooterComponent={
+          <View>
+            <Pressable
+              accessibilityRole="button"
+              style={styles.addButton}
+              onPress={() => navigation.navigate('TaskEdit')}>
+              <Icon name="add" size={24} color={GOLD} />
+              <Text style={styles.addText}>增加任务</Text>
+            </Pressable>
+            <VideoTaskSection navigation={navigation} />
+          </View>
+        }
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={<Text style={styles.empty}>暂无任务，可点击下方增加。</Text>}
@@ -239,13 +248,6 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
           </Swipeable>
         )}
       />
-      <Pressable
-        accessibilityRole="button"
-        style={styles.addButton}
-        onPress={() => navigation.navigate('TaskEdit')}>
-        <Icon name="add" size={24} color={GOLD} />
-        <Text style={styles.addText}>增加任务</Text>
-      </Pressable>
     </SafeAreaView>
   );
 };
@@ -253,6 +255,7 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG_GROUND },
   listContent: { padding: 16, paddingBottom: 100 },
+  sectionTitle: { color: INK, fontSize: 18, fontWeight: '600', marginBottom: 12 },
   swipeRow: { marginBottom: 12, borderRadius: 14, overflow: 'hidden' },
   taskCard: {
     flexDirection: 'row',
@@ -288,10 +291,7 @@ const styles = StyleSheet.create({
   repeatCount: { color: TEXT_SEC, fontSize: 14, flexShrink: 0 },
   mode: { color: TEXT_TER, fontSize: 12, marginTop: 4 },
   addButton: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 16,
+    marginBottom: 24,
     height: 54,
     borderRadius: 12,
     backgroundColor: BG_SURFACE,

@@ -45,6 +45,46 @@ afterEach(() => {
 });
 
 describe('任务时间拨轮收尾与边界', () => {
+  it.each([
+    ['hour', '时', 24],
+    ['minute', '分', 60],
+    ['second', '秒', 60],
+  ])('%s正反向跨过首尾，连续多次调整不向其他列进位', (part, label, count) => {
+    const screen = setup();
+    const wheel = screen.wheel(part);
+    expect(wheel.props.contentOffset.y).toBe(
+      (count * 2 + initial[part as keyof typeof initial]) * 48,
+    );
+    for (const rows of [count * 3 - 1, count * 3, count * 2 - 1, count * 2, count * 3 + 1]) {
+      fireEvent(wheel, 'scrollBeginDrag');
+      fireEvent.scroll(wheel, event(rows));
+      fireEvent(wheel, 'scrollEndDrag', event(rows));
+      fireEvent(wheel, 'momentumScrollEnd', event(rows));
+      expect(screen.change).toHaveBeenLastCalledWith({ ...initial, [part]: rows % count });
+      expect(screen.getByLabelText(`启动${label}`).props.accessibilityValue.now).toBe(rows % count);
+      expect(screen.moving).toHaveBeenLastCalledWith(false);
+    }
+  });
+
+  it.each([
+    ['hour', '时', 24],
+    ['minute', '分', 60],
+    ['second', '秒', 60],
+  ])('%s读屏增减首尾循环且未知动作不改变值', (part, label, count) => {
+    const screen = setup();
+    const wheel = screen.wheel(part);
+    fireEvent(wheel, 'scrollBeginDrag');
+    fireEvent(wheel, 'momentumScrollEnd', event(count * 3 - 1));
+    const adjustable = screen.getByLabelText(`启动${label}`);
+    fireEvent(adjustable, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
+    expect(screen.change).toHaveBeenLastCalledWith({ ...initial, [part]: 0 });
+    fireEvent(adjustable, 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
+    expect(screen.change).toHaveBeenLastCalledWith({ ...initial, [part]: count - 1 });
+    screen.change.mockClear();
+    fireEvent(adjustable, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
+    expect(screen.change).not.toHaveBeenCalled();
+  });
+
   it('短拖动没有惯性结束事件时，200ms后吸附并解除保存锁定', () => {
     const screen = setup();
     const wheel = screen.wheel('second');

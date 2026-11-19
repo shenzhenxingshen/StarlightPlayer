@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   defaultVideoTasks,
   validateVideoTask,
@@ -21,18 +21,16 @@ import TaskTimePicker from '../components/TaskTimePicker';
 import { BG_GROUND, BG_SURFACE, BORDER, GOLD, INK, TEXT_SEC } from '../constants/colors';
 import { VIDEO_CATALOG } from './catalog';
 import { useVideoTasks } from './taskStore';
-import { joinVideoTask } from './runtime';
+import { joinVideoTask, useVideoState } from './runtime';
+import { isVideoOwner } from './ownership';
+import { approximateEnd, durationText, videoTaskWindow } from './presentation';
+import { formatRepeatCount } from '../utils/numberFormat';
 import { requestTaskSchedulingPermission } from '../services/scheduledTaskScheduler';
 
 const DAYS = ['一', '二', '三', '四', '五', '六', '日'];
 const clock = (t: VideoTask) =>
   [t.hour, t.minute, t.second].map(n => String(n).padStart(2, '0')).join(':');
-export const videoDuration = (seconds: number) => {
-  const s = Math.floor(Math.max(0, seconds));
-  return [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60]
-    .map(n => String(n).padStart(2, '0'))
-    .join(':');
-};
+export const videoDuration = durationText;
 function Button({
   title,
   onPress,
@@ -46,6 +44,7 @@ function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
+      accessibilityState={{ disabled }}
       disabled={disabled}
       style={[styles.button, disabled && { opacity: 0.4 }]}
       onPress={onPress}>
@@ -60,69 +59,114 @@ function warn(error: unknown) {
 export function VideoTaskListScreen({
   navigation,
 }: NativeStackScreenProps<TaskStackParamList, 'VideoTasks'>) {
-  const { tasks, put } = useVideoTasks();
-  const [busy, setBusy] = useState(false);
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
-      <Text style={styles.hint}>
-        整套流程按启动时刻持续推进。迟到加入、暂停后继续都会追平当前进度；结束后不补播。暂停不暂停公共时间轴。
+      <VideoTaskSection navigation={navigation} />
+    </ScrollView>
+  );
+}
+
+export function VideoTaskSection({
+  navigation,
+}: {
+  navigation: Pick<NativeStackNavigationProp<TaskStackParamList>, 'navigate' | 'getParent'>;
+}) {
+  const { tasks, put } = useVideoTasks();
+  const session = useVideoState(s => s.session);
+  const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <View style={styles.section}>
+      <Text accessibilityRole="header" style={styles.title}>
+        视频任务
       </Text>
       <Text style={styles.hint}>
-        视频在前台播放。App 在后台或被关闭时，请点击系统提醒返回加入；需要允许通知。
+        到点按整套流程推进，加入即追平。视频需在前台播放；后台请通过通知返回。
       </Text>
       {[...tasks]
         .sort((a, b) => clock(a).localeCompare(clock(b)))
-        .map(task => (
-          <View key={task.id} style={styles.card}>
-            <View style={styles.row}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`修改${task.name}`}
-                style={{ flex: 1 }}
-                onPress={() => navigation.navigate('VideoTaskEdit', { taskId: task.id })}>
-                <Text style={styles.time}>{clock(task)}</Text>
-                <Text style={styles.title}>{task.name}</Text>
-                <Text style={styles.hint}>
-                  周
-                  {[...task.weekdays]
-                    .sort()
-                    .map(d => DAYS[d - 1])
-                    .join('、')}{' '}
-                  ·{' '}
-                  {videoDuration(
-                    compileProgram(validateVideoTask(task, VIDEO_CATALOG)).totalTicks /
-                      VIDEO_CATALOG.timescale,
-                  )}
-                </Text>
-              </Pressable>
-              <Switch
-                accessibilityLabel={`${task.name}定时启动`}
-                value={task.enabled}
-                onValueChange={enabled => {
-                  try {
-                    put({ ...task, enabled });
-                    if (enabled) requestTaskSchedulingPermission().catch(warn);
-                  } catch (error) {
-                    warn(error);
-                  }
+        .map(task => {
+          const window = videoTaskWindow(task, VIDEO_CATALOG, now, isVideoOwner() ? session : null);
+          const timeline = compileProgram(validateVideoTask(task, VIDEO_CATALOG));
+          const current =
+            isVideoOwner() &&
+            session?.occurrence.task.id === task.id &&
+            window.active?.key === session.occurrence.key;
+          return (
+            <View key={task.id} style={styles.card}>
+              <View style={styles.row}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`修改${task.name}`}
+                  style={{ flex: 1 }}
+                  onPress={() => navigation.navigate('VideoTaskEdit', { taskId: task.id })}>
+                  <Text style={styles.time}>{clock(task)}</Text>
+                  <Text style={styles.title}>{task.name}</Text>
+                  <Text style={styles.hint}>
+                    周
+                    {[...task.weekdays]
+                      .sort()
+                      .map(d => DAYS[d - 1])
+                      .join('、')}{' '}
+                    · {formatRepeatCount(timeline.totalCycles)}遍正文 ·{' '}
+                    {videoDuration(timeline.totalTicks / timeline.timescale)}
+                  </Text>
+                </Pressable>
+                <Switch
+                  accessibilityLabel={`${task.name}定时启动`}
+                  value={task.enabled}
+                  onValueChange={enabled => {
+                    try {
+                      put({ ...task, enabled });
+                      if (enabled) {
+                        Alert.alert(
+                          '视频任务提醒',
+                          '视频需在前台播放。App 在后台或关闭时，将通过通知提醒你返回并追平进度；请允许通知。',
+                        );
+                        requestTaskSchedulingPermission().catch(warn);
+                      }
+                    } catch (error) {
+                      warn(error);
+                    }
+                  }}
+                />
+              </View>
+              <Text style={styles.hint}>
+                {window.active
+                  ? `进行中 · 约${new Date(Math.ceil(window.active.endEpochMs / 1000) * 1000).toLocaleTimeString('zh-CN', { hour12: false })}结束`
+                  : window.next
+                    ? `下次 ${new Date(window.next.startEpochMs).getMonth() + 1}月${new Date(window.next.startEpochMs).getDate()}日 ${clock(task)}`
+                    : '请设置重复日期'}
+                {!task.enabled ? ' · 自动启动已关闭' : ''}
+              </Text>
+              <Button
+                title={
+                  current
+                    ? `${session?.intent === 'playing' ? '查看播放' : '追平并继续'}：${task.name}`
+                    : `加入${task.name}`
+                }
+                disabled={busy || !window.active}
+                onPress={() => {
+                  setBusy(true);
+                  const showPlaying =
+                    current && session?.intent === 'playing'
+                      ? Promise.resolve()
+                      : joinVideoTask(task.id);
+                  showPlaying
+                    .then(() => navigation.getParent()?.navigate('Player'))
+                    .catch(warn)
+                    .finally(() => setBusy(false));
                 }}
               />
             </View>
-            <Button
-              title={`加入${task.name}`}
-              disabled={busy}
-              onPress={() => {
-                setBusy(true);
-                joinVideoTask(task.id)
-                  .then(() => navigation.getParent()?.navigate('Player'))
-                  .catch(warn)
-                  .finally(() => setBusy(false));
-              }}
-            />
-          </View>
-        ))}
+          );
+        })}
       <Button title="增加视频任务" onPress={() => navigation.navigate('VideoTaskEdit')} />
-    </ScrollView>
+    </View>
   );
 }
 
@@ -146,11 +190,16 @@ export function VideoTaskEditScreen({
   );
   const [moving, setMoving] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [expanded, setExpanded] = useState<number | null>(2);
   let duration = '';
+  let totalCycles = 0;
+  let end = '';
   try {
-    duration = videoDuration(
-      compileProgram(validateVideoTask(task, VIDEO_CATALOG)).totalTicks / VIDEO_CATALOG.timescale,
-    );
+    const timeline = compileProgram(validateVideoTask(task, VIDEO_CATALOG));
+    const seconds = timeline.totalTicks / timeline.timescale;
+    duration = videoDuration(seconds);
+    totalCycles = timeline.totalCycles;
+    end = approximateEnd(task, seconds);
   } catch {
     duration = '请完善设置';
   }
@@ -159,6 +208,7 @@ export function VideoTaskEditScreen({
     const [entry] = sequence.splice(from, 1);
     sequence.splice(to, 0, entry);
     setTask({ ...task, sequence });
+    setExpanded(to);
   };
   return (
     <ScrollView
@@ -180,6 +230,7 @@ export function VideoTaskEditScreen({
         onChange={time => setTask({ ...task, ...time })}
         onScrollingChange={setMoving}
       />
+      <Text style={styles.hint}>上下滑动，首尾循环；时、分、秒独立调整。</Text>
       <Text style={styles.title}>星期重复</Text>
       <View style={styles.row}>
         {DAYS.map((day, index) => {
@@ -205,42 +256,69 @@ export function VideoTaskEditScreen({
           );
         })}
       </View>
-      <Text style={styles.title}>按顺序播放 · 总时长 {duration}</Text>
+      <View style={styles.summary}>
+        <Text style={styles.title}>
+          {formatRepeatCount(totalCycles)}遍正文 · {task.sequence.length}项素材
+        </Text>
+        <Text style={styles.hint}>
+          总时长 {duration}
+          {end ? ` · 约${end}结束` : ''}
+        </Text>
+      </View>
+      <Text style={styles.title}>按顺序播放</Text>
       {task.sequence.map((entry, i) => (
         <View key={i} style={styles.card}>
-          <Text style={styles.title}>
-            {i + 1}. {VIDEO_CATALOG.assets.find(a => a.id === entry.assetId)?.title}
-          </Text>
-          <View style={styles.row}>
-            <Text style={styles.hint}>重复遍数</Text>
-            <TextInput
-              accessibilityLabel={`第${i + 1}项重复遍数`}
-              style={[styles.input, { flex: 1 }]}
-              keyboardType="number-pad"
-              value={Number.isNaN(entry.repeat) ? '' : String(entry.repeat)}
-              onChangeText={text => {
-                const repeat = /^\d+$/.test(text) ? Number(text) : NaN;
-                setTask({
-                  ...task,
-                  sequence: task.sequence.map((s, j) => (i === j ? { ...s, repeat } : s)),
-                });
-              }}
-            />
-          </View>
-          <View style={styles.row}>
-            <Button title={`第${i + 1}项上移`} disabled={i === 0} onPress={() => move(i, i - 1)} />
-            <Button
-              title={`第${i + 1}项下移`}
-              disabled={i === task.sequence.length - 1}
-              onPress={() => move(i, i + 1)}
-            />
-            <Button
-              title={`移除第${i + 1}项`}
-              onPress={() =>
-                setTask({ ...task, sequence: task.sequence.filter((_, j) => j !== i) })
-              }
-            />
-          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`编辑第${i + 1}项`}
+            accessibilityState={{ expanded: expanded === i }}
+            onPress={() => setExpanded(expanded === i ? null : i)}>
+            <Text style={styles.title}>
+              {i + 1}. {VIDEO_CATALOG.assets.find(a => a.id === entry.assetId)?.title}
+              {' × '}
+              {Number.isSafeInteger(entry.repeat) ? formatRepeatCount(entry.repeat) : '—'}
+            </Text>
+            <Text style={styles.hint}>{expanded === i ? '收起设置' : '调整遍数与顺序'}</Text>
+          </Pressable>
+          {expanded === i && (
+            <>
+              <View style={styles.row}>
+                <Text style={styles.hint}>重复遍数</Text>
+                <TextInput
+                  accessibilityLabel={`第${i + 1}项重复遍数`}
+                  style={[styles.input, { flex: 1 }]}
+                  keyboardType="number-pad"
+                  value={Number.isNaN(entry.repeat) ? '' : String(entry.repeat)}
+                  onChangeText={text => {
+                    const repeat = /^\d+$/.test(text) ? Number(text) : NaN;
+                    setTask({
+                      ...task,
+                      sequence: task.sequence.map((s, j) => (i === j ? { ...s, repeat } : s)),
+                    });
+                  }}
+                />
+              </View>
+              <View style={styles.row}>
+                <Button
+                  title={`第${i + 1}项上移`}
+                  disabled={i === 0}
+                  onPress={() => move(i, i - 1)}
+                />
+                <Button
+                  title={`第${i + 1}项下移`}
+                  disabled={i === task.sequence.length - 1}
+                  onPress={() => move(i, i + 1)}
+                />
+                <Button
+                  title={`移除第${i + 1}项`}
+                  onPress={() => {
+                    setTask({ ...task, sequence: task.sequence.filter((_, j) => j !== i) });
+                    setExpanded(null);
+                  }}
+                />
+              </View>
+            </>
+          )}
         </View>
       ))}
       <Button title={adding ? '收起素材列表' : '添加视频片段'} onPress={() => setAdding(!adding)} />
@@ -251,6 +329,7 @@ export function VideoTaskEditScreen({
             title={`添加：${asset.title}`}
             onPress={() => {
               setTask({ ...task, sequence: [...task.sequence, { assetId: asset.id, repeat: 1 }] });
+              setExpanded(task.sequence.length);
               setAdding(false);
             }}
           />
@@ -293,6 +372,8 @@ export function VideoTaskEditScreen({
 }
 
 const styles = StyleSheet.create({
+  section: { gap: 12 },
+  summary: { padding: 12, backgroundColor: '#E8F5F2', borderRadius: 10, gap: 6 },
   page: { flex: 1, backgroundColor: BG_GROUND },
   content: {
     padding: 18,
