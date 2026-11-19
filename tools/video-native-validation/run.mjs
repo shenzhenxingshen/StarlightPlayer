@@ -6,8 +6,8 @@ import { resolve } from 'node:path';
 // Native API test, NOT UI automation or an end-to-end test of the RN bridge.
 // It imports exactly the production VideoProgramPlayer.mm with registration-only stubs.
 const device = process.argv[2];
-if (!device) throw new Error('Usage: node tools/video-native-validation/run.mjs <booted-iOS-UDID>');
-const out = resolve('release/video-native-validation');
+if (!device) throw new Error('Usage: node tools/video-native-validation/run.mjs <booted-iOS-UDID> [output-directory]');
+const out = resolve(process.argv[3] || 'release/video-native-validation');
 const app = resolve(out, 'VideoNativeValidation.app');
 const root = resolve('tools/video-native-validation');
 const id = 'org.starlight.video-native-validation';
@@ -78,7 +78,25 @@ for (const name of names) {
   const samples = rows.filter(e => e.event === 'sample' && e.wallMs - (ready?.wallMs || 0) >= 600);
   const stable = samples.filter(e => e.rate > 0);
   const maxDriftMs = Math.max(0, ...stable.map(e => Math.abs(e.expected - e.actual) * 1000));
-  assertions.push({ name, pass: !rejected && stable.length >= 5 && maxDriftMs <= 250,
+  const logs = rows.find(e => e.event === 'diagnostics')?.lines || [];
+  const checks = logs.filter(e => e.includes(' boundary_check ')).length;
+  const corrections = logs.filter(e => e.includes(' boundary_correction ')).length;
+  let pass = !rejected && samples.every(e => !e.error);
+  if (name === 'mid-clip-drift') {
+    pass &&= corrections === 0 && checks === 0 && stable.length >= 10 &&
+      stable.every(e => e.expected - e.actual > 0.7) && samples.every(e => !e.aligning);
+  } else if (['boundary-late', 'boundary-early', 'boundary-skip', 'boundary-preroll-delay'].includes(name)) {
+    pass &&= corrections === 1 && samples.slice(-5).every(e => e.rate > 0 && Math.abs(e.expected - e.actual) <= 0.25);
+    if (name === 'boundary-preroll-delay') pass &&= logs.some(e => e.includes(' preroll_retry '));
+  } else if (name === 'boundary-cancel') {
+    const cancelled = rows.find(e => e.event === 'cancelled');
+    const after = samples.filter(e => e.wallMs >= (cancelled?.wallMs ?? Infinity));
+    pass &&= corrections === 1 && after.length >= 5 && after.every(e => e.rate === 0 && !e.aligning);
+  } else if (name === 'window-stops-lagging') {
+    pass &&= corrections === 0 && samples.slice(-5).every(e => e.rate === 0 && e.actual < 4.9) &&
+      samples.filter(e => e.expected >= 5.6).every(e => e.rate === 0);
+  } else pass &&= stable.length >= 5 && maxDriftMs <= 250;
+  assertions.push({ name, pass, checks, corrections,
     samples: samples.length, playingSamples: stable.length, maxDriftMs, rejected });
   if (['intro-salutation', 'salutation-regular', 'regular-repeat', 'regular-final', 'final-outro'].includes(name)) {
     const config = rows.find(e => e.event === 'load').config;
@@ -89,8 +107,8 @@ for (const name of names) {
     const discontinuities = all.slice(1).filter((e, i) =>
       e.wallMs - all[i].wallMs > 500 || e.actual < all[i].actual - 0.01 ||
       Math.abs((e.actual - all[i].actual) - (e.wallMs - all[i].wallMs) / 1000) > 0.25);
-    assertions.push({ name: `${name}-crossed`, pass: crossed.length === 1 && discontinuities.length === 0,
-      crossed, discontinuities: discontinuities.length });
+    assertions.push({ name: `${name}-crossed`, pass: crossed.length === 1 && discontinuities.length === 0 && checks === 1 && corrections === 0,
+      crossed, discontinuities: discontinuities.length, checks, corrections });
   }
   if (name === 'end-no-wrap') {
     assertions.push({ name: 'end-stopped', pass: samples.at(-1)?.rate === 0 && samples.at(-1)?.actual >= 4.9 });
@@ -105,4 +123,4 @@ assertions.push({ name: 'resume-catches-current-time', pass: resumed.length >= 5
   resumed.every(e => e.rate > 0 && Math.abs(e.actual - e.expected) <= 0.25) });
 writeFileSync(resolve(out, 'analysis.json'), JSON.stringify(assertions, null, 2));
 console.log(JSON.stringify(assertions, null, 2));
-if (assertions.some(a => !a.pass)) process.exitCode = 1;
+if (assertions.length !== 24 || assertions.some(a => !a.pass)) process.exitCode = 1;

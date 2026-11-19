@@ -54,6 +54,10 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            // Isolated native-video probe: never overwrite the user's normal app/data.
+            if (project.hasProperty("videoValidation")) {
+                applicationIdSuffix ".videovalidation"
+            }
         }
         release {
             signingConfig signingConfigs.release

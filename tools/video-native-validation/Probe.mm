@@ -3,6 +3,23 @@
 @implementation RCTViewManager
 @end
 
+// Real AVPlayer, with a single delayed callback to exercise the production
+// preroll timeout/late-callback guard. Not used by the shipped app.
+@interface ProbePlayer : AVPlayer
+@property(nonatomic) BOOL delayNextPreroll;
+@end
+@implementation ProbePlayer
+- (void)prerollAtRate:(float)rate completionHandler:(void (^)(BOOL))completionHandler {
+  if (!self.delayNextPreroll) { [super prerollAtRate:rate completionHandler:completionHandler]; return; }
+  self.delayNextPreroll = NO;
+  [super prerollAtRate:rate completionHandler:^(BOOL ready) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+      completionHandler(ready);
+    });
+  }];
+}
+@end
+
 @interface Probe : UIResponder <UIApplicationDelegate>
 @property(nonatomic, strong) UIWindow *window;
 @property(nonatomic, strong) VideoProgramPlayer *module;
@@ -10,6 +27,7 @@
 @property(nonatomic, strong) NSDictionary *manifest;
 @property(nonatomic, strong) NSArray *scenarios;
 @property(nonatomic) NSUInteger next;
+@property(nonatomic) BOOL cancelled;
 @end
 
 @implementation Probe
@@ -39,10 +57,19 @@
 }
 - (void)sample:(NSString *)name until:(double)deadline completion:(dispatch_block_t)done {
   SLVideoEngine *engine = SLVideoEngine.shared;
+  NSUInteger corrections = 0;
+  for (NSString *line in engine.diagnostics)
+    if ([line containsString:@" boundary_correction "]) corrections++;
+  if ([name isEqual:@"boundary-cancel"] && corrections && !self.cancelled) {
+    self.cancelled = YES;
+    [engine pause];
+    [self record:@{@"event":@"cancelled", @"scenario":name}];
+  }
   double actual = CMTimeGetSeconds(engine.player.currentTime);
   double expected = NSDate.date.timeIntervalSince1970 - engine.origin;
   [self record:@{@"event":@"sample", @"scenario":name, @"expected":@(expected),
     @"actual":@(isfinite(actual) ? actual : -1), @"rate":@(engine.player.rate),
+    @"aligning":@(engine.aligning), @"corrections":@(corrections),
     @"error":engine.error ?: @""}];
   if (NSDate.date.timeIntervalSince1970 >= deadline) { done(); return; }
   dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
@@ -53,12 +80,20 @@
   if (self.next >= self.scenarios.count) { [self finish]; return; }
   NSDictionary *scenario = self.scenarios[self.next++];
   NSString *name = scenario[@"name"];
+  [SLVideoEngine.shared.diagnostics removeAllObjects];
+  ((ProbePlayer *)SLVideoEngine.shared.player).delayNextPreroll = NO;
+  self.cancelled = NO;
   NSDictionary *config = [self config:scenario[@"ids"] repeats:scenario[@"repeats"] elapsed:[scenario[@"elapsed"] doubleValue]];
   double started = NSDate.date.timeIntervalSince1970;
   [self record:@{@"event":@"load", @"scenario":name, @"config":config}];
   [self.module load:config resolver:^(id result) {
     [self record:@{@"event":@"ready", @"scenario":name, @"loadSeconds":@(NSDate.date.timeIntervalSince1970 - started)}];
+    // Fault injection is confined to this test app, never changes the OS clock.
+    SLVideoEngine.shared.origin -= [scenario[@"shiftMs"] doubleValue] / 1000;
+    ((ProbePlayer *)SLVideoEngine.shared.player).delayNextPreroll = [name isEqual:@"boundary-preroll-delay"];
     [self sample:name until:NSDate.date.timeIntervalSince1970 + [scenario[@"seconds"] doubleValue] completion:^{
+      [self record:@{@"event":@"diagnostics", @"scenario":name,
+        @"lines":[SLVideoEngine.shared.diagnostics copy]}];
       if ([name isEqual:@"pause-resume"]) {
         [self.module pause:^(id r) {
           [self record:@{@"event":@"paused", @"scenario":name}];
@@ -75,12 +110,17 @@
     }];
   } rejecter:^(NSString *code, NSString *message, NSError *error) {
     [self record:@{@"event":@"rejected", @"scenario":name, @"code":code, @"message":message}];
+    [self record:@{@"event":@"diagnostics", @"scenario":name,
+      @"lines":[SLVideoEngine.shared.diagnostics copy]}];
     [self runNext];
   }];
 }
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)options {
   self.events = [NSMutableArray new];
   self.module = [VideoProgramPlayer new];
+  SLVideoEngine.shared.player = [ProbePlayer new];
+  SLVideoEngine.shared.player.automaticallyWaitsToMinimizeStalling = NO;
+  SLVideoEngine.shared.player.actionAtItemEnd = AVPlayerActionAtItemEndPause;
   NSURL *url = [NSBundle.mainBundle URLForResource:@"manifest" withExtension:@"json" subdirectory:@"video"];
   self.manifest = [NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfURL:url] options:0 error:nil];
   self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
@@ -101,6 +141,13 @@
     @{@"name":@"final-outro", @"ids":ids, @"repeats":counts, @"elapsed":@(finalEnd - 2), @"seconds":@4},
     @{@"name":@"late-98", @"ids":@[@"intro98", @"salutation", @"regular", @"final", @"outro"], @"repeats":@[@1, @1, @97, @1, @1], @"elapsed":@3600, @"seconds":@3},
     @{@"name":@"pause-resume", @"ids":ids, @"repeats":counts, @"elapsed":@600, @"seconds":@2},
+    @{@"name":@"mid-clip-drift", @"ids":@[@"regular"], @"repeats":@[@2], @"elapsed":@10, @"seconds":@3, @"shiftMs":@1000},
+    @{@"name":@"boundary-late", @"ids":@[@"intro49"], @"repeats":@[@4], @"elapsed":@1, @"seconds":@6, @"shiftMs":@1000},
+    @{@"name":@"boundary-early", @"ids":@[@"intro49"], @"repeats":@[@4], @"elapsed":@1, @"seconds":@6, @"shiftMs":@(-800)},
+    @{@"name":@"boundary-skip", @"ids":@[@"intro49"], @"repeats":@[@6], @"elapsed":@1, @"seconds":@6, @"shiftMs":@11000},
+    @{@"name":@"boundary-cancel", @"ids":@[@"intro49"], @"repeats":@[@4], @"elapsed":@1, @"seconds":@6, @"shiftMs":@1000},
+    @{@"name":@"boundary-preroll-delay", @"ids":@[@"intro49"], @"repeats":@[@4], @"elapsed":@1, @"seconds":@7, @"shiftMs":@1000},
+    @{@"name":@"window-stops-lagging", @"ids":@[@"intro49"], @"repeats":@[@1], @"elapsed":@1, @"seconds":@4, @"shiftMs":@2000},
     @{@"name":@"end-no-wrap", @"ids":@[@"intro49"], @"repeats":@[@1], @"elapsed":@2, @"seconds":@4},
     @{@"name":@"already-ended", @"ids":@[@"intro49"], @"repeats":@[@1], @"elapsed":@6, @"seconds":@1},
   ];

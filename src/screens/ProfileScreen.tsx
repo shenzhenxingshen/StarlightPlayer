@@ -25,6 +25,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import { getLogs } from '../utils/logger';
 import { exportDiagnosticFile } from '../utils/diagnosticExporter';
 import { formatRepeatCount, unformatRepeatCount } from '../utils/numberFormat';
+import { getVideoDiagnosticLines } from '../video/diagnostics';
 
 const REPEAT_PRESETS: readonly number[] = [1, 108, 1000, 10000];
 
@@ -79,10 +80,11 @@ const ProfileScreen: React.FC = () => {
   }, [customRepeatText]);
 
   const exportLogs = useCallback(async () => {
-    const logLines = getLogs();
-    const text = `=== 星光播放器 诊断信息 ===\n${deviceInfo}\n时间: ${new Date().toISOString()}\n\n--- 运行日志 (${logLines.length}条) ---\n${logLines.length > 0 ? logLines.join('\n') : '暂无异常日志'}`;
     setIsExporting(true);
     try {
+      const logLines = getLogs();
+      const videoLines = await getVideoDiagnosticLines();
+      const text = `=== 星光播放器 诊断信息 ===\n${deviceInfo}\n时间: ${new Date().toISOString()}\n\n--- 运行日志 (${logLines.length}条) ---\n${logLines.length > 0 ? logLines.join('\n') : '暂无异常日志'}\n\n--- 原生视频日志 (${videoLines.length}条；时间为Unix毫秒) ---\n${videoLines.join('\n') || '暂无视频事件或当前安装包不支持'}`;
       await exportDiagnosticFile(text);
     } catch (error) {
       Alert.alert('导出失败', String(error));

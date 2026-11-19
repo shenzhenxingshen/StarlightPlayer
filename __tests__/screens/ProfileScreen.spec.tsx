@@ -15,6 +15,9 @@ describe('<ProfileScreen />', () => {
     NativeModules.DiagnosticExporter.shareTextFile.mockResolvedValue(
       '/tmp/starlight-diagnostics.txt',
     );
+    NativeModules.VideoProgramPlayer.getDiagnostics = jest
+      .fn()
+      .mockResolvedValue(['1795071841000 boundary_check index=1 driftMs=120']);
   });
 
   afterEach(() => {
@@ -92,6 +95,8 @@ describe('<ProfileScreen />', () => {
     const content = NativeModules.DiagnosticExporter.shareTextFile.mock.calls[0][0];
     expect(content).toContain('星光播放器 诊断信息');
     expect(content).toContain('profile-export-test');
+    expect(content).toContain('原生视频日志');
+    expect(content).toContain('boundary_check index=1 driftMs=120');
   });
 
   it('导出失败时恢复按钮并提示错误', async () => {
