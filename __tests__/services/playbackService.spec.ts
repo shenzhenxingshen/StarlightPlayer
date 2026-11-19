@@ -25,6 +25,7 @@ import {
 import { setCurrentIndex } from '@/utils/trackManager';
 import { enqueuePlayerCommand } from '@/utils/playerCommandQueue';
 import * as syncUtils from '@/utils/syncUtils';
+import { setMediaOwner } from '@/video/ownership';
 
 const mockedTrackPlayer = TrackPlayer as jest.Mocked<typeof TrackPlayer> & {
   __emit(event: string, payload?: unknown): Promise<void> | undefined;
@@ -96,6 +97,28 @@ describe('PlaybackService · 停止后的恢复', () => {
     expect(loadExpectedPlaying()).toBe(false);
     expect(loadCycleEligible()).toBe(false);
     expect(mockedTrackPlayer.stop).toHaveBeenCalled();
+  });
+
+  it('视频持有播放权时忽略迟到的音频结束和远程控制，不抢播或增加音频遍数', async () => {
+    setMediaOwner('video');
+    saveSessionCount(9);
+    saveCycleEligible(false);
+    saveExpectedPlaying(false);
+    for (const event of [
+      Event.RemotePlay,
+      Event.RemoteNext,
+      Event.RemotePrevious,
+      Event.RemoteSeek,
+      Event.RemoteDuck,
+      Event.PlaybackQueueEnded,
+    ]) {
+      await mockedTrackPlayer.__emit(event, { position: 100, paused: false });
+    }
+    expect(mockedTrackPlayer.play).not.toHaveBeenCalled();
+    expect(mockedTrackPlayer.seekTo).not.toHaveBeenCalled();
+    expect(mockedTrackPlayer.reset).not.toHaveBeenCalled();
+    expect(loadSessionCount()).toBe(9);
+    expect(loadExpectedPlaying()).toBe(false);
   });
 
   it('Stopped 状态再次播放时从 0 开始并恢复计数资格', async () => {

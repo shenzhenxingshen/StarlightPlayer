@@ -1,7 +1,7 @@
 import './utils/logger'; // 最先加载，拦截全局错误
 import { GOLD, GOLD_DIM, BG_GROUND, BG_SURFACE, BORDER_STRONG, TEXT_TER } from './constants/colors';
 import React, { useCallback, useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   StatusBar,
@@ -11,6 +11,8 @@ import {
   Platform,
   PermissionsAndroid,
   useWindowDimensions,
+  AppState,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -50,8 +52,11 @@ import {
   syncTaskSchedules,
 } from './services/scheduledTaskScheduler';
 import { executeScheduledTask } from './services/scheduledTaskExecutor';
+import { startVideoLifecycle } from './video/runtime';
+import { isVideoOwner, MEDIA_OWNER_CHANGED } from './video/ownership';
 
 const Tab = createBottomTabNavigator();
+const navigationRef = createNavigationContainerRef<{ Player: undefined }>();
 
 let _initialized = false;
 let _initializing = false;
@@ -140,7 +145,17 @@ const App: React.FC = () => {
           }
 
           const playback = await TrackPlayer.getPlaybackState();
-          saveExpectedPlaying(shouldRestoreExpectedPlaying(activeIndex >= 0, playback.state));
+          saveExpectedPlaying(
+            !isVideoOwner() && shouldRestoreExpectedPlaying(activeIndex >= 0, playback.state),
+          );
+          if (isVideoOwner()) {
+            await TrackPlayer.pause();
+            await TrackPlayer.updateOptions({
+              capabilities: [],
+              compactCapabilities: [],
+              notificationCapabilities: [],
+            });
+          }
         });
         // Android 13+ 通知权限
         if (Platform.OS === 'android' && Platform.Version >= 33) {
@@ -183,8 +198,25 @@ const App: React.FC = () => {
         if (trigger) run(trigger);
       })
       .catch(taskError => addLog('ERROR', 'consume pending scheduled task failed', taskError));
-    return unsubscribe;
+    const active = AppState.addEventListener('change', state => {
+      if (state === 'active')
+        consumePendingScheduledTask()
+          .then(trigger => {
+            if (trigger) run(trigger);
+          })
+          .catch(taskError => addLog('ERROR', 'consume resumed task failed', taskError));
+    });
+    const media = DeviceEventEmitter.addListener(MEDIA_OWNER_CHANGED, () => {
+      if (isVideoOwner() && navigationRef.isReady()) navigationRef.navigate('Player');
+    });
+    return () => {
+      unsubscribe();
+      active.remove();
+      media.remove();
+    };
   }, [ready]);
+
+  useEffect(() => (ready ? startVideoLifecycle() : undefined), [ready]);
 
   if (error) {
     return (
@@ -211,6 +243,7 @@ const App: React.FC = () => {
       <SafeAreaProvider>
         <StatusBar barStyle="dark-content" backgroundColor={BG_GROUND} translucent={true} />
         <NavigationContainer
+          ref={navigationRef}
           theme={{
             dark: false,
             colors: {

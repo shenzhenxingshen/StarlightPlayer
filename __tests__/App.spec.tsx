@@ -32,7 +32,10 @@ jest.mock('react-native-safe-area-context', () => {
 
 jest.mock('@react-navigation/native', () => {
   const React = require('react');
-  return { NavigationContainer: ({ children }: any) => <>{children}</> };
+  return {
+    NavigationContainer: ({ children }: any) => <>{children}</>,
+    createNavigationContainerRef: () => ({ isReady: () => true, navigate: jest.fn() }),
+  };
 });
 
 jest.mock('@react-navigation/bottom-tabs', () => {

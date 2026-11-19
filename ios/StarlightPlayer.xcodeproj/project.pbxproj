@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D14A00000000000000000011 /* VideoProgramPlayer.mm in Sources */ = {isa = PBXBuildFile; fileRef = D14A00000000000000000010 /* VideoProgramPlayer.mm */; };
+		D14A00000000000000000013 /* video in Resources */ = {isa = PBXBuildFile; fileRef = D14A00000000000000000012 /* video */; };
 		00366E43B5644356AAAB7FBB /* C08 南无阿弥陀佛（慢版）.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = E5F146CA712240DC974DE0BC /* C08 南无阿弥陀佛（慢版）.mp3 */; };
 		00E356F31AD99517003FC87E /* StarlightPlayerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* StarlightPlayerTests.m */; };
 		0ADCEF7CED764368837A8900 /* D19 一声佛号一声心.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 4106378346A641718D4CA06D /* D19 一声佛号一声心.mp3 */; };
@@ -53,6 +55,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D14A00000000000000000010 /* VideoProgramPlayer.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = VideoProgramPlayer.mm; path = StarlightPlayer/VideoProgramPlayer.mm; sourceTree = "<group>"; };
+		D14A00000000000000000012 /* video */ = {isa = PBXFileReference; lastKnownFileType = folder; name = video; path = ../media/video; sourceTree = SOURCE_ROOT; };
 		00E356EE1AD99517003FC87E /* StarlightPlayerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StarlightPlayerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		00E356F21AD99517003FC87E /* StarlightPlayerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = StarlightPlayerTests.m; sourceTree = "<group>"; };
@@ -147,6 +151,8 @@
 				D14A00000000000000000001 /* DiagnosticExporter.mm */,
 				D14A00000000000000000003 /* PlayerCommandLock.mm */,
 				D14A00000000000000000008 /* ScheduledTaskManager.mm */,
+				D14A00000000000000000010 /* VideoProgramPlayer.mm */,
+				D14A00000000000000000012 /* video */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -333,6 +339,7 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				D14A00000000000000000013 /* video in Resources */,
 				C180865BBEA52F505063ECE7 /* PrivacyInfo.xcprivacy in Resources */,
 				CA6A7C371A6F48978DA5B553 /* D15 期盼.mp3 in Resources */,
 				DC036834A4844102ACBC10AB /* A01 大悲咒（跟我学）.mp3 in Resources */,
@@ -509,6 +516,7 @@
 				D14A00000000000000000002 /* DiagnosticExporter.mm in Sources */,
 				D14A00000000000000000004 /* PlayerCommandLock.mm in Sources */,
 				D14A00000000000000000009 /* ScheduledTaskManager.mm in Sources */,
+				D14A00000000000000000011 /* VideoProgramPlayer.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

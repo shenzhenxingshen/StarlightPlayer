@@ -15,6 +15,10 @@ import {
 } from '../utils/storage';
 import { playWithRetryInCommand, replaceTrackInCommand } from '../utils/trackManager';
 import { markAutomaticTaskStarted } from './scheduledTaskScheduler';
+import { AppState } from 'react-native';
+import { joinVideoTask, suppressEarlierVideoOccurrences, tickVideoTasks } from '../video/runtime';
+import { loadVideoSession } from '../video/persistence';
+import { isVideoOwner } from '../video/ownership';
 
 export type ScheduledTaskExecutionSource =
   | 'manual'
@@ -56,6 +60,15 @@ async function ensurePlayerInitialized(): Promise<void> {
 async function executeScheduledTaskInSequence(
   payload: ScheduledTaskExecutionPayload,
 ): Promise<boolean> {
+  if (payload.taskId.startsWith('video-')) {
+    if (AppState.currentState !== 'active') return false;
+    if (payload.source === 'manual' || payload.source === 'notification-tap') {
+      // Re-resolve the calendar from the current persisted config; stale notifications
+      // cannot invent a new window or override a running snapshot.
+      await joinVideoTask(payload.taskId);
+    } else await tickVideoTasks();
+    return true;
+  }
   const task = loadScheduledTask(payload.taskId);
   if (!task) {
     addLog('WARN', `ScheduledTask missing: ${payload.taskId}`);
@@ -104,25 +117,42 @@ async function executeScheduledTaskInSequence(
     return false;
   }
 
-  const currentSettings = getSettings();
-  const nextSettings = {
-    isCareMode: currentSettings.isCareMode,
-    isSyncMode: task.isSyncMode,
-    repeatCount: task.repeatCount,
-  };
-  setSettings(nextSettings);
-  useSettingsStore.setState(nextSettings);
-  savePlayerState({ trackIndex, playMode: task.playMode });
-  DeviceEventEmitter.emit('StarlightPlayModeChanged', task.playMode);
-
   try {
-    await enqueuePlayerCommand(`ScheduledTask:start:${task.id}`, async () => {
+    const started = await enqueuePlayerCommand(`ScheduledTask:start:${task.id}`, async () => {
+      const video = loadVideoSession();
+      if (
+        payload.source !== 'manual' &&
+        payload.scheduledAt != null &&
+        isVideoOwner() &&
+        video &&
+        video.intent !== 'stopped' &&
+        Date.now() < video.occurrence.endEpochMs &&
+        payload.scheduledAt <= video.occurrence.startEpochMs
+      ) {
+        addLog('INFO', `ScheduledTask older than active video, ignored: ${task.id}`);
+        return false;
+      }
+      const currentSettings = getSettings();
+      const nextSettings = {
+        isCareMode: currentSettings.isCareMode,
+        isSyncMode: task.isSyncMode,
+        repeatCount: task.repeatCount,
+      };
+      setSettings(nextSettings);
+      useSettingsStore.setState(nextSettings);
+      savePlayerState({ trackIndex, playMode: task.playMode });
+      DeviceEventEmitter.emit('StarlightPlayModeChanged', task.playMode);
       await ensurePlayerInitialized();
       await TrackPlayer.updateOptions(buildPlayerOptions(nextSettings));
       const track = await replaceTrackInCommand(trackIndex, 'user');
       if (!track) throw new Error(`ScheduledTask queue replacement became stale: ${task.id}`);
       await playWithRetryInCommand(`ScheduledTask:${task.id}`);
+      suppressEarlierVideoOccurrences(
+        payload.source === 'manual' ? Date.now() : payload.scheduledAt!,
+      );
+      return true;
     });
+    if (!started) return false;
     addLog(
       'INFO',
       `ScheduledTask started: ${task.id} source=${payload.source} track=${task.trackId} repeat=${task.repeatCount} mode=${task.playMode} sync=${task.isSyncMode}`,

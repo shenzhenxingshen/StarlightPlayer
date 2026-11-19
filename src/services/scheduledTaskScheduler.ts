@@ -1,9 +1,15 @@
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import { ScheduledTask } from '../types/scheduledTask';
 import { addLog } from '../utils/logger';
+import { loadVideoTasks } from '../video/persistence';
+
+type ScheduleProjection = Pick<
+  ScheduledTask,
+  'id' | 'name' | 'hour' | 'minute' | 'second' | 'enabled'
+> & { weekdays: number[] };
 
 interface NativeScheduledTaskManager {
-  syncTasks(tasks: ScheduledTask[]): Promise<TaskSchedulingStatus>;
+  syncTasks(tasks: ScheduleProjection[]): Promise<TaskSchedulingStatus>;
   consumePendingTrigger(): Promise<ScheduledTaskTrigger | null>;
   requestSchedulingPermission(): Promise<TaskSchedulingStatus>;
   getSchedulingStatus(): Promise<TaskSchedulingStatus>;
@@ -37,7 +43,10 @@ export const UNSUPPORTED_SCHEDULING_STATUS: TaskSchedulingStatus = {
 
 export function syncTaskSchedules(tasks: readonly ScheduledTask[]): Promise<TaskSchedulingStatus> {
   if (!nativeManager) return Promise.resolve(UNSUPPORTED_SCHEDULING_STATUS);
-  const snapshot = tasks.map(task => ({ ...task, weekdays: [...task.weekdays] }));
+  const snapshot: ScheduleProjection[] = [...tasks, ...loadVideoTasks()].map(task => ({
+    ...task,
+    weekdays: [...task.weekdays],
+  }));
   const operation = scheduleSyncTail.then(
     () => nativeManager.syncTasks(snapshot),
     () => nativeManager.syncTasks(snapshot),
@@ -77,7 +86,7 @@ export async function consumePendingScheduledTask(): Promise<ScheduledTaskTrigge
 export function subscribeScheduledTaskTriggers(
   listener: (trigger: ScheduledTaskTrigger) => void,
 ): () => void {
-  if (!nativeManager || Platform.OS !== 'ios') return () => {};
+  if (!nativeManager || (Platform.OS !== 'ios' && Platform.OS !== 'android')) return () => {};
   const emitter = new NativeEventEmitter(NativeModules.ScheduledTaskManager);
   const subscription = emitter.addListener('ScheduledTaskDue', listener);
   return () => subscription.remove();

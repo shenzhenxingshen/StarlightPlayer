@@ -1,0 +1,7 @@
+{
+  "name": "@starlight/program-core",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Experimental fixed-program timeline; not wired into production playback",
+  "exports": "./src/index.ts"
+}

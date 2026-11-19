@@ -35,6 +35,7 @@ import { addLog } from '../utils/logger';
 import { enqueuePlayerCommand } from '../utils/playerCommandQueue';
 import { resetCycleIfCompleted, seekWithReasonInCommand } from '../utils/playbackCycle';
 import { decidePostCycleAction, isValidQueueEndPosition } from '../utils/playbackDecision';
+import { isVideoOwner } from '../video/ownership';
 
 let serviceInitialized = false;
 let queueEndedInFlight = false;
@@ -102,7 +103,9 @@ async function restartCompletedCycleInCommand(): Promise<void> {
 
 async function runEventCommand(label: string, operation: () => Promise<void>): Promise<void> {
   try {
-    await enqueuePlayerCommand(label, operation);
+    await enqueuePlayerCommand(label, async () => {
+      if (!isVideoOwner()) await operation();
+    });
   } catch (error) {
     // 事件回调不向 RNTP 抛出 rejected Promise，避免二次全局崩溃。
     addLog('ERROR', `${label} event failed`, error);
@@ -144,6 +147,7 @@ function scheduleUnexpectedStopRecovery(source: string, attempt = 1) {
     let recovered = false;
     try {
       await enqueuePlayerCommand(`watchdog:${source}:${attempt}`, async () => {
+        if (isVideoOwner()) return;
         // 定时器决定恢复后可能仍在等待命令锁；用户的暂停/停止意图必须最终优先。
         if (!loadExpectedPlaying()) {
           recovered = true;
@@ -344,6 +348,7 @@ export default async function PlaybackService() {
 
   // ─── 队列结束 ───
   TrackPlayer.addEventListener(Event.PlaybackQueueEnded, async ({ position }) => {
+    if (isVideoOwner()) return;
     const id = currentTrackId();
     const generation = loadTrackGeneration();
     const key = `${id ?? 'none'}:${generation}`;
@@ -362,6 +367,7 @@ export default async function PlaybackService() {
 
     try {
       await enqueuePlayerCommand(`QueueEnded:${key}`, async () => {
+        if (isVideoOwner()) return;
         if (generation !== loadTrackGeneration() || id !== currentTrackId()) {
           addLog(
             'WARN',

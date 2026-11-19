@@ -11,11 +11,14 @@ import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
 import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.BaseActivityEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableArray
+import com.facebook.react.common.LifecycleState
+import com.facebook.react.modules.core.DeviceEventManagerModule
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -23,6 +26,32 @@ class ScheduledTaskManagerModule(
   reactContext: ReactApplicationContext,
 ) : ReactContextBaseJavaModule(reactContext) {
   override fun getName(): String = "ScheduledTaskManager"
+  private var listenerCount = 0
+  private val activityListener = object : BaseActivityEventListener() {
+    override fun onNewIntent(intent: Intent) {
+      // A notification may target an already visible Activity: there will be no
+      // AppState transition. Keep cold/background intents pending for JS startup.
+      if (listenerCount > 0 && reactApplicationContext.lifecycleState == LifecycleState.RESUMED) {
+        val trigger = takeTrigger(intent) ?: return
+        reactApplicationContext
+          .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+          .emit("ScheduledTaskDue", trigger)
+      }
+    }
+  }
+
+  init { reactContext.addActivityEventListener(activityListener) }
+
+  override fun invalidate() {
+    reactApplicationContext.removeActivityEventListener(activityListener)
+    super.invalidate()
+  }
+
+  @ReactMethod
+  fun addListener(eventName: String) { listenerCount += 1 }
+
+  @ReactMethod
+  fun removeListeners(count: Double) { listenerCount = (listenerCount - count.toInt()).coerceAtLeast(0) }
 
   private fun status() = Arguments.createMap().apply {
     putString("platform", "android")
@@ -106,6 +135,20 @@ class ScheduledTaskManagerModule(
   }
 
   @ReactMethod
-  fun consumePendingTrigger(promise: Promise) = promise.resolve(null)
+  fun consumePendingTrigger(promise: Promise) {
+    promise.resolve(takeTrigger(currentActivity?.intent))
+  }
+
+  private fun takeTrigger(intent: Intent?): com.facebook.react.bridge.WritableMap? {
+    val id = intent?.getStringExtra("videoTaskId") ?: return null
+    val at = intent.getLongExtra("videoScheduledAt", 0)
+    intent.removeExtra("videoTaskId")
+    intent.removeExtra("videoScheduledAt")
+    return Arguments.createMap().apply {
+      putString("taskId", id)
+      putString("source", "notification-tap")
+      putDouble("scheduledAt", at.toDouble())
+    }
+  }
 }
 

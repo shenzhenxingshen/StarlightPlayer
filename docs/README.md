@@ -25,6 +25,10 @@
 - 代码风格与当前静态检查状态：[Lint 与格式](LINTING.md)
 - 关键方案的选择理由：[设计决策记录](DECISIONS.md)
 - 桌面端独立预览、与手机版对齐范围和待办：[桌面开发说明](desktop/README.md)（移动端尚未迁移至共享核心）
+- 固定时间视频流程：[移动端实现与业务规则](VIDEO_PROGRAMS.md)、[素材台账](../media/video/README.md)、[2026-11-19 集成验证](test-runs/2026-11-19-video-program-integration.md)（开发分支，未发布）
+- 早期固定视频原型：[隔离原型与复现说明](../tools/video-program-spike/README.md)、[2026-11-17 验证记录](test-runs/2026-11-17-video-program-spike.md)（历史四段原型；当前六份素材与实现见上一项）
+- 电脑版视频验证：[macOS/libmpv 独立窗口](../tools/desktop-video-spike/README.md)、[实测记录](test-runs/2026-11-17-desktop-video-program-spike.md)（本机原型，非可分发安装包）
+- 视频素材整理：[可复现处理工具](../tools/video-materials/README.md)、[修订素材与验证](test-runs/2026-11-17-video-materials.md)（49 遍原型，待人工视觉/听感确认）
 
 ### 测试与发布
 

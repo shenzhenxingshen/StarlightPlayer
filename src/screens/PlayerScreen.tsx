@@ -40,11 +40,13 @@ import { buildPlayerOptions } from '../utils/playerOptions';
 import { getRepeatDisplayVisibility } from '../utils/repeatDisplay';
 import { getPlayerLayout } from '../utils/playerLayout';
 import { PortraitPlayerLayout, WidePlayerLayout } from '../components/PlayerLayouts';
+import VideoPlayer from '../video/Player';
+import { isVideoOwner, MEDIA_OWNER_CHANGED } from '../video/ownership';
 
 // 标志：是否正在恢复上次状态，期间不保存
 let restoring = true;
 
-const PlayerScreen: React.FC = () => {
+const AudioPlayerScreen: React.FC = () => {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const playbackState = usePlaybackState();
@@ -300,4 +302,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG_GROUND },
 });
 
-export default PlayerScreen;
+export default function PlayerScreen() {
+  const [video, setVideo] = useState(isVideoOwner);
+  useEffect(() => {
+    const listener = DeviceEventEmitter.addListener(MEDIA_OWNER_CHANGED, () =>
+      setVideo(isVideoOwner()),
+    );
+    return () => listener.remove();
+  }, []);
+  return video ? <VideoPlayer /> : <AudioPlayerScreen />;
+}

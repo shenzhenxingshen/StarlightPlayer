@@ -1,5 +1,6 @@
 import { NativeModules } from 'react-native';
 import { DEFAULT_SCHEDULED_TASKS } from '@/constants/scheduledTasks';
+import { loadVideoTasks } from '@/video/persistence';
 import {
   openTaskBackgroundSettings,
   getTaskSchedulingStatus,
@@ -33,11 +34,11 @@ describe('定时任务原生日程同步', () => {
     const second = syncTaskSchedules(newTasks);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(syncTasks).toHaveBeenCalledTimes(1);
-    expect(syncTasks).toHaveBeenNthCalledWith(1, oldTasks);
+    expect(syncTasks).toHaveBeenNthCalledWith(1, [...oldTasks, ...loadVideoTasks()]);
 
     finishFirst?.();
     await expect(Promise.all([first, second])).resolves.toEqual([status, status]);
-    expect(syncTasks).toHaveBeenNthCalledWith(2, newTasks);
+    expect(syncTasks).toHaveBeenNthCalledWith(2, [...newTasks, ...loadVideoTasks()]);
   });
 
   it('可从任务页进入Android应用后台设置', async () => {

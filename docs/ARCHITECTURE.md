@@ -2,6 +2,11 @@
 
 > 适用于 1.1 源码，依据 2026-11-06 的当前分支逐项核对。本文回答“模块如何协作、状态以谁为准、前台 UI、后台播放与每日任务怎样共同工作”。重复计数与同步算法的业务细节见 [PLAYBACK_ARCHITECTURE.md](PLAYBACK_ARCHITECTURE.md)，所有持久化字段见 [STORAGE_MODEL.md](STORAGE_MODEL.md)。
 
+> 2026-11-19 开发分支补充：移动端新增独立的[定时视频流程](VIDEO_PROGRAMS.md)，
+> 与下文的 RNTP 音频链路共用命令锁，通过 `media_owner_v1` 保证互斥。
+> 视频使用 AVPlayer/ExoPlayer 与整套绝对时间轴，不能套用单曲午夜取模或音频计数规则。
+> 下文仍描述原有音频架构；视频尚未发布，桌面正式界面未接入。
+
 ## 1. 系统边界与核心目标
 
 StarlightPlayer 是一个完全本地运行的 React Native 音频播放器。21 首音频随安装包分发，不依赖账号、后端 API、数据库、推送、广告或云端消息队列。运行时的外部边界只有操作系统音频能力：

@@ -109,10 +109,14 @@ export function sortScheduledTasks(tasks: readonly ScheduledTask[]): ScheduledTa
   );
 }
 
-export function findEnabledTaskTimeConflict(
-  tasks: readonly ScheduledTask[],
-  candidate: ScheduledTask,
-): ScheduledTask | null {
+export type TaskTimeProjection = Pick<
+  ScheduledTask,
+  'id' | 'name' | 'hour' | 'minute' | 'second' | 'enabled'
+> & { weekdays: number[] };
+export function findEnabledTaskTimeConflict<T extends TaskTimeProjection>(
+  tasks: readonly T[],
+  candidate: TaskTimeProjection,
+): T | null {
   if (!candidate.enabled) return null;
   const candidateTime = taskTimeInSeconds(candidate);
   return (

@@ -22,6 +22,8 @@ import {
   saveSessionCount,
 } from './storage';
 import { addLog } from './logger';
+import { claimAudioInCommand, isVideoOwner } from '../video/ownership';
+import { buildPlayerOptions } from './playerOptions';
 
 function clampIndex(idx: number): number {
   return Math.max(0, Math.min(idx, TRACKS.length - 1));
@@ -67,6 +69,10 @@ export function isLastTrack(trackId?: string | null): boolean {
 }
 
 async function playWithRetryInCommand(context: string): Promise<void> {
+  if (isVideoOwner()) {
+    await claimAudioInCommand();
+    await TrackPlayer.updateOptions(buildPlayerOptions(getSettings()));
+  }
   let lastError: unknown;
   saveExpectedPlaying(true);
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -170,6 +176,10 @@ export async function replaceTrackInCommand(
   idx: number,
   reason: TrackChangeReason,
 ): Promise<Track | null> {
+  if (reason === 'user' && isVideoOwner()) {
+    await claimAudioInCommand();
+    await TrackPlayer.updateOptions(buildPlayerOptions(getSettings()));
+  }
   const index = clampIndex(idx);
   const track = TRACKS[index];
   const pending = beginPendingTrackChange(track.id, index, reason);

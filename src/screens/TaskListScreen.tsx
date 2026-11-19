@@ -126,6 +126,15 @@ const TaskListScreen: React.FC<Props> = ({ navigation }) => {
   const warning = hasEnabledTasks ? permissionMessage(status) : null;
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="视频任务"
+        style={styles.platformHint}
+        onPress={() => navigation.navigate('VideoTasks')}>
+        <Icon name="movie" size={24} color={GOLD} />
+        <Text style={styles.platformHintText}>视频任务 · 49 / 98遍完整流程</Text>
+        <Icon name="chevron-right" size={24} color={GOLD} />
+      </Pressable>
       {warning && (
         <Pressable
           accessibilityRole="button"

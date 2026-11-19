@@ -36,8 +36,16 @@
 | `playback_paused_at`     | number   | 暂停/中断时间戳，毫秒                        | `null`                                  | 同步恢复的连续性判断      |
 | `stats_<年>_<月>_<日>`   | string   | JSON：当天各 track ID 完成次数               | `{}`                                    | 每日有效完成统计          |
 | `app_logs`               | string   | JSON：最多 1000 条日志字符串                 | `[]`                                    | 本地诊断                  |
+| `video_tasks_v1`         | string   | JSON：可编辑的视频定时任务数组               | 缺失返回两条关闭的默认任务；损坏保留原值 | 开发分支视频日程          |
+| `video_session_v1`       | string   | JSON：本次起止时间、配置/媒体快照、播放意图   | `null`；不兼容 revision 拒绝恢复         | 视频本次流程的冻结快照    |
+| `video_occurrences_v1`   | string   | JSON：最近 100 个已处理的视频实例 key         | `[]`                                    | 自动启动去重及失败防重试  |
+| `media_owner_v1`         | string   | `audio` / `video`                             | `audio`                                 | 跨播放引擎互斥            |
 
 日期 key 使用设备本地年月日且月/日不补零，例如 `stats_2026_10_6`。
+
+2026-11-19 新增的视频字段使用同一个默认 MMKV 实例，不迁移原音频字段。
+具体结构、校验、冻结快照和生命周期见 [视频任务存储契约](VIDEO_PROGRAMS.md#本地存储)。
+这些字段属于未发布的开发功能，不表示旧版已支持视频。
 
 ## 3. 逐项字段契约
 

@@ -10,6 +10,7 @@ import { replaceTrackInCommand } from '@/utils/trackManager';
 jest.mock('@react-navigation/native', () => {
   const ReactModule = require('react');
   return {
+    createNavigationContainerRef: () => ({ isReady: () => true, navigate: jest.fn() }),
     NavigationContainer: ({ children }: any) =>
       ReactModule.createElement(ReactModule.Fragment, null, children),
   };

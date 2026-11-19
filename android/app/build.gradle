@@ -20,6 +20,7 @@ android {
     compileSdkVersion rootProject.ext.compileSdkVersion
 
     namespace "com.starlightplayer"
+    sourceSets.main.assets.srcDirs += file("../../media")
 
     configurations.all {
         resolutionStrategy {
@@ -63,6 +64,7 @@ android {
 }
 
 dependencies {
+    implementation "com.google.android.exoplayer:exoplayer:2.19.0"
     implementation "com.facebook.react:react-android"
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
 

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "revision": "video-2026-11-18-v1",
+  "timescale": 44100,
+  "durationPolicy": "Video track duration in exact integer ticks; shorter audio tails are silence. Frame count and AAC packets are preserved.",
+  "encoding": "H.264 High@3.1, yuv420p, 856x482, 30fps, libx264 slow CRF21; AAC bitstream copied; faststart",
+  "assets": [
+    {"id":"intro49","file":"intro-49.mp4","title":"49遍片头","role":"intro","original":"49遍片头.mp4","sourceBytes":5376242,"sourceSHA256":"d30c265132ccebc929126d5da52eb3c3df1da5967a4495fe154db84fa0375ffb","bytes":976902,"sha256":"f33fa4e1a3b5ae26c31e7ba5a1a941c195f5dc0b5b204cd39748446fe839cf7e","durationTicks":220500,"audioTicks":220160,"width":856,"height":482,"ssim":0.990857},
+    {"id":"intro98","file":"intro-98.mp4","title":"98遍片头","role":"intro","original":"98遍片头.mp4","sourceBytes":1705452,"sourceSHA256":"14537a407d35ccda0398ac0db89f0fa0d6839b3238de29ef55cd06cb9f741aa9","bytes":711231,"sha256":"3678a04a169783b75fdc576a44f9cc163d9d5e3e2d0343ec32d8050d8a94a936","durationTicks":229320,"audioTicks":228352,"width":856,"height":482,"ssim":0.99069},
+    {"id":"salutation","file":"salutation.mp4","title":"礼敬诸佛","role":"salutation","original":"礼敬诸佛.mp4","sourceBytes":28406613,"sourceSHA256":"238266473379dd06bee971b8ba266877c59e5d195808f820b8c7e33cee8dedbe","bytes":3037330,"sha256":"3a1cc3ae9e1c0987d5bba0ec24853877c1549dd97c51ba39a421d50515a26183","durationTicks":1641990,"audioTicks":1641472,"width":856,"height":482,"ssim":0.994101},
+    {"id":"regular","file":"regular-cycle.mp4","title":"可重复多次的一遍","role":"regular","original":"可重复多次的一遍-去数字2.mp4","sourceBytes":6518894,"sourceSHA256":"8de7bddfc417ece0f557a53cf2ed68be78030432aa16cebdb462d07b3db51ea0","bytes":4353963,"sha256":"ca3eaa03bcb60cd20116b4de9305720aff522825169bbaedf4cc10c0d658b265","durationTicks":3242820,"audioTicks":3241984,"width":856,"height":482,"ssim":0.99381},
+    {"id":"final","file":"final-cycle.mp4","title":"最后一遍","role":"final","original":"最后一遍-去数字49.mp4","sourceBytes":6913840,"sourceSHA256":"2e63d117aa0cbb30ba37d5f11a91410aa2d9fe5009b0ac5e080e7cfc658ac258","bytes":4442056,"sha256":"b6dd9e00fc822b9e8582df49ca153cd5bd37c912d1b13fe2b4961767c2ff71cb","durationTicks":3435390,"audioTicks":3434496,"width":856,"height":482,"ssim":0.993505},
+    {"id":"outro","file":"outro.mp4","title":"片尾","role":"outro","original":"片尾.mp4","sourceBytes":70751982,"sourceSHA256":"e6527c2f0bb0d350bcece5c46ef343b37eab26958e1026508d1aba9721b5227a","bytes":9829067,"sha256":"406bdc7bcf47e6bb9f1f094dc93493e2b127421283891df8dccb42348d0f4794","durationTicks":3388350,"audioTicks":3387392,"width":856,"height":482,"ssim":0.992587}
+  ]
+}

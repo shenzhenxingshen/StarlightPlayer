@@ -31,6 +31,12 @@ NativeModules.PlayerCommandLock = {
 NativeModules.DiagnosticExporter = {
   shareTextFile: jest.fn(async () => '/tmp/starlight-diagnostics.txt'),
 };
+NativeModules.VideoProgramPlayer = {
+  load: jest.fn(async () => {}),
+  pause: jest.fn(async () => {}),
+  stop: jest.fn(async () => {}),
+  getStatus: jest.fn(async () => ({ playing: true, position: 0, error: '' })),
+};
 NativeModules.ScheduledTaskManager = {
   syncTasks: jest.fn(async () => ({
     platform: 'ios',

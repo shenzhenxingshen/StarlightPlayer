@@ -3,15 +3,16 @@ import { ScheduledTask, ScheduledTaskDraft } from '../types/scheduledTask';
 import { loadScheduledTasks, saveScheduledTasks } from '../utils/storage';
 import { syncTaskSchedules } from '../services/scheduledTaskScheduler';
 import { addLog } from '../utils/logger';
-import { findEnabledTaskTimeConflict } from '../constants/scheduledTasks';
+import { findEnabledTaskTimeConflict, TaskTimeProjection } from '../constants/scheduledTasks';
+import { loadVideoTasks } from '../video/persistence';
 
 interface ScheduledTaskStore {
   tasks: ScheduledTask[];
   replaceAll: (tasks: ScheduledTask[]) => void;
   addTask: (draft: ScheduledTaskDraft) => ScheduledTask;
-  updateTask: (task: ScheduledTask) => ScheduledTask | null;
+  updateTask: (task: ScheduledTask) => TaskTimeProjection | null;
   deleteTask: (taskId: string) => void;
-  setTaskEnabled: (taskId: string, enabled: boolean) => ScheduledTask | null;
+  setTaskEnabled: (taskId: string, enabled: boolean) => TaskTimeProjection | null;
   refresh: () => void;
 }
 
@@ -36,7 +37,7 @@ export const useScheduledTaskStore = create<ScheduledTaskStore>((set, get) => ({
     return task;
   },
   updateTask: task => {
-    const conflict = findEnabledTaskTimeConflict(get().tasks, task);
+    const conflict = findEnabledTaskTimeConflict([...get().tasks, ...loadVideoTasks()], task);
     if (conflict) return conflict;
     set({
       tasks: persistAndSchedule(
@@ -51,7 +52,10 @@ export const useScheduledTaskStore = create<ScheduledTaskStore>((set, get) => ({
   setTaskEnabled: (taskId, enabled) => {
     const current = get().tasks.find(task => task.id === taskId);
     if (!current) return null;
-    const conflict = findEnabledTaskTimeConflict(get().tasks, { ...current, enabled });
+    const conflict = findEnabledTaskTimeConflict([...get().tasks, ...loadVideoTasks()], {
+      ...current,
+      enabled,
+    });
     if (conflict) return conflict;
     set({
       tasks: persistAndSchedule(

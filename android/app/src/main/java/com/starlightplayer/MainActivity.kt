@@ -1,4 +1,5 @@
 package com.starlightplayer
+import android.content.Intent
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -6,6 +7,10 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnable
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 class MainActivity : ReactActivity() {
+  override fun onNewIntent(intent: Intent) {
+    setIntent(intent)
+    super.onNewIntent(intent)
+  }
 
   /**
    * Returns the name of the main component registered from JavaScript. This is used to schedule

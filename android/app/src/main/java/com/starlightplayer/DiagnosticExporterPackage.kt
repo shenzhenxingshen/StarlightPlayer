@@ -11,9 +11,10 @@ class DiagnosticExporterPackage : ReactPackage {
       DiagnosticExporterModule(reactContext),
       PlayerCommandLockModule(reactContext),
       ScheduledTaskManagerModule(reactContext),
+      VideoProgramPlayerModule(reactContext),
     )
 
   override fun createViewManagers(
     reactContext: ReactApplicationContext,
-  ): List<ViewManager<*, *>> = emptyList()
+  ): List<ViewManager<*, *>> = listOf(VideoProgramViewManager())
 }
