@@ -1,4 +1,47 @@
-# 49 遍视频素材整理
+# 视频素材整理
+
+## 当前正式 App：六份用户素材
+
+`prepare-bundled.mjs` 对应 `media/video/manifest.json` 的六份素材。
+当前 revision 为 `video-2026-11-19-v2`，不是下面历史四段原型的处理链。
+源件仅校验、读取；输出必须是新目录，不覆盖原件。
+
+```sh
+node tools/video-materials/prepare-bundled.mjs --help
+node tools/video-materials/prepare-bundled.mjs /path/to/素材集合 /path/to/new-output
+node --test tools/video-materials/qr-treatment.test.mjs
+node scripts/verify-video-assets.mjs
+```
+
+- 统一856×482、H.264 High@3.1、30fps、CRF21；原AAC音频包直接复制。
+- 正文和最后一遍的固定二维码区域 `684,281,122,122` 使用局部插值；
+  只允许匹配已审查源SHA-256和画布尺寸的素材。未增加标题、未裁字幕。
+- 六段均校验视频帧数、44,100 tick/秒下逐包PTS/持续时间、总时长、
+  AAC数据包哈希、完整解码和压缩SSIM。带二维码处理的SSIM参考先应用相同处理，
+  不能用该值宣称无痕修复。
+- 当前工具**不降音量、不淡化、不重新编码音频**。不要将下文历史原型的
+  `process.py` 应用到这套正式素材。
+
+已知二维码图案的逐帧回归检查（需已有Python/OpenCV；不扫描二维码内容）：
+
+```sh
+python3 tools/video-materials/audit-qr.py --help
+python3 tools/video-materials/audit-qr.py \
+  --template /path/to/素材集合/可重复多次的一遍-去数字2.mp4 \
+  media/video/intro-49.mp4 media/video/intro-98.mp4 media/video/salutation.mp4 \
+  media/video/regular-cycle.mp4 media/video/final-cycle.mp4 media/video/outro.mp4
+```
+
+默认使用原件第300帧的 `688,285,114,113` 图案、0.75相关性阈值，逐帧全画幅搜索。
+JSON写stdout，进度/错误写stderr；可重定向保存结果。它只检查这个已知图案，
+不是通用二维码不存在的证明，也不代替字幕、修补背景的人工视觉验收。
+详见[本轮记录](../../docs/test-runs/2026-11-19-video-ui.md)。
+两项CLI目前只在macOS执行，未做Windows/Linux工具运行验收。
+
+正式六份衍生MP4进入Git并随App离线打包；原件和大体量检查产物放在忽略的
+`release/`。下面“未随Git交付”的描述仅指历史隔离原型。
+
+## 历史：49遍四段隔离原型（2026-11-17）
 
 这是隔离视频原型的素材处理工具，不修改正式 App 音频、任务或同步规则。
 本轮产物及播放验证见 [2026-11-17 素材记录](../../docs/test-runs/2026-11-17-video-materials.md)。

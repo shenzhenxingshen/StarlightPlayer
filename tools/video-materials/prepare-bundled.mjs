@@ -4,14 +4,35 @@ import { resolve, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { qrTreatment } from './qr-treatment.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-if (!process.argv[2] || !process.argv[3])
-  throw new Error('Usage: node prepare-bundled.mjs SOURCE_DIR NEW_OUTPUT_DIR');
+const usage = `Usage: node tools/video-materials/prepare-bundled.mjs SOURCE_DIR NEW_OUTPUT_DIR
+
+Build the six catalogued videos from unchanged source originals.
+The output directory must not exist. Audio packets and timing are preserved.
+JSON evidence goes to stdout; progress/errors go to stderr.
+
+Options:
+  --help     Show this help
+  --version  Show authoring tool version
+
+Requires existing ffmpeg/ffprobe; does not install dependencies.`;
+if (process.argv[2] === '--help' || process.argv[2] === '-h') {
+  console.log(usage);
+  process.exit(0);
+}
+if (process.argv[2] === '--version') {
+  console.log('prepare-bundled 1.1.0');
+  process.exit(0);
+}
+if (process.argv.length !== 4 || process.argv.slice(2).some(arg => arg.startsWith('--'))) {
+  console.error(usage);
+  process.exit(2);
+}
 const sourceDirectory = resolve(process.argv[2]);
 const output = resolve(process.argv[3]);
 if (existsSync(output)) throw new Error('Output must be a new directory (no overwriting)');
-mkdirSync(output, { recursive: true });
 const catalog = JSON.parse(readFileSync(resolve(root, 'media/video/manifest.json')));
 const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex');
 const probe = path =>
@@ -38,6 +59,29 @@ const audioHash = path =>
     ],
     { encoding: 'utf8' },
   ).trim();
+const videoPackets = path => {
+  const video = probe(path).streams.find(s => s.codec_type === 'video');
+  const [num, den] = video.time_base.split('/').map(Number);
+  const { packets } = JSON.parse(execFileSync('ffprobe', [
+    '-v', 'error', '-select_streams', 'v:0', '-show_packets',
+    '-show_entries', 'packet=pts,duration', '-of', 'json', path,
+  ]));
+  return packets.map(p => [p.pts, p.duration].map(value => {
+    const ticks = Number(value) * num * catalog.timescale / den;
+    if (!Number.isInteger(ticks)) throw new Error(`Non-integral video timestamp: ${path}`);
+    return ticks;
+  })).sort((a, b) => a[0] - b[0]);
+};
+// Validate every input before creating output; never apply these rectangles to
+// an unrelated video even if it happens to have the same filename.
+for (const entry of catalog.assets) {
+  const source = resolve(sourceDirectory, entry.original);
+  if (hash(source) !== (entry.sourceSHA256 || entry.sha256) ||
+      statSync(source).size !== (entry.sourceBytes || entry.bytes))
+    throw new Error(`Original has changed: ${entry.original}`);
+  qrTreatment(entry);
+}
+mkdirSync(output, { recursive: true });
 const evidence = [];
 for (const entry of catalog.assets) {
   const source = resolve(sourceDirectory, entry.original);
@@ -48,8 +92,13 @@ for (const entry of catalog.assets) {
   ) {
     throw new Error(`Original has changed: ${entry.original}`);
   }
-  console.log(`Compressing ${entry.original}`);
+  console.error(`Compressing ${entry.original}`);
   const original = probe(source);
+  const treatment = qrTreatment(entry);
+  const filter = [
+    'scale=856:482:force_original_aspect_ratio=decrease,pad=856:482:(ow-iw)/2:(oh-ih)/2,setsar=1',
+    treatment?.filter,
+  ].filter(Boolean).join(',');
   execFileSync(
     'ffmpeg',
     [
@@ -68,7 +117,7 @@ for (const entry of catalog.assets) {
       '-map_chapters',
       '-1',
       '-vf',
-      'scale=856:482:force_original_aspect_ratio=decrease,pad=856:482:(ow-iw)/2:(oh-ih)/2,setsar=1',
+      filter,
       '-c:v',
       'libx264',
       '-preset',
@@ -105,7 +154,8 @@ for (const entry of catalog.assets) {
     video.nb_frames !== previousVideo.nb_frames ||
     audio.duration_ts !== previousAudio.duration_ts ||
     audio.time_base !== previousAudio.time_base ||
-    audioHash(source) !== audioHash(target)
+    audioHash(source) !== audioHash(target) ||
+    JSON.stringify(videoPackets(source)) !== JSON.stringify(videoPackets(target))
   ) {
     throw new Error(`Timing/audio changed: ${entry.file}`);
   }
@@ -121,7 +171,7 @@ for (const entry of catalog.assets) {
       '-i',
       target,
       '-filter_complex',
-      '[0:v]scale=856:482:force_original_aspect_ratio=decrease,pad=856:482:(ow-iw)/2:(oh-ih)/2,setsar=1[ref];[ref][1:v]ssim',
+      `[0:v]${filter}[ref];[ref][1:v]ssim`,
       '-an',
       '-f',
       'null',
@@ -142,7 +192,10 @@ for (const entry of catalog.assets) {
     durationTicks: ticks,
     frames: Number(video.nb_frames),
     ssim,
+    ssimReference: treatment ? 'source scaled and identically QR-treated' : 'source scaled',
+    treatment,
     audioUnchanged: true,
+    videoPacketTimestampsUnchanged: true,
     fullyDecoded: true,
   });
 }
